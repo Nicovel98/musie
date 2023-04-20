@@ -3,18 +3,25 @@ const wrapper = document.querySelector(".wrapper"),
     musicImg = wrapper.querySelector(".img-area img"),
     musicName = wrapper.querySelector(".song-details .name"),
     musicArtist = wrapper.querySelector(".song-details .artist"),
+    /* Controles  */
     playPauseBtn = wrapper.querySelector(".play-pause"),
     prevBtn = wrapper.querySelector("#prev"),
     nextBtn = wrapper.querySelector("#next"),
     rewBtn = wrapper.querySelector("#rew"),
     forwBtn = wrapper.querySelector("#forw"),
-    /* Variables de sonido */
+    /* Sonido */
     mainAudio = wrapper.querySelector("#main-audio"),
     soundBtn = wrapper.querySelector("#volume-up"),
     volumeSlider = document.querySelector(".volume-slider"),
+
+    /* volumeProgressArea = wrapper.querySelector(".volume-progress-area"),
+    volumeProgressBar = volumeProgressArea.querySelector(".volume-progress-bar"), */
+    /* Favoritos */
     favBtn = document.querySelector("#fav"),
+    /* Barra de progreso */
     progressArea = wrapper.querySelector(".progress-area"),
     progressBar = progressArea.querySelector(".progress-bar"),
+    /* Lista de música */
     musicList = wrapper.querySelector(".music-list"),
     moreMusicBtn = wrapper.querySelector("#more-music"),
     closemoreMusic = musicList.querySelector("#close");
@@ -109,13 +116,30 @@ favBtn.addEventListener("click", () => {
 soundBtn.addEventListener("click", () => {
     if (soundBtn.innerHTML == "volume_off") {
         soundBtn.innerHTML = "volume_up";
+        mainAudio.volume = 0.5;
+        volumeSlider.value = 50;
     } else {
         soundBtn.innerHTML = "volume_off";
+        mainAudio.volume = 0;
+        volumeSlider.value = 0;
     }
+    /* volumeProgressArea.classList.toggle("show"); */
 });
+
+/* Esto ahora funciona con CSS
+    soundBtn.addEventListener("mouseover", () => {
+    volumeSlider.style.display = 'inline';
+});
+
+soundBtn.addEventListener("mouseup", () => {
+    volumeSlider.style.display = 'none';
+}); */
 
 volumeSlider.addEventListener("input", () => {
     mainAudio.volume = volumeSlider.value / 100;
+    /* let val = (volumeSlider.value / volumeSlider.ariaValueMax) * 100;
+    volumeSlider.style.background = 'linear-gradient(to right, #ff74a4 $(val)%, #5f0a87 $(val)%)';
+    volumeSlider.textContent = volumeSlider.value; */
 });
 
 rewBtn.addEventListener("click", () => {
