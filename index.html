@@ -12,6 +12,118 @@
 </head>
 
 <body>
+    <nav class="sidebar close">
+        <header>
+            <div class="image-text">
+                <span class="image">
+                    <img src="/img/musie_logo_removebg.png" alt="Musie_Logo">
+                </span>
+
+                <div class="text logo-text">
+                    <span class="name">Musie</span>
+                    <span class="profession">Web Player</span>
+                </div>
+            </div>
+
+            <i class="material-icons toggle">chevron_right</i>
+        </header>
+
+        <div class="menu-bar">
+            <div class="menu">
+
+                <li class="search-box">
+                    <i class="material-icons icon">search</i>
+                    <input type="text" placeholder="Search...">
+                </li>
+
+                <ul class="menu-links">
+                    <li class="nav-link">
+                        <a href="#">
+                            <i class="material-icons icon">home</i>
+                            <span class="text nav-text">Dashboard</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-link">
+                        <a href="#">
+                            <i class="material-icons icon">bar_chart</i>
+                            <span class="text nav-text">Revenue</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-link">
+                        <a href="#">
+                            <i class="material-icons icon">notifications</i>
+                            <span class="text nav-text">Notifications</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-link">
+                        <a href="#">
+                            <i class="material-icons icon">pie_chart</i>
+                            <span class="text nav-text">Analytics</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-link">
+                        <a href="#">
+                            <i class="material-icons icon">favorite</i>
+                            <span class="text nav-text">Likes</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-link">
+                        <a href="#">
+                            <i class="material-icons icon">wallet</i>
+                            <span class="text nav-text">Wallets</span>
+                        </a>
+                    </li>
+
+                </ul>
+            </div>
+
+            <div class="bottom-content">
+                <li class="">
+                    <a href="#">
+                        <i class="material-icons icon">logout</i>
+                        <span class="text nav-text">Logout</span>
+                    </a>
+                </li>
+
+                <li class="mode">
+                    <div class="sun-moon">
+                        <i class="material-icons moon">dark_mode</i>
+                        <i class="material-icons sun">light_mode</i>
+                    </div>
+                    <span class="mode-text text">Dark mode</span>
+
+                    <div class="toggle-switch">
+                        <span class="switch"></span>
+                    </div>
+                </li>
+
+            </div>
+        </div>
+
+    </nav>
+    <!-- <section class="home">
+        <div class="text">Dashboard Sidebar</div>
+    </section> -->
+    <!-- Barra lateral de navegación 
+    <div class="barra-lateral">
+        <nav>
+            <ul>
+                <li></li>
+                <li></li>
+                <li></li>
+                <li></li>
+                <li></li>
+                <li></li>
+            </ul>
+        </nav>
+    </div>-->
+
+    <!--     Carta       -->
     <div class="wrapper">
         <div class="top-bar">
             <i class="material-icons">expand_more</i>
@@ -30,6 +142,9 @@
                 <i id="fav" class="material-icons">favorite</i>
                 <div id="volume-control">
                     <i id="volume-up" class="material-icons">volume_up</i>
+                    <div class="volume-progress-area">
+                        <div class="volume-progress-bar"></div>
+                    </div>
                     <input class="volume-slider" type="range" min="0" max="100" value="50">
                 </div>
             </div>
@@ -47,13 +162,15 @@
                 <span class="max-duration">0:00</span>
             </div>
         </div>
-        <!-- <div>
+        <!--             
+        <div id="volume-control">
             <i id="volume-up" class="material-icons">volume_up</i>
             <div class="volume-progress-area">
                 <div class="volume-progress-bar"></div>
             </div>
             <input class="volume-slider" type="range" min="0" max="100" value="50">
-        </div> -->
+        </div>
+        -->
         <!-- Controles del Reproductor 
             Repetir canción, canción aleatoria
             Canción anterior, canción siguiente
@@ -87,11 +204,7 @@
     </div>
 
     <div id="dropArea" class="container">
-        <!-- <div draggable="true" class="box">Canción</div>
-        <div draggable="true" class="box">Canción 2</div> -->
-        <input draggable="true" type="file" name="" id="" class="box">
-        <input draggable="true" type="file" name="" id="" class="box">
-        <!-- Arrastra y suelta la canción aquí -->
+        <div id="dropZone" class="box">Arrastra y suelta la canción aquí</div>
     </div>
 
     <!-- <div class="wrapper">
@@ -120,6 +233,8 @@
     <script src="js/music-list.js"></script>
     <!-- Se llaman los botones por id y se les crea las funciones y los escuchadores -->
     <script src="js/script.js"></script>
+    <!-- --- Se llama el script para la funcionalidad del Darkmode --- -->
+    <script src="js/darkscript.js"></script>
 </body>
 
 </html>

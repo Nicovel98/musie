@@ -113,6 +113,16 @@ favBtn.addEventListener("click", () => {
     }
 });
 
+/*
+const volumeProgressArea = document.querySelector(".volume-progress-area");
+const volumeProgressBar = document.querySelector(".volume-progress-bar");
+/* const volumeSlider = document.querySelector(".volume-slider"); 
+
+volumeSlider.addEventListener("input", (e) => {
+    const volume = e.target.value;
+    volumeProgressBar.style.width = `${volume}%`;
+});*/
+
 soundBtn.addEventListener("click", () => {
     if (soundBtn.innerHTML == "volume_off") {
         soundBtn.innerHTML = "volume_up";
@@ -323,107 +333,40 @@ function clicked(element) {
 }
 
 /* Drag and Drop Functions */
+const dropZone = document.getElementById("dropZone");
 
-document.addEventListener('DOMContentLoaded', (event) => {
-
-    function handleDragStart(e) {
-        this.style.opacity = '0.4';
-        dragSrcEl = this;
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/html', this.innerHTML);
-    }
-
-    function handleDragEnd(e) {
-        this.style.opacity = '1';
-
-        items.forEach(function(item) {
-            item.classList.remove('over');
-        });
-    }
-
-    function handleDragOver(e) {
-        if (e.preventDefault) {
-            e.preventDefault();
-        }
-
-        return false;
-    }
-
-    function handleDragEnter(e) {
-        this.classList.add('over');
-    }
-
-    function handleDragLeave(e) {
-        this.classList.remove('over');
-    }
-
-    function handleDrop(e) {
-        e.stopPropagation();
-        e.preventDefault();
-        if (dragSrcEl !== this) {
-            dragSrcEl.innerHTML = this.innerHTML;
-            this.innerHTML = e.dataTransfer.getData('text/html');
-        }
-        return false;
-    }
-    /* function handleDrop(e) {
-        e.stopPropagation(); // Stops some browsers from redirecting.
-        e.preventDefault();
-        var files = e.dataTransfer.files;
-        for (var i = 0, f; f = files[i]; i++) {
-            // Read the File objects in this FileList.
-        }
-    } */
-
-    let items = document.querySelectorAll('.container .box');
-    items.forEach(function(item) {
-        item.addEventListener('dragstart', handleDragStart);
-        item.addEventListener('dragover', handleDragOver);
-        item.addEventListener('dragenter', handleDragEnter);
-        item.addEventListener('dragleave', handleDragLeave);
-        item.addEventListener('dragend', handleDragEnd);
-        item.addEventListener('drop', handleDrop);
-    });
+dropZone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropZone.classList.add("dragging");
 });
 
-function getMetadataForFileList(fileList) {
-    for (const file of fileList) {
-        // Not supported in Safari for iOS.
-        const name = file.name ? file.name : 'NOT SUPPORTED';
-        // Not supported in Firefox for Android or Opera for Android.
-        const type = file.type ? file.type : 'NOT SUPPORTED';
-        // Unknown cross-browser support.
-        const size = file.size ? file.size : 'NOT SUPPORTED';
-        console.log({ file, name, type, size });
-    }
-}
+dropZone.addEventListener("dragleave", () => {
+    dropZone.classList.remove("dragging");
+});
 
-
-
-/* const dropArea = document.getElementById("dropArea");
-
-// Agrega event listeners para los eventos de drag-and-drop
-dropArea.addEventListener("dragenter", preventDefaults, false);
-dropArea.addEventListener("dragover", preventDefaults, false);
-dropArea.addEventListener("dragleave", preventDefaults, false);
-dropArea.addEventListener("drop", handleDrop, false);
-
-function preventDefaults(e) {
+dropZone.addEventListener("drop", (e) => {
     e.preventDefault();
-    e.stopPropagation();
-}
+    dropZone.classList.remove("dragging");
 
-function handleDrop(e) {
-    // Obtén el archivo arrastrado y su información
-    let droppedFile = e.dataTransfer.files[0];
-    let droppedFileName = droppedFile.name;
-    let droppedFileType = droppedFile.type;
-
-    // Verifica si el archivo es de tipo MP3
-    if (droppedFileType === "audio/mp3" || droppedFileType === "audio/mpeg") {
-        // Aquí puedes procesar el archivo de audio, por ejemplo, agregarlo a tu lista de reproducción
-        console.log("Nombre del archivo de audio:", droppedFileName);
-    } else {
-        alert("Por favor, arrastra un archivo MP3.");
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        const file = files[0];
+        if (file.type.startsWith("audio/")) {
+            playDroppedFile(file);
+        } else {
+            alert("Por favor, arrastra sólo archivos de audio.");
+        }
     }
-} */
+});
+
+function playDroppedFile(file) {
+    const mainAudio = document.getElementById("main-audio");
+    const songName = document.querySelector(".name");
+    const songArtist = document.querySelector(".artist");
+
+    mainAudio.src = URL.createObjectURL(file);
+    mainAudio.play();
+
+    songName.textContent = file.name;
+    songArtist.textContent = "Desconocido";
+}
