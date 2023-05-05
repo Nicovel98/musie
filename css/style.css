@@ -1,5 +1,5 @@
     @import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@1,200;1,300;1,400;1,500;1,600;1,700&display=swap');
-    /*--- Fuente CSS sin Italica ---*/
+    /* --- Fuente CSS sin Italica --- */
     /*@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap'); */
     
     * {
@@ -24,8 +24,10 @@
         --darkwhite: #cecaca;
         --pinkshadow: #ffcbdd;
         --lightbshadow: rgba(0, 0, 0, 0.20);
+        --dark:#28313B;
         /* --- Body Colors --- */
         --body-color: linear-gradient(var(--pink) 0%, var(--violet) 100%);
+        --dark-color: linear-gradient(var(--violet) 5%, #9b23ea 40%);
         --sidebar-color: #FF597B;
         --primary-color: var(--violet);
         /* --- Hasta acá va la revisión de color CAMBIAR --- */
@@ -268,7 +270,7 @@
     
     .menu-bar .mode .sun-moon {
         height: 50px;
-        width: 60px;
+        width: 60px;        
     }
     
     .mode .sun-moon i {
@@ -282,6 +284,7 @@
     
     body.dark .mode .sun-moon i.sun {
         opacity: 1;
+        color: var(--white);
     }
     
     body.dark .mode .sun-moon i.moon {
@@ -354,9 +357,65 @@
         width: calc(100% - 78px);
     }
     
-    body.dark .home .text {
+    /* body.dark .home .text {
         color: var(--text-color);
+    } */
+    /* --- Modelo de Carta Darkmode --- */
+    body.dark .wrapper {
+        background: var(--dark);   
+        box-shadow: 0px 6px 15px var(--dark);     
     }
+
+    body.dark .wrapper i {
+        color: var(--white);
+    }
+
+    body.dark .wrapper span {
+        color: var(--white);
+    }
+
+    body.dark .song-details p {
+        color: var(--white);
+    }
+
+    body.dark .img-area {
+        box-shadow: 0px 6px 12px var(--violet);
+    }
+
+    body.dark .progress-area {
+        background: var(--lightblack);
+    }
+
+    body.dark .progress-area .progress-bar {
+        background: linear-gradient(90deg, var(--violet) 0%, var(--pink) 100%);
+    }
+
+    body.dark .volume-slider {
+        background: var(--dark);
+    }
+
+    body.dark .controls i {
+        font-size: 36px;
+        user-select: none;
+        background: var(--dark-color);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;        
+    }
+
+    body.dark .controls .play-pause {  
+        background: var(--dark-color);        
+    }
+
+    body.dark .music-list {
+        background: var(--dark);
+    }
+
+    body.dark .header #close {
+        
+        color: var(--white);
+    }
+
     /* --- Modelo de carta --- */
     
     .wrapper {
@@ -576,13 +635,12 @@
         width: 17px;
         height: 17px;
         border-radius: 50%;
-        /* background: #04AA6D; */
+        /* background: #04AA6D; */        
         background: linear-gradient(var(--pink) 0%, var(--violet) 100%);
     }
     
     .volume-slider::-moz-range-progress {
-        height: 10px;
-        background: linear-gradient(var(--pink) 0%, var(--violet) 100%);
+        height: 10px;        
     }
     
     .controls i {
