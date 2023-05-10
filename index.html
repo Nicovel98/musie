@@ -11,201 +11,187 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
 </head>
 
-<body>
-    <nav class="sidebar close">
-        <header>
-            <div class="image-text">
-                <span class="image">
-                    <img src="/img/musie_logo_removebg.png" alt="Musie_Logo">
-                </span>
-
-                <div class="text logo-text">
-                    <span class="name">Musie</span>
-                    <span class="profession">Web Player</span>
-                </div>
-            </div>
-
-            <i class="material-icons toggle">chevron_right</i>
-        </header>
-
-        <div class="menu-bar">
-            <div class="menu">
-
-                <li class="search-box">
-                    <i class="material-icons icon">search</i>
-                    <input type="text" placeholder="Search...">
-                </li>
-
-                <ul class="menu-links">
-                    <li class="nav-link">
-                        <a href="#">
-                            <i class="material-icons icon">home</i>
-                            <span class="text nav-text">Dashboard</span>
-                        </a>
-                    </li>
-
-                    <li class="nav-link">
-                        <a href="#">
-                            <i class="material-icons icon">bar_chart</i>
-                            <span class="text nav-text">Revenue</span>
-                        </a>
-                    </li>
-
-                    <li class="nav-link">
-                        <a href="#">
-                            <i class="material-icons icon">notifications</i>
-                            <span class="text nav-text">Notifications</span>
-                        </a>
-                    </li>
-
-                    <li class="nav-link">
-                        <a href="#">
-                            <i class="material-icons icon">pie_chart</i>
-                            <span class="text nav-text">Analytics</span>
-                        </a>
-                    </li>
-
-                    <li class="nav-link">
-                        <a href="#">
-                            <i class="material-icons icon">favorite</i>
-                            <span class="text nav-text">Likes</span>
-                        </a>
-                    </li>
-
-                    <li class="nav-link">
-                        <a href="#">
-                            <i class="material-icons icon">wallet</i>
-                            <span class="text nav-text">Wallets</span>
-                        </a>
-                    </li>
-
-                </ul>
-            </div>
-
-            <div class="bottom-content">
-                <li class="">
-                    <a href="#">
-                        <i class="material-icons icon">logout</i>
-                        <span class="text nav-text">Logout</span>
-                    </a>
-                </li>
-
-                <li class="mode">
-                    <div class="sun-moon">
-                        <i class="material-icons moon">dark_mode</i>
-                        <i class="material-icons sun">light_mode</i>
-                    </div>
-                    <span class="mode-text text">Dark mode</span>
-
-                    <div class="toggle-switch">
-                        <span class="switch"></span>
-                    </div>
-                </li>
-
-            </div>
-        </div>
-
-    </nav>
+<body>    
+    
     <!-- <section class="home">
         <div class="text">Dashboard Sidebar</div>
     </section> -->
-    <!-- Barra lateral de navegación 
-    <div class="barra-lateral">
-        <nav>
-            <ul>
-                <li></li>
-                <li></li>
-                <li></li>
-                <li></li>
-                <li></li>
-                <li></li>
-            </ul>
-        </nav>
-    </div>-->
 
-    <!--     Carta       -->
-    <div class="wrapper">
-        <div class="top-bar">
-            <i class="material-icons">expand_more</i>
-            <span>Now Playing</span>
-            <!-- <i class="material-icons">dark_mode</i> -->
-            <i class="material-icons">menu</i>
-            <!-- <i class="material-icons">more_horiz</i> -->
-        </div>
-        <!-- imagen de la canción -->
-        <div class="img-area">
-            <img src="" alt="">
-        </div>
-        <!-- Información de la canción -->
-        <div class="song-details">
-            <div class="controls controls-song">
-                <i id="fav" class="material-icons">favorite</i>
-                <div id="volume-control">
-                    <i id="volume-up" class="material-icons">volume_up</i>
-                    <div class="volume-progress-area">
-                        <div class="volume-progress-bar"></div>
+    <!--  Área para arrastrar archivos -->
+    <!-- Elemento principal necesario para el responsive -->
+    <section class="main">
+        <!-- --- Modelo de navbar lateral --- -->
+        <nav class="sidebar close">
+            <header>
+                <div class="image-text">
+                    <span class="image">
+                        <img src="/img/musie_logo_removebg.png" alt="Musie_Logo">
+                    </span>
+
+                    <div class="text logo-text">
+                        <span class="name">Musie</span>
+                        <span class="profession">Web Player</span>
                     </div>
-                    <input class="volume-slider" type="range" min="0" max="100" value="50">
+                </div>
+
+                <i class="material-icons toggle">chevron_right</i>
+            </header>
+
+            <div>
+                <div class="menu-bar">
+                    <div class="menu">
+                        <!-- --- Caja de busqueda --- -->
+                        <li class="search-box">
+                            <i class="material-icons icon">search</i>
+                            <input type="text" placeholder="Search...">
+                        </li>
+                        <!-- --- Lista vínculos --- -->
+                        <ul class="menu-links">
+                            <li class="nav-link">
+                                <a href="#">
+                                    <i class="material-icons icon">home</i>
+                                    <span class="text nav-text">Dashboard</span>
+                                </a>
+                            </li>
+
+                            <li class="nav-link">
+                                <a href="#">
+                                    <i class="material-icons icon">bar_chart</i>
+                                    <span class="text nav-text">Revenue</span>
+                                </a>
+                            </li>
+
+                            <li class="nav-link">
+                                <a href="#">
+                                    <i class="material-icons icon">notifications</i>
+                                    <span class="text nav-text">Notifications</span>
+                                </a>
+                            </li>
+
+                            <li class="nav-link">
+                                <a href="#">
+                                    <i class="material-icons icon">pie_chart</i>
+                                    <span class="text nav-text">Analytics</span>
+                                </a>
+                            </li>
+
+                            <li class="nav-link">
+                                <a href="#">
+                                    <i class="material-icons icon">favorite</i>
+                                    <span class="text nav-text">Likes</span>
+                                </a>
+                            </li>
+
+                            <li class="nav-link">
+                                <a href="#">
+                                    <i class="material-icons icon">wallet</i>
+                                    <span class="text nav-text">Wallets</span>
+                                </a>
+                            </li>
+
+                        </ul>
+                    </div>
+
+                    <div class="bottom-content">
+                        <li class="">
+                            <a href="#">
+                                <i class="material-icons icon">logout</i>
+                                <span class="text nav-text">Logout</span>
+                            </a>
+                        </li>
+
+                        <li class="mode">
+                            <div class="sun-moon">
+                                <i class="material-icons moon">dark_mode</i>
+                                <i class="material-icons sun">light_mode</i>
+                            </div>
+                            <span class="mode-text text">Dark mode</span>
+
+                            <div class="toggle-switch">
+                                <span class="switch"></span>
+                            </div>
+                        </li>
+
+                    </div>
                 </div>
             </div>
-            <p class="name"></p>
-            <p class="artist"></p>
-        </div>
-        <!-- Barra de progreso de la canción -->
-        <div class="progress-area">
-            <div class="progress-bar">
-                <audio id="main-audio" src=""></audio>
+        </nav>
+        <div id="dropArea">
+            <div id="dropZone" class="box">
+                <span class="hidden-text"> Arrastra y suelta la canción aquí </span>
             </div>
-            <!-- Tiempo actual y duración de la canción -->
-            <div class="song-timer">
-                <span class="current-time">0:00</span>
-                <span class="max-duration">0:00</span>
+        </div>     
+        <!-- --- Modelo de Carta  --- -->
+        <div class="wrapper">
+            <div class="top-bar">
+                <i class="material-icons">expand_more</i>
+                <span>Now Playing</span>
+                <!-- <i class="material-icons">dark_mode</i> -->
+                <i class="material-icons">menu</i>
+                <!-- <i class="material-icons">more_horiz</i> -->
             </div>
-        </div>
-        <!--             
-        <div id="volume-control">
-            <i id="volume-up" class="material-icons">volume_up</i>
-            <div class="volume-progress-area">
-                <div class="volume-progress-bar"></div>
+            <!-- imagen de la canción -->
+            <div class="img-area">
+                <img src="" alt="">
             </div>
-            <input class="volume-slider" type="range" min="0" max="100" value="50">
-        </div>
-        -->
-        <!-- Controles del Reproductor 
-            Repetir canción, canción aleatoria
-            Canción anterior, canción siguiente
-            Devolver canción, adelantar canción
-            Boton lista de música -->
-        <div class="controls">
-            <i id="repeat-plist" class="material-icons" title="Playlist looped">repeat</i>
-            <i id="prev" class="material-icons">skip_previous</i>
-            <i id="rew" class="material-icons">fast_rewind</i>
-            <div class="play-pause">
-                <i class="material-icons play">play_arrow</i>
-            </div>
-            <i id="forw" class="material-icons">fast_forward</i>
-            <i id="next" class="material-icons">skip_next</i>
-            <i id="more-music" class="material-icons">queue_music</i>
-        </div>
-        <!-- Lista de canciones en cola para reproducirse con boton de cerrar 
-            Cada canción tiene su duración y si se esta reproduciendo-->
-        <div class="music-list">
-            <div class="header">
-                <div class="row">
-                    <i class="list material-icons">queue_music</i>
-                    <span>Music list</span>
+            <!-- Información de la canción -->
+            <div class="song-details">
+                <div class="controls controls-song">
+                    <i id="fav" class="material-icons">favorite</i>
+                    <div id="volume-control">
+                        <i id="volume-up" class="material-icons">volume_up</i>
+                        <div class="volume-progress-area">
+                            <div class="volume-progress-bar"></div>
+                        </div>
+                        <input class="volume-slider" type="range" min="0" max="100" value="50">
+                    </div>
                 </div>
-                <i id="close" class="material-icons">close</i>
+                <p class="name"></p>
+                <p class="artist"></p>
             </div>
-            <ul>
+            <!-- Barra de progreso de la canción -->
+            <div class="progress-area">
+                <div class="progress-bar">
+                    <audio id="main-audio" src=""></audio>
+                </div>
+                <!-- Tiempo actual y duración de la canción -->
+                <div class="song-timer">
+                    <span class="current-time">0:00</span>
+                    <span class="max-duration">0:00</span>
+                </div>
+            </div>
+            <!-- Controles del Reproductor 
+                Repetir canción, canción aleatoria
+                Canción anterior, canción siguiente
+                Devolver canción, adelantar canción
+                Boton lista de música -->
+            <div class="controls">
+                <i id="repeat-plist" class="material-icons" title="Playlist looped">repeat</i>
+                <i id="prev" class="material-icons">skip_previous</i>
+                <i id="rew" class="material-icons">fast_rewind</i>
+                <div class="play-pause">
+                    <i class="material-icons play">play_arrow</i>
+                </div>
+                <i id="forw" class="material-icons">fast_forward</i>
+                <i id="next" class="material-icons">skip_next</i>
+                <i id="more-music" class="material-icons">queue_music</i>
+            </div>
+            <!-- Lista de canciones en cola para reproducirse con boton de cerrar 
+                Cada canción tiene su duración y si se esta reproduciendo-->
+            <div class="music-list">
+                <div class="header">
+                    <div class="row">
+                        <i class="list material-icons">queue_music</i>
+                        <span>Music list</span>
+                    </div>
+                    <i id="close" class="material-icons">close</i>
+                </div>
+                <ul>
 
-            </ul>
+                </ul>
+            </div>        
         </div>
-    </div>
-
-    <div id="dropArea" class="container">
-        <div id="dropZone" class="box">Arrastra y suelta la canción aquí</div>
-    </div>
+    </section>       
 
     <!-- <div class="wrapper">
         <div class="top-bar">
@@ -221,17 +207,10 @@
             <i class="material-icons">menu</i>
         </div>
     </div> -->
-    <!-- <audio autoplay loop controls>
-        <source src="music/Transistor - The Spine.mp3" type="audio/mpeg">
-        <source src="music/Transistor - In Circles.mp3" type="audio/mp3">
-        <source src="music/Transistor - We All Become.mp3" type="audio/mp3">
-        <source src="music/Transistor - Signals.mp3" type="audio/mp3">
-        <source src="music/Transistor - Paper Boats.mp3" type="audio/mp3">
-        <source src="music/Transistor - She Shines.mp3" type="audio/mp3">
-    </audio> -->
-    <!-- Se carga la lista de música con un array de objetos en js CAMBIAR-->
+    
+    <!-- --- Se carga la lista de música con un array de objetos en js CAMBIAR --- -->
     <script src="js/music-list.js"></script>
-    <!-- Se llaman los botones por id y se les crea las funciones y los escuchadores -->
+    <!-- --- Se llaman los botones por id y se les crea las funciones y los escuchadores --- -->
     <script src="js/script.js"></script>
     <!-- --- Se llama el script para la funcionalidad del Darkmode --- -->
     <script src="js/darkscript.js"></script>

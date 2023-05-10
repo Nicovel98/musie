@@ -10,10 +10,12 @@ toggle.addEventListener("click", () => {
     sidebar.classList.toggle("close");
 })
 
+/* Para abrir y cerrar la busqueda */
 searchBtn.addEventListener("click", () => {
     sidebar.classList.remove("close");
 })
 
+/* Para cambiar al darkmode y luego al lighmode  */
 modeSwitch.addEventListener("click", () => {
     body.classList.toggle("dark");
 

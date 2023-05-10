@@ -1,4 +1,4 @@
-/* Se llaman los botones por su id */
+/* --- Se llaman los botones por su id --- */
 const wrapper = document.querySelector(".wrapper"),
     musicImg = wrapper.querySelector(".img-area img"),
     musicName = wrapper.querySelector(".song-details .name"),
@@ -97,14 +97,6 @@ function forward() {
     mainAudio.currentTime = currentTime;
 }
 
-function soundup() {
-
-}
-
-function sounddown() {
-
-}
-
 favBtn.addEventListener("click", () => {
     if (favBtn.innerHTML == "add_circle") {
         favBtn.innerHTML = "favorite";
@@ -113,12 +105,7 @@ favBtn.addEventListener("click", () => {
     }
 });
 
-/*
-const volumeProgressArea = document.querySelector(".volume-progress-area");
-const volumeProgressBar = document.querySelector(".volume-progress-bar");
-/* const volumeSlider = document.querySelector(".volume-slider"); 
-
-volumeSlider.addEventListener("input", (e) => {
+/*volumeSlider.addEventListener("input", (e) => {
     const volume = e.target.value;
     volumeProgressBar.style.width = `${volume}%`;
 });*/
@@ -332,7 +319,7 @@ function clicked(element) {
     playingSong();
 }
 
-/* Drag and Drop Functions */
+/* --- Drag and Drop Functions --- */
 const dropZone = document.getElementById("dropZone");
 
 dropZone.addEventListener("dragover", (e) => {
@@ -353,6 +340,7 @@ dropZone.addEventListener("drop", (e) => {
         const file = files[0];
         if (file.type.startsWith("audio/")) {
             playDroppedFile(file);
+
         } else {
             alert("Por favor, arrastra sólo archivos de audio.");
         }
@@ -364,9 +352,9 @@ function playDroppedFile(file) {
     const songName = document.querySelector(".name");
     const songArtist = document.querySelector(".artist");
 
-    mainAudio.src = URL.createObjectURL(file);
-    mainAudio.play();
-
+    mainAudio.src = URL.createObjectURL(file);    
     songName.textContent = file.name;
     songArtist.textContent = "Desconocido";
+    playMusic();
+    playingSong();
 }
