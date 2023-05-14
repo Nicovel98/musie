@@ -156,13 +156,13 @@
         flex-direction: column;
     }
     
-    header .image-text .name {
+    header .image-text .name-player {
         margin-top: 2px;
         font-size: 19px;
         font-weight: 600;
     }
     
-    header .image-text .profession {
+    header .image-text .subname {
         font-size: 16px;
         margin-top: -2px;
         display: block;
@@ -265,7 +265,7 @@
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        overflow-y: scroll;
+        overflow-y: initial;
     }
     
     .menu-bar::-webkit-scrollbar {
@@ -761,25 +761,15 @@
 
     /* --- Drop And Drag zone  --- */
     
-    /*#dropZone {
-        background-color: transparent;
-        border: none;
-        pointer-events: all;
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        width: 100%;
-        height: 100%;
+    .hidden-text {
+        font-size: 40px;
+        opacity: initial;   
+        color: #cecaca;  
     }
 
-    /* .hidden-text {
-        visibility: hidden;
-    } */
-
     #dropZone {
-        background-color: transparent;
+        background-color: var(--violet);
+        opacity: 0.8;
         border: none;
         pointer-events: all;
         position: absolute;
@@ -793,12 +783,12 @@
         align-items: center;
         justify-content: center;
         text-align: center;        
-        /* z-index: 9999; */
+        z-index: 999;
     }
 
-    /*#dropZone span {
+    #dropZone {
         visibility: hidden; 
-    }*/
+    }
     
     /* .box {
         border: 3px solid #666;

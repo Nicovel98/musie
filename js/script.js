@@ -322,13 +322,19 @@ function clicked(element) {
 /* --- Drag and Drop Functions --- */
 const dropZone = document.getElementById("dropZone");
 
-dropZone.addEventListener("dragover", (e) => {
+document.body.addEventListener("dragenter", (e) => {
     e.preventDefault();
-    dropZone.classList.add("dragging");
+    dropZone.style.visibility = 'visible';
+});
+
+dropZone.addEventListener("dragover", (e) => {    
+    e.preventDefault();
+    dropZone.classList.add("dragging");    
 });
 
 dropZone.addEventListener("dragleave", () => {
     dropZone.classList.remove("dragging");
+    dropZone.style.visibility = 'hidden';
 });
 
 dropZone.addEventListener("drop", (e) => {
@@ -345,6 +351,7 @@ dropZone.addEventListener("drop", (e) => {
             alert("Por favor, arrastra sólo archivos de audio.");
         }
     }
+    dropZone.style.visibility = 'hidden';
 });
 
 function playDroppedFile(file) {
