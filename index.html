@@ -9,6 +9,9 @@
 
     <link rel="shortcut icon" href="img/musie_logo_removebg.ico" type="image/x-icon">
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/formstyle.css">
+    <link rel="stylesheet" href="css/darkstyle.css">
+    <link rel="stylesheet" href="css/responsive.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
 </head>
 
@@ -27,16 +30,15 @@
                     <span class="image">
                         <img src="/img/musie_logo_removebg.png" alt="Musie_Logo">
                     </span>
-
+                    <!-- --- Texto que acompaña al logo --- -->
                     <div class="text logo-text">
                         <span class="name-player">Musie</span>
                         <span class="subname">Web Player</span>
                     </div>
                 </div>
-
+                <!-- Flecha para abrir y cerrar la barra lateral -->
                 <i class="material-icons toggle">chevron_right</i>
             </header>
-
             <div>
                 <div class="menu-bar">
                     <div class="menu">
@@ -122,7 +124,7 @@
                 <p class="hidden-text"> Arrastra y suelta la canción aquí </p>
             </div>
         </div>
-        <!-- --- Modelo de Carta  --- -->
+        <!-- --- Modelo de Carta Reproductor --- -->
         <div class="wrapper">
             <div class="top-bar">
                 <i class="material-icons">expand_more</i>
@@ -188,26 +190,27 @@
                     <i id="close" class="material-icons">close</i>
                 </div>
                 <ul>
-
                 </ul>
+            </div>
+        </div>
+        <!-- Modelo de carta Favoritos -->
+        <div class="wrapper" id="favorites">
+            <div class="top-bar">
+                <i class="material-icons">expand_more</i>
+                <span>Favorites</span>
+                <i class="material-icons">menu</i>
+            </div>
+        </div>
+        <!-- Modelo de carta Lista de música -->
+        <div class="wrapper" id="music_list">
+            <div class="top-bar">
+                <i class="material-icons">expand_more</i>
+                <span>Music List</span>
+                <i class="material-icons">menu</i>
             </div>
         </div>
     </section>
 
-    <!-- <div class="wrapper">
-        <div class="top-bar">
-            <i class="material-icons">expand_more</i>
-            <span>Favorites</span>
-            <i class="material-icons">menu</i>
-        </div>
-    </div>
-    <div class="wrapper">
-        <div class="top-bar">
-            <i class="material-icons">expand_more</i>
-            <span>Music</span>
-            <i class="material-icons">menu</i>
-        </div>
-    </div> -->
     <section class="home">
         <div class="form_container">
             <i class="material-icons icon form_close">close</i>

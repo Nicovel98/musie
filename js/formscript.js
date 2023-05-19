@@ -8,6 +8,7 @@ const formOpenBtn = document.querySelector("#form-login"),
 
 formOpenBtn.addEventListener("click", () => {
     home.classList.add("show");
+    /* --- Este hiddenText es una const que viene del dropzone del script.js --- */
     hiddenText.style.visibility = 'hidden';
     dropZone.style.visibility = 'visible';
 });

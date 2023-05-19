@@ -14,8 +14,6 @@ const wrapper = document.querySelector(".wrapper"),
     soundBtn = wrapper.querySelector("#volume-up"),
     volumeSlider = document.querySelector(".volume-slider"),
 
-    /* volumeProgressArea = wrapper.querySelector(".volume-progress-area"),
-    volumeProgressBar = volumeProgressArea.querySelector(".volume-progress-bar"), */
     /* Favoritos */
     favBtn = document.querySelector("#fav"),
     /* Barra de progreso */
@@ -105,11 +103,6 @@ favBtn.addEventListener("click", () => {
     }
 });
 
-/*volumeSlider.addEventListener("input", (e) => {
-    const volume = e.target.value;
-    volumeProgressBar.style.width = `${volume}%`;
-});*/
-
 soundBtn.addEventListener("click", () => {
     if (soundBtn.innerHTML == "volume_off") {
         soundBtn.innerHTML = "volume_up";
@@ -122,16 +115,13 @@ soundBtn.addEventListener("click", () => {
     }
     /* volumeProgressArea.classList.toggle("show"); */
 });
-
 /* Esto ahora funciona con CSS
     soundBtn.addEventListener("mouseover", () => {
     volumeSlider.style.display = 'inline';
 });
-
 soundBtn.addEventListener("mouseup", () => {
     volumeSlider.style.display = 'none';
 }); */
-
 volumeSlider.addEventListener("input", () => {
     mainAudio.volume = volumeSlider.value / 100;
     /* let val = (volumeSlider.value / volumeSlider.ariaValueMax) * 100;
@@ -171,7 +161,6 @@ mainAudio.addEventListener("timeupdate", (e) => {
     const duration = e.target.duration; //getting playing song total duration
     let progressWidth = (currentTime / duration) * 100;
     progressBar.style.width = `${progressWidth}%`;
-
     let musicCurrentTime = wrapper.querySelector(".current-time"),
         musicDuration = wrapper.querySelector(".max-duration");
     mainAudio.addEventListener("loadeddata", () => {
@@ -198,7 +187,6 @@ progressArea.addEventListener("click", (e) => {
     let progressWidth = progressArea.clientWidth; //getting width of progress bar
     let clickedOffsetX = e.offsetX; //getting offset x value
     let songDuration = mainAudio.duration; //getting song total duration
-
     mainAudio.currentTime = (clickedOffsetX / progressWidth) * songDuration;
     playMusic(); //calling playMusic function
     playingSong();
@@ -272,7 +260,6 @@ for (let i = 0; i < allMusic.length; i++) {
                 <audio class="${allMusic[i].src}" src="music/${allMusic[i].src}.mp3"></audio> 
                 </li>`;
     ulTag.insertAdjacentHTML("beforeend", liTag); //inserting the li inside ul tag
-
     let liAudioDurationTag = ulTag.querySelector(`#${allMusic[i].src}`);
     let liAudioTag = ulTag.querySelector(`.${allMusic[i].src}`);
     liAudioTag.addEventListener("loadeddata", () => {
@@ -290,22 +277,18 @@ for (let i = 0; i < allMusic.length; i++) {
 //play particular song from the list onclick of li tag
 function playingSong() {
     const allLiTag = ulTag.querySelectorAll("li");
-
     for (let j = 0; j < allLiTag.length; j++) {
         let audioTag = allLiTag[j].querySelector(".audio-duration");
-
         if (allLiTag[j].classList.contains("playing")) {
             allLiTag[j].classList.remove("playing");
             let adDuration = audioTag.getAttribute("t-duration");
             audioTag.innerText = adDuration;
         }
-
         //if the li tag index is equal to the musicIndex then add playing class in it
         if (allLiTag[j].getAttribute("li-index") == musicIndex) {
             allLiTag[j].classList.add("playing");
             audioTag.innerText = "Playing";
         }
-
         allLiTag[j].setAttribute("onclick", "clicked(this)");
     }
 }
@@ -320,7 +303,7 @@ function clicked(element) {
 }
 
 /* --- Drag and Drop Functions --- */
-const dropZone = document.getElementById("dropZone");
+const dropZone = document.getElementById("dropZone"),
     hiddenText = document.querySelector(".hidden-text");
 
 document.body.addEventListener("dragenter", (e) => {
@@ -369,4 +352,3 @@ function playDroppedFile(file) {
     playMusic();
     playingSong();
 }
-
