@@ -5,19 +5,19 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reproductor de Música</title>
+    <title> Musie Reproductor de Música</title>
 
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="shortcut icon" href="img/musie_logo_removebg.ico" type="image/x-icon">
+    <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
 </head>
 
-<body>    
-    
+<body>
+
     <!-- <section class="home">
         <div class="text">Dashboard Sidebar</div>
     </section> -->
 
-    <!--  Área para arrastrar archivos -->
     <!-- Elemento principal necesario para el responsive -->
     <section class="main">
         <!-- --- Modelo de navbar lateral --- -->
@@ -93,10 +93,10 @@
                     </div>
 
                     <div class="bottom-content">
-                        <li class="">
-                            <a href="#">
-                                <i class="material-icons icon">logout</i>
-                                <span class="text nav-text">Logout</span>
+                        <li class="nav-link">
+                            <a href="#" id="form-login">
+                                <i class="material-icons icon">login</i>
+                                <span class="text nav-text">Login</span>
                             </a>
                         </li>
 
@@ -116,11 +116,12 @@
                 </div>
             </div>
         </nav>
+        <!--  Área para arrastrar archivos -->
         <div id="dropArea">
             <div id="dropZone" class="box">
                 <p class="hidden-text"> Arrastra y suelta la canción aquí </p>
             </div>
-        </div>     
+        </div>
         <!-- --- Modelo de Carta  --- -->
         <div class="wrapper">
             <div class="top-bar">
@@ -189,9 +190,9 @@
                 <ul>
 
                 </ul>
-            </div>        
+            </div>
         </div>
-    </section>       
+    </section>
 
     <!-- <div class="wrapper">
         <div class="top-bar">
@@ -207,13 +208,75 @@
             <i class="material-icons">menu</i>
         </div>
     </div> -->
-    
+    <section class="home">
+        <div class="form_container">
+            <i class="material-icons icon form_close">close</i>
+            <!-- --- Login Form --- -->
+            <div class="form login_form">
+                <form action="#">
+                    <h2>Login</h2>
+
+                    <div class="input_box">
+                        <input type="email" placeholder="Enter your email" required />
+                        <i class="material-icons email">email</i>
+                    </div>
+                    <div class="input_box">
+                        <input type="password" placeholder="Enter your password" required />
+                        <i class="material-icons password">lock</i>
+                        <i class="material-icons pw_hide">visibility</i>
+                    </div>
+
+                    <div class="option_field">
+                        <span class="checkbox">
+                            <input type="checkbox" id="check" />
+                            <label for="check">Remember me</label>
+                        </span>
+                        <a href="#" class="forgot_pw">Forgot password?</a>
+                    </div>
+
+                    <button class="button">Login Now</button>
+
+                    <div class="login_signup">Don't have an account? <a href="#" id="signup">Signup</a></div>
+                </form>
+            </div>
+
+            <!-- Signup From -->
+            <div class="form signup_form">
+                <form action="#">
+                    <h2>Signup</h2>
+
+                    <div class="input_box">
+                        <input type="email" placeholder="Enter your email" required />
+                        <i class="material-icons icon email">email</i>
+                    </div>
+                    <div class="input_box">
+                        <input type="password" placeholder="Create password" required />
+                        <i class="material-icons password">lock</i>
+                        <i class="material-icons pw_hide">visibility</i>
+                    </div>
+                    <div class="input_box">
+                        <input type="password" placeholder="Confirm password" required />
+                        <i class="material-icons password">lock</i>
+                        <i class="material-icons pw_hide">visibility</i>
+                    </div>
+
+                    <button class="button">Signup Now</button>
+
+                    <div class="login_signup">Already have an account? <a href="#" id="login">Login</a></div>
+                </form>
+            </div>
+        </div>
+    </section>
+
+
     <!-- --- Se carga la lista de música con un array de objetos en js CAMBIAR --- -->
     <script src="js/music-list.js"></script>
     <!-- --- Se llaman los botones por id y se les crea las funciones y los escuchadores --- -->
     <script src="js/script.js"></script>
     <!-- --- Se llama el script para la funcionalidad del Darkmode --- -->
     <script src="js/darkscript.js"></script>
+    <!-- --- Se llama el script del login --- -->
+    <script src="js/formscript.js"></script>
 </body>
 
 </html>

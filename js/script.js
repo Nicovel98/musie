@@ -321,25 +321,29 @@ function clicked(element) {
 
 /* --- Drag and Drop Functions --- */
 const dropZone = document.getElementById("dropZone");
+    hiddenText = document.querySelector(".hidden-text");
 
 document.body.addEventListener("dragenter", (e) => {
     e.preventDefault();
-    dropZone.style.visibility = 'visible';
+    dropZone.style.visibility = 'visible'; 
+    hiddenText.style.visibility = 'visible';      
 });
 
 dropZone.addEventListener("dragover", (e) => {    
     e.preventDefault();
-    dropZone.classList.add("dragging");    
+    dropZone.classList.add("dragging");          
 });
 
 dropZone.addEventListener("dragleave", () => {
     dropZone.classList.remove("dragging");
     dropZone.style.visibility = 'hidden';
+    hiddenText.style.visibility = 'hidden';
 });
 
 dropZone.addEventListener("drop", (e) => {
     e.preventDefault();
     dropZone.classList.remove("dragging");
+    hiddenText.style.visibility = 'hidden';
 
     const files = e.dataTransfer.files;
     if (files.length > 0) {
@@ -365,3 +369,4 @@ function playDroppedFile(file) {
     playMusic();
     playingSong();
 }
+
