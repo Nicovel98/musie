@@ -9,26 +9,11 @@ body.dark {
     --text-color: var(--darkwhite);
 }
 
-/* --- Cambio de Modo Oscuro --- */
-.sidebar header .toggle {
-    position: absolute;
-    top: 50%;
-    right: -25px;
-    transform: translateY(-50%) rotate(180deg);
-    height: 25px;
-    width: 25px;
-    background-color: var(--primary-color);
-    color: var(--sidebar-color);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    cursor: pointer;
-    transition: var(--tran-05);
-}
-
 /* --- Cuando se cambia el mode, cambia los colores --- */
+
+body.dark .sidebar p {
+    color: var(--darkwhite);
+}
 
 body.dark .sidebar header .toggle {
     color: var(--text-color);
@@ -50,6 +35,36 @@ body.dark .mode .sun-moon i.moon {
 
 body.dark .switch::before {
     left: 20px;
+}
+
+/* --- Modelo de form registro y login --- */
+body.dark .form_container{
+    background: var(--dark);
+}
+
+body.dark .form_container h2{
+    color: var(--white);
+}
+
+body.dark .form_container i{
+    color: var(--white);
+}
+
+body.dark .form_container input{
+    background-color: var(--dark);
+    color: var(--white);   
+}
+
+body.dark .form_container label{
+    color: var(--white);
+}
+
+body.dark .form_container a{
+    color: var(--pink);
+}
+
+body.dark .form_container .login_signup{
+    color: var(--white);
 }
 
 /* --- Modelo de Carta Darkmode --- */

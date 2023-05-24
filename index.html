@@ -28,7 +28,7 @@
             <header>
                 <div class="image-text">
                     <span class="image">
-                        <img src="/img/musie_logo_removebg.png" alt="Musie_Logo">
+                        <img src="img/musie_logo_removebg.png" alt="Musie_Logo">
                     </span>
                     <!-- --- Texto que acompaña al logo --- -->
                     <div class="text logo-text">
@@ -43,6 +43,7 @@
                 <div class="menu-bar">
                     <div class="menu">
                         <!-- --- Caja de busqueda --- -->
+                        <p>Browse</p>
                         <li class="search-box">
                             <i class="material-icons icon">search</i>
                             <input type="text" placeholder="Search...">
@@ -50,47 +51,32 @@
                         <!-- --- Lista vínculos --- -->
                         <ul class="menu-links">
                             <li class="nav-link">
-                                <a href="#">
-                                    <i class="material-icons icon">home</i>
+                                <a href="#reproductor">
+                                    <i class="material-icons icon" id="btnReproductor">home</i>
                                     <span class="text nav-text">Dashboard</span>
                                 </a>
-                            </li>
-
+                            </li>                                                       
+                            <p>Playlist</p>
                             <li class="nav-link">
-                                <a href="#">
-                                    <i class="material-icons icon">bar_chart</i>
-                                    <span class="text nav-text">Revenue</span>
+                                <a href="#favorites">
+                                    <i class="material-icons icon" id="btnFavorite">favorite</i>
+                                    <span class="text nav-text">Favorites</span>
                                 </a>
                             </li>
-
+                            
                             <li class="nav-link">
-                                <a href="#">
-                                    <i class="material-icons icon">notifications</i>
-                                    <span class="text nav-text">Notifications</span>
+                                <a href="#music_list">
+                                    <i class="material-icons icon" id="btnMusicList">queue_music</i>
+                                    <span class="text nav-text">Music List</span>
                                 </a>
                             </li>
-
+                            <p>Settings</p>
                             <li class="nav-link">
                                 <a href="#">
-                                    <i class="material-icons icon">pie_chart</i>
-                                    <span class="text nav-text">Analytics</span>
+                                    <i class="material-icons icon">account_circle</i>
+                                    <span class="text nav-text">Profile</span>
                                 </a>
                             </li>
-
-                            <li class="nav-link">
-                                <a href="#">
-                                    <i class="material-icons icon">favorite</i>
-                                    <span class="text nav-text">Likes</span>
-                                </a>
-                            </li>
-
-                            <li class="nav-link">
-                                <a href="#">
-                                    <i class="material-icons icon">wallet</i>
-                                    <span class="text nav-text">Wallets</span>
-                                </a>
-                            </li>
-
                         </ul>
                     </div>
 
@@ -101,7 +87,7 @@
                                 <span class="text nav-text">Login</span>
                             </a>
                         </li>
-
+                        
                         <li class="mode">
                             <div class="sun-moon">
                                 <i class="material-icons moon">dark_mode</i>
@@ -125,7 +111,7 @@
             </div>
         </div>
         <!-- --- Modelo de Carta Reproductor --- -->
-        <div class="wrapper">
+        <div class="wrapper" id="reproductor">
             <div class="top-bar">
                 <i class="material-icons">expand_more</i>
                 <span>Now Playing</span>
@@ -234,7 +220,7 @@
                             <input type="checkbox" id="check" />
                             <label for="check">Remember me</label>
                         </span>
-                        <a href="#" class="forgot_pw">Forgot password?</a>
+                        <!-- <a href="#" class="forgot_pw">Forgot password?</a> -->
                     </div>
 
                     <button class="button">Login Now</button>

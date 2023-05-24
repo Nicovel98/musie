@@ -1,16 +1,16 @@
 /* --- Media Querys para el responsive --- */
 
-@media (max-width: 820px) or (max-height: 720px) {
+@media (max-width: 840px) or (max-height: 720px) {
 
     .sidebar {
         display: none;
-    }
+    }    
 
     .wrapper {
         width: 460px;
         height: max-content;
         padding: 30px 35px;
-        transition: var(--tran-04);
+        transition: var(--tran-04);        
     }
 
     .top-bar {

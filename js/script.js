@@ -308,13 +308,13 @@ const dropZone = document.getElementById("dropZone"),
 
 document.body.addEventListener("dragenter", (e) => {
     e.preventDefault();
-    dropZone.style.visibility = 'visible'; 
-    hiddenText.style.visibility = 'visible';      
+    dropZone.style.visibility = 'visible';
+    hiddenText.style.visibility = 'visible';
 });
 
-dropZone.addEventListener("dragover", (e) => {    
+dropZone.addEventListener("dragover", (e) => {
     e.preventDefault();
-    dropZone.classList.add("dragging");          
+    dropZone.classList.add("dragging");
 });
 
 dropZone.addEventListener("dragleave", () => {
@@ -346,9 +346,49 @@ function playDroppedFile(file) {
     const songName = document.querySelector(".name");
     const songArtist = document.querySelector(".artist");
 
-    mainAudio.src = URL.createObjectURL(file);    
+    mainAudio.src = URL.createObjectURL(file);
     songName.textContent = file.name;
     songArtist.textContent = "Desconocido";
     playMusic();
     playingSong();
 }
+
+/* --- Funcionalidad para que se abra una sola carta y se cierren las otras --- */
+const btnFavorite = document.getElementById("btnFavorite"),
+    favorite = document.getElementById("favorites"),
+    btnMusicList = document.getElementById("btnMusicList"),
+    music_list = document.getElementById("music_list"),
+    btnReproductor = document.getElementById("btnReproductor"),
+    reproductor = document.getElementById("reproductor");
+
+btnReproductor.addEventListener("click", () =>{
+    if (reproductor.style.display == 'inline') {
+        reproductor.style.display = 'none';
+        favorite.style.display = 'none';
+        music_list.style.display = 'none';
+    } else {
+        reproductor.style.display = 'inline';
+        favorite.style.display = 'none';
+        music_list.style.display = 'none';
+    }
+});
+
+btnFavorite.addEventListener("click", () => {
+    if(favorite.style.display == 'inline'){
+        favorite.style.display = 'none';        
+    }else{
+        favorite.style.display = 'inline';
+        reproductor.style.display = 'none';
+        music_list.style.display = 'none';
+    }        
+});
+
+btnMusicList.addEventListener("click", () => {
+    if(music_list.style.display == 'inline'){
+        music_list.style.display = 'none';
+    }else{
+        music_list.style.display = 'inline';
+        reproductor.style.display = 'none';
+        favorite.style.display = 'none';
+    }        
+});
