@@ -196,30 +196,38 @@
             </div>
         </div>
     </section>
-
+    <!-- --- Formularios SignUp y Login --- -->
     <section class="home">
         <div class="form_container">
             <i class="material-icons icon form_close">close</i>
-            <!-- --- Login Form --- -->
+            <!-- --- Formulario Login  --- -->
             <div class="form login_form">
                 <form action="#">
                     <h2>Login</h2>
-
+                    <!-- --- Entrada de Email --- -->
                     <div class="input_box">
                         <input type="email" placeholder="Enter your email" required />
                         <i class="material-icons email">email</i>
                     </div>
+                    <!-- --- Entrada de password --- -->
                     <div class="input_box">
                         <input type="password" placeholder="Enter your password" required />
                         <i class="material-icons password">lock</i>
                         <i class="material-icons pw_hide">visibility</i>
                     </div>
-
+                    <!-- --- Entrada para repetir password --- 
+                    <div class="input_box">
+                        <input type="password" placeholder="Enter your password" required />
+                        <i class="material-icons password">lock</i>
+                        <i class="material-icons pw_hide">visibility</i>
+                    </div>-->
+                    <!-- --- Casilla recordar usuario --- -->
                     <div class="option_field">
                         <span class="checkbox">
                             <input type="checkbox" id="check" />
                             <label for="check">Remember me</label>
                         </span>
+                        <!-- --- Recuperar contraseña --- -->
                         <!-- <a href="#" class="forgot_pw">Forgot password?</a> -->
                     </div>
 
@@ -228,35 +236,37 @@
                     <div class="login_signup">Don't have an account? <a href="#" id="signup">Signup</a></div>
                 </form>
             </div>
-
-            <!-- Signup From -->
+            <!-- --- Formulario Signup --- -->
             <div class="form signup_form">
                 <form action="#">
                     <h2>Signup</h2>
-
+                    <div class="input_box">
+                        <input type="text" placeholder="Enter your nickname" required />
+                        <i class="material-icons icon email">account_circle</i>
+                    </div>
+                    <!-- --- Entrada de correo electronico --- -->
                     <div class="input_box">
                         <input type="email" placeholder="Enter your email" required />
                         <i class="material-icons icon email">email</i>
                     </div>
+                    <!-- --- Creación de contraseña --- -->
                     <div class="input_box">
                         <input type="password" placeholder="Create password" required />
                         <i class="material-icons password">lock</i>
                         <i class="material-icons pw_hide">visibility</i>
                     </div>
+                    <!-- --- Confirmación Creación de contraseña --- -->
                     <div class="input_box">
                         <input type="password" placeholder="Confirm password" required />
                         <i class="material-icons password">lock</i>
                         <i class="material-icons pw_hide">visibility</i>
                     </div>
-
                     <button class="button">Signup Now</button>
-
                     <div class="login_signup">Already have an account? <a href="#" id="login">Login</a></div>
                 </form>
             </div>
         </div>
     </section>
-
 
     <!-- --- Se carga la lista de música con un array de objetos en js CAMBIAR --- -->
     <script src="js/music-list.js"></script>
