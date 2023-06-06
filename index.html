@@ -202,16 +202,16 @@
             <i class="material-icons icon form_close">close</i>
             <!-- --- Formulario Login  --- -->
             <div class="form login_form">
-                <form action="#">
+                <form action="ingresar.php" method="post">
                     <h2>Login</h2>
                     <!-- --- Entrada de Email --- -->
                     <div class="input_box">
-                        <input type="email" placeholder="Enter your email" required />
+                        <input type="email" placeholder="Enter your email" name="email" required />
                         <i class="material-icons email">email</i>
                     </div>
                     <!-- --- Entrada de password --- -->
                     <div class="input_box">
-                        <input type="password" placeholder="Enter your password" required />
+                        <input type="password" placeholder="Enter your password" name="password" required />
                         <i class="material-icons password">lock</i>
                         <i class="material-icons pw_hide">visibility</i>
                     </div>
@@ -238,7 +238,7 @@
             </div>
             <!-- --- Formulario Signup --- -->
             <div class="form signup_form">
-                <form action="#">
+                <form action="registrarUsuario.php" method="post">
                     <h2>Signup</h2>
                     <div class="input_box">
                         <input type="text" placeholder="Enter your nickname" required />
@@ -266,7 +266,7 @@
                 </form>
             </div>
         </div>
-    </section>
+    </section>    
 
     <!-- --- Se carga la lista de música con un array de objetos en js CAMBIAR --- -->
     <script src="js/music-list.js"></script>
