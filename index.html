@@ -202,7 +202,7 @@
             <i class="material-icons icon form_close">close</i>
             <!-- --- Formulario Login  --- -->
             <div class="form login_form">
-                <form action="ingresar.php" method="post">
+                <form action="php/ingresar.php" method="post">
                     <h2>Login</h2>
                     <!-- --- Entrada de Email --- -->
                     <div class="input_box">
@@ -230,38 +230,36 @@
                         <!-- --- Recuperar contraseña --- -->
                         <!-- <a href="#" class="forgot_pw">Forgot password?</a> -->
                     </div>
-
-                    <button class="button">Login Now</button>
-
+                    <button type="submit" name="login" class="button">Login Now</button>
                     <div class="login_signup">Don't have an account? <a href="#" id="signup">Signup</a></div>
                 </form>
             </div>
             <!-- --- Formulario Signup --- -->
             <div class="form signup_form">
-                <form action="registrarUsuario.php" method="post">
+                <form action="php/registrarUsuario.php" method="post">
                     <h2>Signup</h2>
                     <div class="input_box">
-                        <input type="text" placeholder="Enter your nickname" required />
+                        <input type="text" placeholder="Enter your nickname" name="nickname" required />
                         <i class="material-icons icon email">account_circle</i>
                     </div>
                     <!-- --- Entrada de correo electronico --- -->
                     <div class="input_box">
-                        <input type="email" placeholder="Enter your email" required />
+                        <input type="email" placeholder="Enter your email" name="email" required />
                         <i class="material-icons icon email">email</i>
                     </div>
                     <!-- --- Creación de contraseña --- -->
                     <div class="input_box">
-                        <input type="password" placeholder="Create password" required />
+                        <input type="password" placeholder="Create password" name="pass" required />
                         <i class="material-icons password">lock</i>
                         <i class="material-icons pw_hide">visibility</i>
                     </div>
                     <!-- --- Confirmación Creación de contraseña --- -->
                     <div class="input_box">
-                        <input type="password" placeholder="Confirm password" required />
+                        <input type="password" placeholder="Confirm password" name="confirm" required />
                         <i class="material-icons password">lock</i>
                         <i class="material-icons pw_hide">visibility</i>
                     </div>
-                    <button class="button">Signup Now</button>
+                    <button type="submit" name="register" class="button" >Signup Now</button>
                     <div class="login_signup">Already have an account? <a href="#" id="login">Login</a></div>
                 </form>
             </div>

@@ -10,7 +10,7 @@
     if ($conexion->connect_errno) {
         echo "fallos en conexión";
         exit();
-    }else{
-        echo "Conexión Exitosa";
-    }    
+    }/*else{
+         echo "Conexión Exitosa"; 
+    }   */ 
 ?>

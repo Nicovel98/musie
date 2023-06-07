@@ -1,10 +1,28 @@
 <?php    
-    include 'db/conexion.php';
+    include 'conexion.php';
 
-    /* try {
-        $sql= "INSERT INTO login (idLogin, nombreLogin, passwordLogin, repertirPass) 
-        VALUES('"$_POST["email"]"')";
-    } catch (\Throwable $th) {
-        //throw $th;
-    } */
+    if (isset($_POST['register'])) {
+        $nickname = $_POST['nickname'];
+        $email = $_POST['email'];
+        /* La contraseña ya debe estar validada por JS */
+        $pass = $_POST['pass'];
+        $pass2 = $_POST['confirm'];
+        
+       /* if ($pass == $pass2) {
+            $pass_encrypt = base64_encode($pass);
+
+            $sql = mysqli_query($conexion,"INSERT INTO persona (nickname, email, pass) VALUES
+            ('$nickname', '$email', '$pass_encrypt')");
+             header ('location:../index.html'); 
+        }
+        else {
+            /* header ('location:../index.html'); 
+        }*/
+
+        $pass_encrypt = base64_encode($pass);
+
+        $sql = mysqli_query($conexion,"INSERT INTO persona (nickName, email, pass) 
+            VALUES('$nickname','$email','$pass_encrypt')");
+         header('location:../index.html');
+    }
 ?>

@@ -1,14 +1,26 @@
 <?php
-    include 'db/conexion.php';
+    include 'conexion.php';
+    
+    if (isset($_POST['login'])) {
+        $nombre = $_POST["email"];
+        $pass = $_POST["password"];
+        $pass_encrypt = base64_encode($pass);
 
-    $nombre = $_POST["email"]; 
-    $pass = $_POST["password"]; 
+        $consulta = mysqli_query($conexion, "SELECT * FROM personas 
+            WHERE email = '$nombre' AND pass = '$pass_encrypt'");
+            
+        $cant = mysqli_num_rows($count);
 
-    $query = ("SELECT nombreLogin, passwordLogin FROM login WHERE nombreLogin = nombre AND passwordLogin = pass");
-
-    $query->bindParam(':nombre', $nombre);
-    $query->bindParam(':password', $pass);
-    $query->execute();  
-    $result = $query->fetchAll(PDO::FETCH_OBJ); 
-
+        if ($cant == 1) {
+            while ($consult = mysqli_fetch_array($consulta)) {
+                session_start();
+                $_SESSION['user'] = $consult['nickName'];
+                $_SESSION['email'] = $consult['email'];                
+            }
+            header('location:../index2.php');
+        }else {
+            header('location:../index2.php');
+        }
+    }
+    
 ?>
