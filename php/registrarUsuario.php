@@ -1,28 +1,28 @@
-<?php    
-    include 'conexion.php';
+<?php
+include 'conexion.php';
 
-    if (isset($_POST['register'])) {
-        $nickname = $_POST['nickname'];
-        $email = $_POST['email'];
-        /* La contraseña ya debe estar validada por JS */
-        $pass = $_POST['pass'];
-        $pass2 = $_POST['confirm'];
-        
-       /* if ($pass == $pass2) {
-            $pass_encrypt = base64_encode($pass);
+if (isset($_POST['register'])) {
+    $nickname = $_POST['nickname'];
+    $email = $_POST['email'];
+    /* La contraseña ya debe estar validada por JS */
+    $pass = $_POST['pass'];
+    $pass2 = $_POST['confirm'];
 
-            $sql = mysqli_query($conexion,"INSERT INTO persona (nickname, email, pass) VALUES
-            ('$nickname', '$email', '$pass_encrypt')");
-             header ('location:../index.html'); 
-        }
-        else {
-            /* header ('location:../index.html'); 
-        }*/
+    /* if ($pass == $pass2) {
+         $pass_encrypt = base64_encode($pass);
 
-        $pass_encrypt = base64_encode($pass);
+         $sql = mysqli_query($conexion,"INSERT INTO persona (nickname, email, pass) VALUES
+         ('$nickname', '$email', '$pass_encrypt')");
+          header ('location:../index.html'); 
+     }
+     else {
+         /* header ('location:../index.html'); 
+     }*/
 
-        $sql = mysqli_query($conexion,"INSERT INTO persona (nickName, email, pass) 
+    $pass_encrypt = base64_encode($pass);
+
+    $sql = mysqli_query($conexion, "INSERT INTO Persona (nickName, email, pass) 
             VALUES('$nickname','$email','$pass_encrypt')");
-         header('location:../index.html');
-    }
+    header('location:../index.html');
+}
 ?>
