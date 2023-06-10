@@ -324,6 +324,12 @@
         display: none;
     }
 
+    #profile {        
+        display: none;
+    }
+
+    /* --- Modelo de cartas --- */
+
     .wrapper {
         width: 480px;
         height: max-content;

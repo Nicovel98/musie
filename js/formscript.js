@@ -6,6 +6,8 @@ const formOpenBtn = document.querySelector("#form-login"),
     loginBtn = document.querySelector("#login"),
     pwShowHide = document.querySelectorAll(".pw_hide");        
 
+/* --- Formularios de registro e ingreso --- */
+
 formOpenBtn.addEventListener("click", () => {
     home.classList.add("show");
     /* --- Este hiddenText es una const que viene del dropzone del script.js --- */
@@ -18,6 +20,7 @@ formCloseBtn.addEventListener("click", () => {
     dropZone.style.visibility = 'hidden';    
 });
 
+/* --- Visibilidad de la contraseña --- */
 pwShowHide.forEach((icon) => {
     icon.addEventListener("click", () => {
         let getPwInput = icon.parentElement.querySelector("input");

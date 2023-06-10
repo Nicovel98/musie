@@ -359,17 +359,23 @@ const btnFavorite = document.getElementById("btnFavorite"),
     btnMusicList = document.getElementById("btnMusicList"),
     music_list = document.getElementById("music_list"),
     btnReproductor = document.getElementById("btnReproductor"),
-    reproductor = document.getElementById("reproductor");
+    reproductor = document.getElementById("reproductor"),
+    btnProfile = document.getElementById("btnProfile"),
+    profile = document.getElementById("profile");
+
+
 
 btnReproductor.addEventListener("click", () =>{
     if (reproductor.style.display == 'inline') {
         reproductor.style.display = 'none';
         favorite.style.display = 'none';
         music_list.style.display = 'none';
+        profile.style.display = 'none';
     } else {
         reproductor.style.display = 'inline';
         favorite.style.display = 'none';
         music_list.style.display = 'none';
+        profile.style.display = 'none';
     }
 });
 
@@ -380,6 +386,7 @@ btnFavorite.addEventListener("click", () => {
         favorite.style.display = 'inline';
         reproductor.style.display = 'none';
         music_list.style.display = 'none';
+        profile.style.display = 'none';
     }        
 });
 
@@ -390,5 +397,19 @@ btnMusicList.addEventListener("click", () => {
         music_list.style.display = 'inline';
         reproductor.style.display = 'none';
         favorite.style.display = 'none';
+        profile.style.display = 'none';
     }        
 });
+
+btnProfile.addEventListener("click", () => {
+    if(profile.style.display == 'inline'){
+        profile.style.display = 'none';
+    }else{
+        profile.style.display = 'inline';
+        music_list.style.display = 'none';
+        reproductor.style.display = 'none';
+        favorite.style.display = 'none';
+    }        
+});
+
+

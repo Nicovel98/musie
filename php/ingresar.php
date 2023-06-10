@@ -17,9 +17,9 @@
                 $_SESSION['user'] = $consult['nickName'];
                 $_SESSION['email'] = $consult['email'];                
             }
-            header('location:../index.html');
+            header('location:../index.php');
         }else {
-            header('location:../index.html');
+            header('location:../index.php');
         }
     }
     
