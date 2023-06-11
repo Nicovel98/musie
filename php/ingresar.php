@@ -1,5 +1,5 @@
 <?php
-    include 'conexion.php';
+    include 'conexion.php';    
     
     if (isset($_POST['login'])) {
         $nombre = $_POST["email-login"];
