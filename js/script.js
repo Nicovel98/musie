@@ -361,8 +361,9 @@ const btnFavorite = document.getElementById("btnFavorite"),
     btnReproductor = document.getElementById("btnReproductor"),
     reproductor = document.getElementById("reproductor"),
     btnProfile = document.getElementById("btnProfile"),
-    profile = document.getElementById("profile");
-
+    profile = document.getElementById("profile"),
+    btnAddMusic = document.getElementById("btnAddMusic"),
+    addMusic = document.getElementById("add_music");
 
 
 btnReproductor.addEventListener("click", () =>{
@@ -370,11 +371,13 @@ btnReproductor.addEventListener("click", () =>{
         reproductor.style.display = 'none';
         favorite.style.display = 'none';
         music_list.style.display = 'none';
+        addMusic.style.display = 'none';
         profile.style.display = 'none';
     } else {
         reproductor.style.display = 'inline';
         favorite.style.display = 'none';
         music_list.style.display = 'none';
+        addMusic.style.display = 'none';
         profile.style.display = 'none';
     }
 });
@@ -386,6 +389,7 @@ btnFavorite.addEventListener("click", () => {
         favorite.style.display = 'inline';
         reproductor.style.display = 'none';
         music_list.style.display = 'none';
+        addMusic.style.display = 'none';
         profile.style.display = 'none';
     }        
 });
@@ -397,8 +401,21 @@ btnMusicList.addEventListener("click", () => {
         music_list.style.display = 'inline';
         reproductor.style.display = 'none';
         favorite.style.display = 'none';
+        addMusic.style.display = 'none';
         profile.style.display = 'none';
     }        
+});
+
+btnAddMusic.addEventListener("click", () => {
+        if(addMusic.style.display == 'inline'){
+            addMusic.style.display = 'none';
+        }else{
+            music_list.style.display = 'none';
+            addMusic.style.display = 'inline';
+            reproductor.style.display = 'none';
+            favorite.style.display = 'none';
+            profile.style.display = 'none';
+        }    
 });
 
 btnProfile.addEventListener("click", () => {
@@ -408,6 +425,7 @@ btnProfile.addEventListener("click", () => {
         profile.style.display = 'inline';
         music_list.style.display = 'none';
         reproductor.style.display = 'none';
+        addMusic.style.display = 'none';
         favorite.style.display = 'none';
     }        
 });

@@ -1,5 +1,5 @@
-<?php 
-    session_start(); 
+<?php
+session_start();
 ?>
 
 <!DOCTYPE html>
@@ -56,22 +56,22 @@
                         <ul class="menu-links">
                             <li class="nav-link">
                                 <a href="#reproductor" id="btnReproductor">
-                                    <i class="material-icons icon" >home</i>
+                                    <i class="material-icons icon">home</i>
                                     <span class="text nav-text">Dashboard</span>
                                 </a>
-                            </li>                                                                                   
-                            <p>Playlist</p>
-                            <?php 
-                                if (isset($_SESSION['user'])): 
-                            ?>
-                            <li class="nav-link">
-                                <a href="#favorites" id="btnFavorite">
-                                    <i class="material-icons icon" >favorite</i>
-                                    <span class="text nav-text">Favorites</span>
-                                </a>
                             </li>
+                            <p>Playlist</p>
                             <?php
-                                endif;
+                            if (isset($_SESSION['user'])):
+                                ?>
+                                <li class="nav-link">
+                                    <a href="#favorites" id="btnFavorite">
+                                        <i class="material-icons icon">favorite</i>
+                                        <span class="text nav-text">Favorites</span>
+                                    </a>
+                                </li>
+                                <?php
+                            endif;
                             ?>
                             <li class="nav-link">
                                 <a href="#music_list" id="btnMusicList">
@@ -79,41 +79,56 @@
                                     <span class="text nav-text">Music List</span>
                                 </a>
                             </li>
-                            <p>Settings</p>
-                            <?php 
-                                if (isset($_SESSION['user'])): 
-                            ?>                            
-                            <li class="nav-link">
-                                <a href="#profile" id="btnProfile">
-                                    <i class="material-icons icon">account_circle</i>
-                                    <span class="text nav-text">Profile</span>
-                                </a>
-                            </li>
                             <?php
-                                endif;
+                            if (isset($_SESSION['user'])):
+                                ?>
+                                <li class="nav-link">
+                                    <a href="#add_music" id="btnAddMusic">
+                                        <i class="material-icons icon">library_add</i>
+                                        <span class="text nav-text">Add Music</span>
+                                    </a>
+                                </li>
+                                <?php
+                            endif;
+                            ?>
+                            <p>Settings</p>
+                            <?php
+                            if (isset($_SESSION['user'])):
+                                ?>
+                                <li class="nav-link">
+                                    <a href="#profile" id="btnProfile">
+                                        <i class="material-icons icon">account_circle</i>
+                                        <span class="text nav-text">Profile</span>
+                                    </a>
+                                </li>
+                                <?php
+                            endif;
                             ?>
                         </ul>
                     </div>
 
                     <div class="bottom-content">
-                        <?php 
-                            if (isset($_SESSION['user'])): 
-                        ?>
-                        <li class="nav-link">
-                            <a href="#" id="form-login">
-                                <i class="material-icons icon">login</i>
-                                <span class="text nav-text">Login</span>
-                            </a>
-                        </li>
                         <?php
-                            endif;
+                        if (!isset($_SESSION['user'])) {
+                            ?>
+                            <li class="nav-link">
+                                <a href="#" id="form-login">
+                                    <i class="material-icons icon">login</i>
+                                    <span class="text nav-text">Login</span>
+                                </a>
+                            </li>
+                            <?php
+                        } else {
+                            ?>
+                            <li class="nav-link">
+                                <a href="php/salir.php">
+                                    <i class="material-icons icon">logout</i>
+                                    <span class="text nav-text">Logout</span>
+                                </a>
+                            </li>
+                            <?php
+                        }
                         ?>
-                        <li class="nav-link">
-                            <a href="php/salir.php" id="form-login">
-                                <i class="material-icons icon">logout</i>
-                                <span class="text nav-text">Logout</span>
-                            </a>
-                        </li>
                         <li class="mode">
                             <div class="sun-moon">
                                 <i class="material-icons moon">dark_mode</i>
@@ -229,6 +244,25 @@
                 <i class="material-icons">menu</i>
             </div>
         </div>
+        <!-- Modelo de carta Añadir Música (quizá cambiar a las opciones de menu de la carta) -->
+        <div class="wrapper" id="add_music">
+            <div class="top-bar">
+                <i class="material-icons">expand_more</i>
+                <span>Add Music</span>
+                <i class="material-icons">menu</i>
+            </div>
+            <div class="header">
+                <div class="">
+                    <form action="php/subirMusica.php" method="post" enctype="multipart/form-data">
+                        <input type="text" name="name" id="" placeholder="Nombre canción">
+                        <input type="text" name="artist" id="" placeholder="Nombre del artísta">
+                        <input type="file" name="image" id="" placeholder="Portada">
+                        <input type="file" name="file_mp3" id="" placeholder="Archivo de canción">
+                        <input type="submit" value="envíar" name="guardar">
+                    </form>
+                </div>
+            </div>
+        </div>
     </section>
     <!-- --- Formularios SignUp y Login --- -->
     <section class="home">
@@ -293,12 +327,12 @@
                         <i class="material-icons password">lock</i>
                         <i class="material-icons pw_hide">visibility</i>
                     </div>
-                    <button type="submit" name="register" class="button" >Signup Now</button>
+                    <button type="submit" name="register" class="button">Signup Now</button>
                     <div class="login_signup">Already have an account? <a href="#" id="login">Login</a></div>
                 </form>
             </div>
         </div>
-    </section>    
+    </section>
 
     <!-- --- Se carga la lista de música con un array de objetos en js CAMBIAR --- -->
     <script src="js/music-list.js"></script>

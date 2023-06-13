@@ -328,6 +328,9 @@
         display: none;
     }
 
+    #add_music {        
+        display: none;
+    }
     /* --- Modelo de cartas --- */
 
     .wrapper {
