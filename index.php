@@ -254,11 +254,21 @@ session_start();
             <div class="header">
                 <div class="">
                     <form action="php/subirMusica.php" method="post" enctype="multipart/form-data">
-                        <input type="text" name="name" id="" placeholder="Nombre canción">
-                        <input type="text" name="artist" id="" placeholder="Nombre del artísta">
-                        <input type="file" name="image" id="" placeholder="Portada">
-                        <input type="file" name="file_mp3" id="" placeholder="Archivo de canción">
-                        <input type="submit" value="envíar" name="guardar">
+                        <div class="input_box">
+                            <input class="input_box" type="text" name="name" placeholder="Nombre canción" required />
+                        </div>
+                        <div class="input_box">
+                            <input class="input_box" type="text" name="artist" placeholder="Nombre del artísta" required />
+                        </div>
+                        <br>
+                        <br>
+                        <div class="container">
+                            <input type="file" name="image" placeholder="Portada" required />
+                            <input type="file" name="file_mp3" placeholder="Archivo de canción" required />
+                        </div>
+                        <br>
+                        <br>
+                        <button type="submit" name="guardar"> Subir Canción </button>
                     </form>
                 </div>
             </div>
