@@ -10,7 +10,7 @@ error_reporting(E_ALL);
         $image = ($_FILES['image']['tmp_name']);
         $musica = ($_FILES['file_mp3']['tmp_name']);
     
-        $ruta = "upload/";
+        $ruta = "../upload/";
         $nombrefinal_imagen = trim($_FILES['image']['name']); //Eliminamos los espacios en blanco
         $nombrefinal_musica = trim($_FILES['file_mp3']['name']); //Eliminamos los espacios en blanco
         $upload_imagen = $ruta . $nombrefinal_imagen;
