@@ -14,6 +14,7 @@
         padding: 0;
         margin: 0;
     }
+
     /* --- Valores constantes de color, gradientes y transiciones ---  */
     :root {
         /* --- Colors --- */
@@ -68,7 +69,7 @@
     ::selection {
         background-color: var(--pink);
         color: var(--white);
-    }    
+    }
 
     /* --- Sidebar Vertical --- */
     .sidebar {
@@ -102,7 +103,7 @@
         border-radius: 6px;
     }
 
-    .sidebar p {        
+    .sidebar p {
         color: var(--lightblack);
         display: flex;
         align-items: center;
@@ -191,7 +192,7 @@
         transition: var(--tran-05);
     }
 
-    .sidebar.close .toggle {               
+    .sidebar.close .toggle {
         transform: translateY(-50%) rotate(0deg);
     }
 
@@ -240,7 +241,7 @@
     .sidebar li a:hover .icon,
     .sidebar li a:hover .text {
         color: var(--sidebar-color);
-    }    
+    }
 
     .sidebar .menu-bar {
         margin: -60px 0 0 0;
@@ -267,7 +268,7 @@
         width: 60px;
     }
 
-    .mode .sun-moon i {        
+    .mode .sun-moon i {
         position: absolute;
         margin: 12px 0 0 15px;
     }
@@ -312,25 +313,26 @@
         transform: translateY(-50%);
         background-color: var(--sidebar-color);
         transition: var(--tran-04);
-    }    
-    
-    /* --- Modelo de cartas --- */    
+    }
+
+    /* --- Modelo de cartas --- */
 
     #favorites {
         display: none;
     }
 
-    #music_list {        
+    #music_list {
         display: none;
     }
 
-    #profile {        
+    #profile {
         display: none;
     }
 
-    #add_music {        
+    #add_music {
         display: none;
     }
+
     /* --- Modelo de cartas --- */
 
     .wrapper {
@@ -394,6 +396,7 @@
         height: 100%;
         object-fit: cover;
     }
+
     /* --- Detalles de la canción: Nombre, Artista --- */
     .song-details {
         text-align: center;
@@ -413,6 +416,7 @@
         opacity: 0.9;
         line-height: 35px;
     }
+
     /* --- Barra de progreso de reproducción de la canción --- */
     .progress-area {
         height: 8px;
@@ -458,7 +462,7 @@
     .song-timer span {
         font-size: 14px;
         color: var(--lightblack);
-    }    
+    }
 
     /* --- Controles del reproductor --- */
     .controls {
@@ -468,6 +472,7 @@
     .controls-song {
         margin: -10px 0 5px 0;
     }
+
     /* --- Control del volumen --- (intentar cambiarla de input a barra de progreso) */
     #volume-up {
         margin: 0;
@@ -523,6 +528,7 @@
     .volume-slider::-moz-range-progress {
         height: 10px;
     }
+
     /* --- Iconos de los controles --- */
     .controls i {
         font-size: 36px;
@@ -582,6 +588,7 @@
         -webkit-text-fill-color: transparent;
         position: absolute;
     }
+
     /* --- Lista de música --- */
     .music-list {
         position: absolute;
@@ -694,4 +701,59 @@
 
     #dropZone {
         visibility: hidden;
-    }    
+    }
+
+    .input-text {
+        position: relative;
+        margin-top: 35px;
+        width: 100%;
+        height: 50px;
+    }
+
+    .subir .input-text input{
+        height: 100%;
+        width: 100%;
+        border: none;
+        outline: none;
+        padding: 0 30px;
+        color: #333;
+        font-size: 16px;
+        transition: all 0.2s ease;
+        border-bottom: 1.5px solid #aaaaaa;
+    }
+
+    .subir .input-text input:focus {        
+        border-color: #7d2ae8;
+    }
+
+    #btnSubirMusica {
+        background: #7d2ae8;
+        margin-top: 29px;
+        width: 100%;
+        padding: 10px 0;
+        border-radius: 10px;
+        color: var(--darkwhite);
+        font-size: 17px;
+        font-weight: bold;
+    }
+
+    .file::file-selector-button {
+        margin-right: 20px;
+        border: none;
+        background: var(--sidebar-color);
+        padding: 10px 20px;
+        border-radius: 10px;
+        color: #fff;
+        cursor: pointer;
+        transition: background .2s ease-in-out;
+    }
+
+    .file {
+        padding: 10px 20px;
+        background: var(--pinkshadow);
+        border-radius: 10px;
+    }
+
+    .divFile {
+        padding-top: 12px;
+    }

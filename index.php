@@ -235,6 +235,10 @@ session_start();
                 <span>Music List</span>
                 <i class="material-icons">menu</i>
             </div>
+            <div class="">
+                <ul>
+                </ul>
+            </div>
         </div>
         <!-- Modelo de carta Favoritos -->
         <div class="wrapper" id="profile">
@@ -252,23 +256,21 @@ session_start();
                 <i class="material-icons">menu</i>
             </div>
             <div class="header">
-                <div class="">
+                <div class="subir">
                     <form action="php/subirMusica.php" method="post" enctype="multipart/form-data">
-                        <div class="input_box">
-                            <input class="input_box" type="text" name="name" placeholder="Nombre canción" required />
+                        <div class="input-text">
+                            <input type="text" name="name" placeholder="Nombre canción" required />
                         </div>
-                        <div class="input_box">
-                            <input class="input_box" type="text" name="artist" placeholder="Nombre del artísta" required />
+                        <div class="input-text">
+                            <input type="text" name="artist" placeholder="Nombre del artísta" required />
                         </div>
-                        <br>
-                        <br>
-                        <div class="container">
-                            <input type="file" name="image" placeholder="Portada" required />
-                            <input type="file" name="file_mp3" placeholder="Archivo de canción" required />
+                        <div class="divFile">
+                            <input type="file" name="image" class="file" placeholder="Portada" required />
                         </div>
-                        <br>
-                        <br>
-                        <button type="submit" name="guardar"> Subir Canción </button>
+                        <div class="divFile">
+                            <input type="file" name="file_mp3" class="file" placeholder="Archivo de canción" required />
+                        </div>
+                        <button type="submit" name="guardar" id="btnSubirMusica"> Song Upload </button>
                     </form>
                 </div>
             </div>

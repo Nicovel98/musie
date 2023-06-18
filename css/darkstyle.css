@@ -4,6 +4,7 @@ body.dark {
     --sidebar-color: #7F167F;
     /* --sidebar-color: #A31ACB; */
     --primary-color: var(--lightblack);
+    --pinkshadow: var(--pink);
     --primary-color-light: var(--lightblack);
     --toggle-color: var(--white);
     --text-color: var(--darkwhite);
@@ -120,5 +121,12 @@ body.dark .music-list {
 
 body.dark .header #close {
 
+    color: var(--white);
+}
+
+/* --- Darkmode de Music List --- */
+
+body.dark .subir .input-text input{
+    background-color: var(--dark);
     color: var(--white);
 }
