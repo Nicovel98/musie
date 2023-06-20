@@ -229,6 +229,12 @@ session_start();
             </div>
         </div>
         <!-- Modelo de carta Lista de música -->
+        <?php
+            include 'php/conexion.php';
+            $consulta2 = mysqli_query($conexion, "SELECT * FROM Cancion");
+
+            
+        ?>
         <div class="wrapper" id="music_list">
             <div class="top-bar">
                 <i class="material-icons">expand_more</i>
@@ -237,6 +243,36 @@ session_start();
             </div>
             <div class="">
                 <ul>
+                    <?php
+                        while ($consult = mysqli_fetch_array($consulta2)) {
+                            $idSong = $consult['idCancion'];
+                            $nameSong = $consult['nombreCancion'];
+                            $imgSong = $consult['imagenCancion'];
+                            $fileSong = $consult['archivoCancion'];
+                            $idArtista = $consult['idArtista'];
+
+                            /* echo $idSong."<br>";
+                            echo $nameSong."<br>";
+                            echo $imgSong."<br>";
+                            echo $fileSong."<br>";
+                            echo $idArtista."<br>"; */
+
+                            echo '
+                            <li>
+                                <div class="row">
+                                    <img src="'.$imgSong.'" alt="'.$nameSong.'">
+                                    <span>'.$nameSong.'</span>
+                                    <audio controls>
+                                        <source src="'.$fileSong.'" type="audio/ogg">
+                                        <source src="'.$fileSong.'" type="audio/mpeg">
+                                        Your browser does not support the audio element.
+                                    </audio>
+                                    <span>Artista'.$idArtista.'</span>
+                                </div>
+                            </li>
+                            ';
+                        }
+                    ?>
                 </ul>
             </div>
         </div>
@@ -265,9 +301,11 @@ session_start();
                             <input type="text" name="artist" placeholder="Nombre del artísta" required />
                         </div>
                         <div class="divFile">
+                            <span>Select a Image:</span>
                             <input type="file" name="image" class="file" placeholder="Portada" required />
                         </div>
                         <div class="divFile">
+                            <span>Select a Song:</span>
                             <input type="file" name="file_mp3" class="file" placeholder="Archivo de canción" required />
                         </div>
                         <button type="submit" name="guardar" id="btnSubirMusica"> Song Upload </button>

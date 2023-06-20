@@ -11,10 +11,13 @@ error_reporting(E_ALL);
         $musica = ($_FILES['file_mp3']['tmp_name']);
     
         $ruta = "../upload/";
+        $rutaDB = "upload/";
         $nombrefinal_imagen = trim($_FILES['image']['name']); //Eliminamos los espacios en blanco
         $nombrefinal_musica = trim($_FILES['file_mp3']['name']); //Eliminamos los espacios en blanco
         $upload_imagen = $ruta . $nombrefinal_imagen;
         $upload_musica = $ruta . $nombrefinal_musica;
+        $upload_imagen_DB = $rutaDB . $nombrefinal_imagen;
+        $upload_musica_DB = $rutaDB . $nombrefinal_musica;
     
         if (move_uploaded_file($_FILES['image']['tmp_name'], $upload_imagen) && move_uploaded_file($_FILES['file_mp3']['tmp_name'], $upload_musica)) { //movemos los archivos a su ubicacion 
     
@@ -42,7 +45,7 @@ error_reporting(E_ALL);
             echo "<br><hr><br>";
     
             $stmt = $conexion->prepare("INSERT INTO Cancion (nombreCancion, imagenCancion, archivoCancion, idArtista) VALUES (?, ?, ?, ?)");
-            $stmt->bind_param("sssi", $name, $upload_imagen, $upload_musica, $idArtista);
+            $stmt->bind_param("sssi", $name, $upload_imagen_DB, $upload_musica_DB, $idArtista);
             $stmt->execute();
     
             header('Location:../index.php'); // Redirigir al usuario a subirMusica.php
