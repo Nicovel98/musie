@@ -260,14 +260,20 @@ session_start();
                             echo '
                             <li>
                                 <div class="row">
-                                    <img src="'.$imgSong.'" alt="'.$nameSong.'">
-                                    <span>'.$nameSong.'</span>
+                                    <div class="img-area">
+                                        <img src="'.$imgSong.'" alt="'.$nameSong.'">
+                                    </div>        
+                                    <div>
+                                        <span>'.$nameSong.'</span>                                        
+                                    </div>                        
+                                    <div>
+                                        <span>Artista'.$idArtista.'</span>
+                                    </div>                                        
                                     <audio controls>
                                         <source src="'.$fileSong.'" type="audio/ogg">
                                         <source src="'.$fileSong.'" type="audio/mpeg">
                                         Your browser does not support the audio element.
-                                    </audio>
-                                    <span>Artista'.$idArtista.'</span>
+                                    </audio>                                    
                                 </div>
                             </li>
                             ';
