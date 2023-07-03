@@ -263,12 +263,14 @@ session_start();
                                     <div class="img-area">
                                         <img src="'.$imgSong.'" alt="'.$nameSong.'">
                                     </div>        
-                                    <div>
-                                        <span>'.$nameSong.'</span>                                        
-                                    </div>                        
-                                    <div>
-                                        <span>Artista'.$idArtista.'</span>
-                                    </div>                                        
+                                    <div class="info-song">
+                                        <div>
+                                            <span>'.$nameSong.'</span>                                        
+                                        </div>
+                                        <div>                                    
+                                            <span>Artista'.$idArtista.'</span>
+                                        </div>
+                                    </div>                                       
                                     <audio controls>
                                         <source src="'.$fileSong.'" type="audio/ogg">
                                         <source src="'.$fileSong.'" type="audio/mpeg">
@@ -301,10 +303,10 @@ session_start();
                 <div class="subir">
                     <form action="php/subirMusica.php" method="post" enctype="multipart/form-data">
                         <div class="input-text">
-                            <input type="text" name="name" placeholder="Nombre canción" required />
+                            <input type="text" name="name" placeholder="Song name" required />
                         </div>
                         <div class="input-text">
-                            <input type="text" name="artist" placeholder="Nombre del artísta" required />
+                            <input type="text" name="artist" placeholder="Artist name" required />
                         </div>
                         <div class="divFile">
                             <span>Select a Image:</span>

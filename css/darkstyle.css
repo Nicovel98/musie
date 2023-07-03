@@ -129,3 +129,10 @@ body.dark .subir .input-text input{
     background-color: var(--dark);
     color: var(--white);
 }
+body.dark #music_list ul li{
+    box-shadow: 0px 6px 12px var(--violet);    
+}
+
+body.dark #music_list ul li:hover {
+    background-color: var(--sidebar-color);            
+}
