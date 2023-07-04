@@ -119,6 +119,10 @@ body.dark .music-list {
     background: var(--dark);
 }
 
+body.dark .music-list p {
+    color: var(--white);
+}
+
 body.dark .header #close {
     color: var(--white);
 }

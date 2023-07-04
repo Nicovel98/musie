@@ -40,8 +40,8 @@ function loadMusic(indexNumb) {
     musicName.innerText = allMusic[indexNumb - 1].name;
     musicArtist.innerText = allMusic[indexNumb - 1].artist;
     //let ext;
-    musicImg.src = `img/${allMusic[indexNumb - 1].img}`;
-    mainAudio.src = `music/${allMusic[indexNumb - 1].src}.mp3`;
+    musicImg.src = `upload/${allMusic[indexNumb - 1].img}`;
+    mainAudio.src = `upload/${allMusic[indexNumb - 1].src}`;
 }
 
 //play music function
@@ -250,28 +250,33 @@ closemoreMusic.addEventListener("click", () => {
 const ulTag = wrapper.querySelector("ul");
 // let create li tags according to array length for list
 for (let i = 0; i < allMusic.length; i++) {
+    let uniqueId = "audio" + i;
     //let's pass the song name, artist from the array
     let liTag = `<li li-index="${i + 1}">
                 <div class="row">
                     <span>${allMusic[i].name}</span>
                     <p>${allMusic[i].artist}</p>
                 </div>
-                <span id="${allMusic[i].src}" class="audio-duration">3:40</span>
-                <audio class="${allMusic[i].src}" src="music/${allMusic[i].src}.mp3"></audio> 
+                <span id="duration${uniqueId}" class="audio-duration">3:40</span>
+                <audio id="${uniqueId}" src="music/${allMusic[i].src}"></audio>
                 </li>`;
     ulTag.insertAdjacentHTML("beforeend", liTag); //inserting the li inside ul tag
-    let liAudioDurationTag = ulTag.querySelector(`#${allMusic[i].src}`);
-    let liAudioTag = ulTag.querySelector(`.${allMusic[i].src}`);
-    liAudioTag.addEventListener("loadeddata", () => {
-        let duration = liAudioTag.duration;
-        let totalMin = Math.floor(duration / 60);
-        let totalSec = Math.floor(duration % 60);
-        if (totalSec < 10) { //if sec is less than 10 then add 0 before it
-            totalSec = `0${totalSec}`;
-        };
-        liAudioDurationTag.innerText = `${totalMin}:${totalSec}`; //passing total duation of song
-        liAudioDurationTag.setAttribute("t-duration", `${totalMin}:${totalSec}`); //adding t-duration attribute with total duration value
-    });
+    let liAudioDurationTag = document.getElementById(`duration${uniqueId}`);
+    let liAudioTag = document.getElementById(uniqueId);
+    if(liAudioDurationTag && liAudioTag) {
+        liAudioTag.addEventListener("loadeddata", () => {
+            let duration = liAudioTag.duration;
+            let totalMin = Math.floor(duration / 60);
+            let totalSec = Math.floor(duration % 60);
+            if (totalSec < 10) { //if sec is less than 10 then add 0 before it
+                totalSec = `0${totalSec}`;
+            };
+            liAudioDurationTag.innerText = `${totalMin}:${totalSec}`; //passing total duation of song
+            liAudioDurationTag.setAttribute("t-duration", `${totalMin}:${totalSec}`); //adding t-duration attribute with total duration value
+        });
+    } else {
+        console.error(`Could not select elements with id duration${uniqueId} or ${uniqueId}`);
+    }
 }
 
 //play particular song from the list onclick of li tag

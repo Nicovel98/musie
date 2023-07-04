@@ -230,10 +230,10 @@ session_start();
         </div>
         <!-- Modelo de carta Lista de música -->
         <?php
-            include 'php/conexion.php';
-            $consulta2 = mysqli_query($conexion, "SELECT * FROM Cancion");
+        include 'php/conexion.php';
+        $consulta2 = mysqli_query($conexion, "SELECT * FROM Cancion");
 
-            
+
         ?>
         <div class="wrapper" id="music_list">
             <div class="top-bar">
@@ -244,42 +244,42 @@ session_start();
             <div class="">
                 <ul>
                     <?php
-                        while ($consult = mysqli_fetch_array($consulta2)) {
-                            $idSong = $consult['idCancion'];
-                            $nameSong = $consult['nombreCancion'];
-                            $imgSong = $consult['imagenCancion'];
-                            $fileSong = $consult['archivoCancion'];
-                            $idArtista = $consult['idArtista'];
+                    while ($consult = mysqli_fetch_array($consulta2)) {
+                        $idSong = $consult['idCancion'];
+                        $nameSong = $consult['nombreCancion'];
+                        $imgSong = $consult['imagenCancion'];
+                        $fileSong = $consult['archivoCancion'];
+                        $idArtista = $consult['idArtista'];
 
-                            /* echo $idSong."<br>";
-                            echo $nameSong."<br>";
-                            echo $imgSong."<br>";
-                            echo $fileSong."<br>";
-                            echo $idArtista."<br>"; */
+                        /* echo $idSong."<br>";
+                        echo $nameSong."<br>";
+                        echo $imgSong."<br>";
+                        echo $fileSong."<br>";
+                        echo $idArtista."<br>"; */
 
-                            echo '
+                        echo '
                             <li>
                                 <div class="row">
                                     <div class="img-area">
-                                        <img src="'.$imgSong.'" alt="'.$nameSong.'">
+                                        <img src="' . $imgSong . '" alt="' . $nameSong . '">
                                     </div>        
                                     <div class="info-song">
                                         <div>
-                                            <span>'.$nameSong.'</span>                                        
+                                            <span>' . $nameSong . '</span>                                        
                                         </div>
                                         <div>                                    
-                                            <span>Artista'.$idArtista.'</span>
+                                            <span>Artista' . $idArtista . '</span>
                                         </div>
                                     </div>                                       
                                     <audio controls>
-                                        <source src="'.$fileSong.'" type="audio/ogg">
-                                        <source src="'.$fileSong.'" type="audio/mpeg">
+                                        <source src="' . $fileSong . '" type="audio/ogg">
+                                        <source src="' . $fileSong . '" type="audio/mpeg">
                                         Your browser does not support the audio element.
                                     </audio>                                    
                                 </div>
                             </li>
                             ';
-                        }
+                    }
                     ?>
                 </ul>
             </div>
@@ -393,7 +393,22 @@ session_start();
     </section>
 
     <!-- --- Se carga la lista de música con un array de objetos en js CAMBIAR --- -->
-    <script src="js/music-list.js"></script>
+    <!-- <script src="js/music-list.js"></script> -->
+
+    <script>
+        /* Se le quita el /upload a la dirección del archivo de img y music  */
+        let strImg = <?php echo json_encode($imgSong); ?>;
+        let newStrImg = strImg.slice(7);
+        let strSong = <?php echo json_encode($fileSong); ?>;
+        let newStrSong = strSong.slice(7);
+        let allMusic = [{
+            name: <?php echo json_encode($nameSong); ?>,
+            artist: <?php echo json_encode($idArtista); ?>,
+            img: newStrImg,
+            src: newStrSong
+        }];
+    </script>
+
     <!-- --- Se llaman los botones por id y se les crea las funciones y los escuchadores --- -->
     <script src="js/script.js"></script>
     <!-- --- Se llama el script para la funcionalidad del Darkmode --- -->
