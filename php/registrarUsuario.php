@@ -26,6 +26,6 @@ if (isset($_POST['register'])) {
 
     $sql = mysqli_query($conexion, "INSERT INTO Persona (nickName, email, pass) 
             VALUES('$nickname','$email','$pass_encrypt')");
-    header('location:../index.html');
+    header('location:../index.php');
 }
 ?>
