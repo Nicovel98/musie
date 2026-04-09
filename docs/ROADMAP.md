@@ -31,6 +31,9 @@ Meta: experiencia local-first estable y fluida.
 3. Cola de reproduccion y reanudacion de sesion.
 4. Pulir responsive para tablet y movil.
 5. Mejorar performance con listas largas.
+6. Publicar demo web en GitHub Pages (frontend React).
+7. Configurar GitHub Actions para build y deploy automatico a la rama de Pages.
+8. Documentar URL publica de demo y limitaciones de la demo en el README.
 
 ### Semana 3 - Web Audio API y Presets
 
@@ -58,6 +61,7 @@ Meta: primera build Android funcional.
 5. Probar en dispositivo real.
 6. Subir a Play Console en canal interno/cerrado.
 7. Cerrar QA y fixes criticos.
+8. Aplicar estandar de naming oficial de [docs/NAMING.md](docs/NAMING.md).
 
 ## Plan Operativo Semana 1 (Dia a Dia)
 
@@ -66,8 +70,8 @@ Meta: primera build Android funcional.
 Comandos:
 
 ```bash
-npm create vite@latest musie-next -- --template react-ts
-cd musie-next
+npm create vite@latest frontend -- --template react-ts
+cd frontend
 npm install
 ```
 
@@ -126,7 +130,7 @@ Tareas:
 ## Estructura Sugerida
 
 ```text
-musie-next/
+frontend/
   src/
     app/
       providers/
@@ -158,6 +162,7 @@ musie-next/
 3. Ecualizador funcional con presets utiles.
 4. Preparacion completa para Android con Capacitor.
 5. Primera build en testing de Google Play.
+6. Demo web publica en GitHub Pages con despliegue automatico.
 
 ## Riesgos y Mitigacion
 

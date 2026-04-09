@@ -37,6 +37,12 @@ Este plan detalla la evolución de Musie desde un prototipo PHP/JS hacia una apl
 
 - [docs/ROADMAP.md](docs/ROADMAP.md)
 
+## 🏷️ Naming e Identidad
+
+Estandar oficial de nombres, appId y configuracion para web/Android:
+
+- [docs/NAMING.md](docs/NAMING.md)
+
 ### Scripts recomendados en `package.json`
 ```json
 {
@@ -83,7 +89,7 @@ Al finalizar el ciclo inicial de 30 días, el proyecto contará con:
 ## 🎨 Diseño y UI base
 El diseño se centra en la legibilidad y una estética moderna (Glassmorphism). Puedes consultar el archivo original aquí:
 
-*   **Figma:** [Ver Diseño en Figma]((https://www.figma.com/file/C4ZuwHwHuSWdgDzrsM8DDT/Reproductor-de-m%C3%BAsica%3A-Musie?node-id=0%3A1&t=qdhn0wQ1TfIcGm7J-1))
+*   **Figma:** [Ver Diseño en Figma](https://www.figma.com/file/C4ZuwHwHuSWdgDzrsM8DDT/Reproductor-de-m%C3%BAsica%3A-Musie?node-id=0%3A1&t=qdhn0wQ1TfIcGm7J-1)
 *   **Preview del Prototipo:**
     ![Musie Preview](img/Musie.png)
 ## Nota Importante sobre Licencias
