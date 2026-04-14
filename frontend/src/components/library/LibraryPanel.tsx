@@ -77,6 +77,13 @@ export function LibraryPanel({
       </div>
 
       <ul className="track-list" aria-label="Track list">
+        {tracks.length === 0 ? (
+          <li className="track-item track-item-empty">
+            <p>No hay canciones cargadas</p>
+            <span>Usa Import o arrastra archivos de audio para empezar.</span>
+          </li>
+        ) : null}
+
         {tracks.map((track) => (
           <li
             key={track.id}

@@ -158,6 +158,10 @@ button {
     font-weight: 600;
 }
 
+.track-item-empty {
+    border-style: dashed;
+}
+
 .track-item span {
     color: var(--text-muted);
     font-size: 0.88rem;
@@ -170,6 +174,12 @@ button {
 
 .queue-list li {
     cursor: pointer;
+}
+
+.queue-list li.is-empty {
+    cursor: default;
+    border-style: dashed;
+    color: var(--text-muted);
 }
 
 .now-playing-card {

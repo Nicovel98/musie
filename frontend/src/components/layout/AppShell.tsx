@@ -3,8 +3,25 @@ import { LibraryPanel } from '../library/LibraryPanel'
 import { QueuePanel } from '../library/QueuePanel'
 import { NowPlayingCard } from '../player/NowPlayingCard'
 import type { RepeatMode, Track } from '../../types/player'
+import {
+  loadPlayerSession,
+  savePlayerSession,
+  type PlayerScreen,
+} from '../../services/storage/playerSession'
 
 type ScreenKey = 'library' | 'player' | 'queue'
+
+const savedSession = loadPlayerSession()
+
+function getInitialTrackIndex() {
+  if (!savedSession?.currentTrackId) return 0
+
+  const trackIndex = initialTracks.findIndex(
+    (track) => track.id === savedSession.currentTrackId,
+  )
+
+  return trackIndex === -1 ? 0 : trackIndex
+}
 
 const initialTracks: Track[] = [
   {
@@ -62,18 +79,27 @@ function readAudioDuration(src: string) {
 }
 
 export function AppShell() {
-  const [activeScreen, setActiveScreen] = useState<ScreenKey>('player')
+  const [activeScreen, setActiveScreen] = useState<ScreenKey>(
+    (savedSession?.activeScreen as ScreenKey) ?? 'player',
+  )
   const [tracks, setTracks] = useState<Track[]>(initialTracks)
-  const [currentTrackIndex, setCurrentTrackIndex] = useState(0)
+  const [currentTrackIndex, setCurrentTrackIndex] =
+    useState(getInitialTrackIndex)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
+  const [currentTime, setCurrentTime] = useState(savedSession?.currentTime ?? 0)
   const [duration, setDuration] = useState(0)
-  const [volume, setVolume] = useState(0.8)
-  const [shuffleEnabled, setShuffleEnabled] = useState(false)
-  const [repeatMode, setRepeatMode] = useState<RepeatMode>('all')
+  const [volume, setVolume] = useState(savedSession?.volume ?? 0.8)
+  const [shuffleEnabled, setShuffleEnabled] = useState(
+    savedSession?.shuffleEnabled ?? false,
+  )
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>(
+    savedSession?.repeatMode ?? 'all',
+  )
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const localObjectUrlsRef = useRef<Set<string>>(new Set())
+  const pendingResumeTimeRef = useRef(savedSession?.currentTime ?? 0)
+  const pendingResumeTrackIdRef = useRef(savedSession?.currentTrackId ?? null)
 
   const currentTrack = tracks[currentTrackIndex] ?? null
 
@@ -281,7 +307,24 @@ export function AppShell() {
     if (!audioElement) return
 
     const onTimeUpdate = () => setCurrentTime(audioElement.currentTime)
-    const onLoadedMetadata = () => setDuration(audioElement.duration || 0)
+    const onLoadedMetadata = () => {
+      const loadedDuration = audioElement.duration || 0
+      setDuration(loadedDuration)
+
+      if (
+        pendingResumeTimeRef.current > 0 &&
+        currentTrack?.id &&
+        currentTrack.id === pendingResumeTrackIdRef.current
+      ) {
+        const safeResumeTime = Math.min(
+          pendingResumeTimeRef.current,
+          Math.max(loadedDuration - 0.5, 0),
+        )
+        audioElement.currentTime = safeResumeTime
+        setCurrentTime(safeResumeTime)
+        pendingResumeTimeRef.current = 0
+      }
+    }
     const onEnded = () => {
       if (repeatMode === 'one') {
         audioElement.currentTime = 0
@@ -310,7 +353,30 @@ export function AppShell() {
       audioElement.removeEventListener('loadedmetadata', onLoadedMetadata)
       audioElement.removeEventListener('ended', onEnded)
     }
-  }, [repeatMode, tracks.length, getNextIndex])
+  }, [repeatMode, tracks.length, getNextIndex, currentTrack?.id])
+
+  const roundedCurrentTime = Math.floor(currentTime)
+
+  useEffect(() => {
+    const persistedTrackId =
+      currentTrack?.sourceType === 'bundle' ? currentTrack.id : null
+
+    savePlayerSession({
+      volume,
+      shuffleEnabled,
+      repeatMode,
+      activeScreen: activeScreen as PlayerScreen,
+      currentTrackId: persistedTrackId,
+      currentTime: persistedTrackId ? roundedCurrentTime : 0,
+    })
+  }, [
+    volume,
+    shuffleEnabled,
+    repeatMode,
+    activeScreen,
+    currentTrack,
+    roundedCurrentTime,
+  ])
 
   return (
     <main className="app-shell-wrap">

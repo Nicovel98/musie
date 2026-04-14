@@ -23,6 +23,10 @@ export function QueuePanel({
       </header>
 
       <ol className="queue-list" aria-label="Playback queue">
+        {tracks.length === 0 ? (
+          <li className="is-empty">La cola esta vacia.</li>
+        ) : null}
+
         {tracks.map((track) => (
           <li
             key={track.id}
