@@ -117,6 +117,12 @@ button {
     padding: 10px;
 }
 
+.track-item.is-active,
+.queue-list li.is-active {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
 .track-item p {
     margin: 0;
     font-weight: 600;
@@ -125,6 +131,15 @@ button {
 .track-item span {
     color: var(--text-muted);
     font-size: 0.88rem;
+}
+
+.track-item button {
+    margin-top: 8px;
+    padding: 6px 10px;
+}
+
+.queue-list li {
+    cursor: pointer;
 }
 
 .now-playing-card {
@@ -160,6 +175,23 @@ button {
     color: var(--text-muted);
 }
 
+.progress-block {
+    display: grid;
+    gap: 8px;
+}
+
+.progress-block input,
+.volume-row input {
+    width: 100%;
+}
+
+.time-row {
+    display: flex;
+    justify-content: space-between;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
 .controls {
     display: flex;
     gap: 8px;
@@ -168,6 +200,33 @@ button {
 .controls button:nth-child(2) {
     background: var(--accent);
     color: #1e1009;
+}
+
+.secondary-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.secondary-controls button {
+    background: #fff;
+    color: var(--text-main);
+    border: 1px solid var(--border);
+}
+
+.secondary-controls button.is-active {
+    background: var(--accent);
+    color: #1e1009;
+    border-color: transparent;
+}
+
+.volume-row {
+    display: grid;
+    gap: 8px;
+}
+
+.volume-row label {
+    color: var(--text-muted);
+    font-size: 0.9rem;
 }
 
 @media (max-width: 980px) {

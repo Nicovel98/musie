@@ -1,10 +1,16 @@
-const sampleTracks = [
-  { title: 'Transistor - In Circles', artist: 'Red' },
-  { title: 'Transistor - Signals', artist: 'Red' },
-  { title: 'Transistor - The Spine', artist: 'Red' },
-]
+import type { Track } from '../../types/player'
 
-export function LibraryPanel() {
+type LibraryPanelProps = {
+  tracks: Track[]
+  activeTrackId: string | null
+  onSelectTrack: (trackId: string) => void
+}
+
+export function LibraryPanel({
+  tracks,
+  activeTrackId,
+  onSelectTrack,
+}: LibraryPanelProps) {
   return (
     <section>
       <header className="section-header">
@@ -13,10 +19,16 @@ export function LibraryPanel() {
       </header>
 
       <ul className="track-list" aria-label="Track list">
-        {sampleTracks.map((track) => (
-          <li key={track.title} className="track-item">
+        {tracks.map((track) => (
+          <li
+            key={track.id}
+            className={`track-item ${activeTrackId === track.id ? 'is-active' : ''}`}
+          >
             <p>{track.title}</p>
             <span>{track.artist}</span>
+            <button type="button" onClick={() => onSelectTrack(track.id)}>
+              Play
+            </button>
           </li>
         ))}
       </ul>
