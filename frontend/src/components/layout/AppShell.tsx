@@ -5,6 +5,7 @@ import { NowPlayingCard } from '../player/NowPlayingCard'
 import type { RepeatMode, Track } from '../../types/player'
 import {
   createBundledTrack,
+  createPersistedLocalTrack,
   createLocalTrack,
 } from '../../features/library/trackNormalization'
 import {
@@ -12,6 +13,11 @@ import {
   savePlayerSession,
   type PlayerScreen,
 } from '../../services/storage/playerSession'
+import {
+  clearLocalTracks,
+  getAllLocalTracks,
+  saveLocalTracks,
+} from '../../services/storage/libraryDb'
 
 type ScreenKey = 'library' | 'player' | 'queue'
 
@@ -209,7 +215,11 @@ export function AppShell() {
     localObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url))
     localObjectUrlsRef.current.clear()
 
-    setTracks([])
+    clearLocalTracks().catch(() => {
+      // Best effort cleanup for local cache.
+    })
+
+    setTracks(initialTracks)
     setCurrentTrackIndex(0)
     setCurrentTime(0)
     setDuration(0)
@@ -250,6 +260,43 @@ export function AppShell() {
     }
   }, [])
 
+  useEffect(() => {
+    let isDisposed = false
+
+    async function restoreLocalTracks() {
+      const records = await getAllLocalTracks()
+      if (isDisposed || records.length === 0) return
+
+      const restoredTracks = records.map((record) => {
+        const objectUrl = URL.createObjectURL(record.fileBlob)
+        localObjectUrlsRef.current.add(objectUrl)
+
+        return createPersistedLocalTrack({
+          record,
+          objectUrl,
+        })
+      })
+
+      setTracks((prev) => {
+        const existingIds = new Set(prev.map((track) => track.id))
+        const uniqueRestored = restoredTracks.filter(
+          (track) => !existingIds.has(track.id),
+        )
+
+        if (uniqueRestored.length === 0) return prev
+        return [...prev, ...uniqueRestored]
+      })
+    }
+
+    restoreLocalTracks().catch(() => {
+      // If IndexedDB fails, app continues with in-memory library.
+    })
+
+    return () => {
+      isDisposed = true
+    }
+  }, [])
+
   const importLocalFiles = useCallback(
     async (files: File[]) => {
       if (files.length === 0) return
@@ -271,6 +318,22 @@ export function AppShell() {
           })
         }),
       )
+
+      const localRecords = importedTracks.map((track, index) => {
+        const file = audioFiles[index]
+
+        return {
+          id: track.id,
+          title: track.title,
+          artist: track.artist,
+          fileBlob: file,
+          duration: track.duration ?? 0,
+          sizeBytes: track.sizeBytes ?? file.size,
+          createdAt: Date.now() + index,
+        }
+      })
+
+      await saveLocalTracks(localRecords)
 
       if (tracks.length === 0) {
         setCurrentTrackIndex(0)

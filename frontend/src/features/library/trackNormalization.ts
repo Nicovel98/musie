@@ -1,4 +1,5 @@
 import type { Track } from '../../types/player'
+import type { LocalTrackRecord } from '../../services/storage/libraryDb'
 
 const BASE_URL = import.meta.env.BASE_URL
 
@@ -53,6 +54,21 @@ export function createLocalTrack(input: {
     src: input.objectUrl,
     duration: input.duration,
     sizeBytes: input.file.size,
+    sourceType: 'local',
+  }
+}
+
+export function createPersistedLocalTrack(input: {
+  record: LocalTrackRecord
+  objectUrl: string
+}): Track {
+  return {
+    id: input.record.id,
+    title: input.record.title,
+    artist: input.record.artist,
+    src: input.objectUrl,
+    duration: input.record.duration,
+    sizeBytes: input.record.sizeBytes,
     sourceType: 'local',
   }
 }
