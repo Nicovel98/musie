@@ -24,6 +24,63 @@ function parseTrackName(rawName: string) {
   }
 }
 
+function blobToDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result)
+        return
+      }
+      reject(new Error('Unable to encode blob as data URL'))
+    }
+
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(blob)
+  })
+}
+
+export type ParsedFileMetadata = {
+  title: string
+  artist: string
+  coverDataUrl?: string
+}
+
+export async function extractFileMetadata(
+  file: File,
+): Promise<ParsedFileMetadata> {
+  const fallback = parseTrackName(file.name)
+
+  try {
+    const { default: MP3Tag } = await import('mp3tag.js')
+    const tags = await MP3Tag.readBlob(file)
+    const title = tags.title?.trim() || fallback.title
+    const artist = tags.artist?.trim() || fallback.artist
+
+    let coverDataUrl: string | undefined
+    const v2 = tags.v2
+    const picture = v2?.APIC?.[0] ?? v2?.PIC?.[0]
+
+    if (picture?.data && picture.format) {
+      const pictureBytes = new Uint8Array(picture.data)
+      const blob = new Blob([pictureBytes], { type: picture.format })
+      coverDataUrl = await blobToDataUrl(blob)
+    }
+
+    return {
+      title,
+      artist,
+      coverDataUrl,
+    }
+  } catch {
+    return {
+      title: fallback.title,
+      artist: fallback.artist,
+    }
+  }
+}
+
 export function createBundledTrack(input: {
   id: string
   title: string
@@ -44,14 +101,14 @@ export function createLocalTrack(input: {
   file: File
   objectUrl: string
   duration: number
+  metadata: ParsedFileMetadata
 }): Track {
-  const parsed = parseTrackName(input.file.name)
-
   return {
     id: input.id,
-    title: parsed.title,
-    artist: parsed.artist,
+    title: input.metadata.title,
+    artist: input.metadata.artist,
     src: input.objectUrl,
+    coverUrl: input.metadata.coverDataUrl,
     duration: input.duration,
     sizeBytes: input.file.size,
     sourceType: 'local',
@@ -67,6 +124,7 @@ export function createPersistedLocalTrack(input: {
     title: input.record.title,
     artist: input.record.artist,
     src: input.objectUrl,
+    coverUrl: input.record.coverDataUrl,
     duration: input.record.duration,
     sizeBytes: input.record.sizeBytes,
     sourceType: 'local',

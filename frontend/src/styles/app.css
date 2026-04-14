@@ -139,6 +139,22 @@ button {
   color: var(--text-main);
 }
 
+.library-filters {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.library-filters input,
+.library-filters select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  background: #fff;
+  color: var(--text-main);
+}
+
 .track-item,
 .queue-list li {
   background: #fff;
@@ -172,6 +188,19 @@ button {
   padding: 6px 10px;
 }
 
+.track-cover {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+}
+
+.track-cover-placeholder {
+  background: linear-gradient(130deg, #132a2f 0%, #2a4650 45%, #ff6a3d 100%);
+}
+
 .queue-list li {
   cursor: pointer;
 }
@@ -203,6 +232,13 @@ button {
   aspect-ratio: 1;
   border-radius: var(--radius-lg);
   background: linear-gradient(130deg, #132a2f 0%, #2a4650 45%, #ff6a3d 100%);
+  overflow: hidden;
+}
+
+.cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .track-meta h2 {

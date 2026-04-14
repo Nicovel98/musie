@@ -54,7 +54,14 @@ export function NowPlayingCard({
         <h1>Musie</h1>
       </header>
 
-      <div className="cover" role="img" aria-label="Album cover placeholder" />
+      <div className="cover" role="img" aria-label="Album cover">
+        {currentTrack?.coverUrl ? (
+          <img
+            src={currentTrack.coverUrl}
+            alt={`Cover de ${currentTrack.title}`}
+          />
+        ) : null}
+      </div>
 
       <div className="track-meta">
         <h2>{currentTrack?.title ?? 'Sin pista cargada'}</h2>

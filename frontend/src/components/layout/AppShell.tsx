@@ -7,6 +7,7 @@ import {
   createBundledTrack,
   createPersistedLocalTrack,
   createLocalTrack,
+  extractFileMetadata,
 } from '../../features/library/trackNormalization'
 import {
   loadPlayerSession,
@@ -98,6 +99,8 @@ export function AppShell() {
   const [repeatMode, setRepeatMode] = useState<RepeatMode>(
     savedSession?.repeatMode ?? 'all',
   )
+  const [searchQuery, setSearchQuery] = useState('')
+  const [artistFilter, setArtistFilter] = useState('all')
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const localObjectUrlsRef = useRef<Set<string>>(new Set())
@@ -105,6 +108,29 @@ export function AppShell() {
   const pendingResumeTrackIdRef = useRef(savedSession?.currentTrackId ?? null)
 
   const currentTrack = tracks[currentTrackIndex] ?? null
+
+  const artistOptions = useMemo(() => {
+    return Array.from(new Set(tracks.map((track) => track.artist))).sort(
+      (a, b) => a.localeCompare(b),
+    )
+  }, [tracks])
+
+  const filteredTracks = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+
+    return tracks.filter((track) => {
+      const artistMatches =
+        artistFilter === 'all' ||
+        track.artist.toLowerCase() === artistFilter.toLowerCase()
+
+      if (!artistMatches) return false
+      if (!query) return true
+
+      const titleMatches = track.title.toLowerCase().includes(query)
+      const artistTextMatches = track.artist.toLowerCase().includes(query)
+      return titleMatches || artistTextMatches
+    })
+  }, [tracks, searchQuery, artistFilter])
 
   const screenTitle = useMemo(() => {
     if (activeScreen === 'library') return 'Library'
@@ -309,12 +335,14 @@ export function AppShell() {
           const objectUrl = URL.createObjectURL(file)
           localObjectUrlsRef.current.add(objectUrl)
           const duration = await readAudioDuration(objectUrl)
+          const metadata = await extractFileMetadata(file)
 
           return createLocalTrack({
             id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             file,
             objectUrl,
             duration,
+            metadata,
           })
         }),
       )
@@ -327,6 +355,7 @@ export function AppShell() {
           title: track.title,
           artist: track.artist,
           fileBlob: file,
+          coverDataUrl: track.coverUrl,
           duration: track.duration ?? 0,
           sizeBytes: track.sizeBytes ?? file.size,
           createdAt: Date.now() + index,
@@ -473,8 +502,13 @@ export function AppShell() {
       >
         <aside className="panel panel-library" aria-label="Library">
           <LibraryPanel
-            tracks={tracks}
+            tracks={filteredTracks}
             activeTrackId={currentTrack?.id ?? null}
+            searchQuery={searchQuery}
+            artistFilter={artistFilter}
+            artistOptions={artistOptions}
+            onSearchChange={setSearchQuery}
+            onArtistFilterChange={setArtistFilter}
             onSelectTrack={selectTrackById}
             onImportFiles={importLocalFiles}
           />
@@ -520,8 +554,13 @@ export function AppShell() {
       <section className="app-shell" aria-label="Desktop layout">
         <aside className="panel panel-library" aria-label="Library">
           <LibraryPanel
-            tracks={tracks}
+            tracks={filteredTracks}
             activeTrackId={currentTrack?.id ?? null}
+            searchQuery={searchQuery}
+            artistFilter={artistFilter}
+            artistOptions={artistOptions}
+            onSearchChange={setSearchQuery}
+            onArtistFilterChange={setArtistFilter}
             onSelectTrack={selectTrackById}
             onImportFiles={importLocalFiles}
           />

@@ -49,6 +49,8 @@ Meta: mejorar calidad de sonido con controles utiles.
 - Instrumental Focus
 4. UI de sliders por banda + preamp + reset.
 5. Control de clipping y limites de ganancia.
+6. Dia de pruebas: implementar base de testing con Vitest + React Testing Library.
+7. Cubrir casos criticos: controles del player, importacion de biblioteca y persistencia.
 
 ### Semana 4 - Capacitor y Google Play
 
@@ -163,6 +165,7 @@ frontend/
 4. Preparacion completa para Android con Capacitor.
 5. Primera build en testing de Google Play.
 6. Demo web publica en GitHub Pages con despliegue automatico.
+7. Suite inicial de pruebas automatizadas para flujos criticos.
 
 ## Riesgos y Mitigacion
 

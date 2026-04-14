@@ -4,6 +4,11 @@ import type { Track } from '../../types/player'
 type LibraryPanelProps = {
   tracks: Track[]
   activeTrackId: string | null
+  searchQuery: string
+  artistFilter: string
+  artistOptions: string[]
+  onSearchChange: (value: string) => void
+  onArtistFilterChange: (value: string) => void
   onSelectTrack: (trackId: string) => void
   onImportFiles: (files: File[]) => void
 }
@@ -18,6 +23,11 @@ function formatDuration(seconds?: number) {
 export function LibraryPanel({
   tracks,
   activeTrackId,
+  searchQuery,
+  artistFilter,
+  artistOptions,
+  onSearchChange,
+  onArtistFilterChange,
   onSelectTrack,
   onImportFiles,
 }: LibraryPanelProps) {
@@ -76,6 +86,27 @@ export function LibraryPanel({
         Arrastra archivos de audio aqui o usa Import.
       </div>
 
+      <div className="library-filters" aria-label="Library filters">
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(event) => onSearchChange(event.target.value)}
+          placeholder="Buscar por titulo o artista"
+        />
+
+        <select
+          value={artistFilter}
+          onChange={(event) => onArtistFilterChange(event.target.value)}
+        >
+          <option value="all">Todos los artistas</option>
+          {artistOptions.map((artist) => (
+            <option key={artist} value={artist}>
+              {artist}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <ul className="track-list" aria-label="Track list">
         {tracks.length === 0 ? (
           <li className="track-item track-item-empty">
@@ -89,6 +120,18 @@ export function LibraryPanel({
             key={track.id}
             className={`track-item ${activeTrackId === track.id ? 'is-active' : ''}`}
           >
+            {track.coverUrl ? (
+              <img
+                className="track-cover"
+                src={track.coverUrl}
+                alt="Track cover"
+              />
+            ) : (
+              <div
+                className="track-cover track-cover-placeholder"
+                aria-hidden="true"
+              />
+            )}
             <p>{track.title}</p>
             <span>{track.artist}</span>
             <span>{formatDuration(track.duration)}</span>
