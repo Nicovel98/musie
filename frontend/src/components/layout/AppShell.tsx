@@ -12,20 +12,54 @@ const initialTracks: Track[] = [
     title: 'Transistor - In Circles',
     artist: 'Red',
     src: '/audio/in-circles.mp3',
+    sourceType: 'bundle',
   },
   {
     id: 'signals',
     title: 'Transistor - Signals',
     artist: 'Red',
     src: '/audio/signals.mp3',
+    sourceType: 'bundle',
   },
   {
     id: 'she-shines',
     title: 'Transistor - She Shines',
     artist: 'Red',
     src: '/audio/she-shines.mp3',
+    sourceType: 'bundle',
   },
 ]
+
+function stripFileExtension(fileName: string) {
+  return fileName.replace(/\.[^/.]+$/, '')
+}
+
+function readAudioDuration(src: string) {
+  return new Promise<number>((resolve) => {
+    const audio = new Audio()
+    audio.preload = 'metadata'
+    audio.src = src
+
+    const onReady = () => {
+      resolve(Number.isFinite(audio.duration) ? audio.duration : 0)
+      cleanup()
+    }
+
+    const onError = () => {
+      resolve(0)
+      cleanup()
+    }
+
+    function cleanup() {
+      audio.removeEventListener('loadedmetadata', onReady)
+      audio.removeEventListener('error', onError)
+      audio.src = ''
+    }
+
+    audio.addEventListener('loadedmetadata', onReady)
+    audio.addEventListener('error', onError)
+  })
+}
 
 export function AppShell() {
   const [activeScreen, setActiveScreen] = useState<ScreenKey>('player')
@@ -39,6 +73,7 @@ export function AppShell() {
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('all')
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const localObjectUrlsRef = useRef<Set<string>>(new Set())
 
   const currentTrack = tracks[currentTrackIndex] ?? null
 
@@ -148,6 +183,9 @@ export function AppShell() {
   }
 
   function clearQueue() {
+    localObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url))
+    localObjectUrlsRef.current.clear()
+
     setTracks([])
     setCurrentTrackIndex(0)
     setCurrentTime(0)
@@ -162,7 +200,13 @@ export function AppShell() {
 
   useEffect(() => {
     const audioElement = audioRef.current
-    if (!audioElement || !currentTrack) return
+    if (!audioElement) return
+
+    if (!currentTrack) {
+      audioElement.removeAttribute('src')
+      audioElement.load()
+      return
+    }
 
     audioElement.src = currentTrack.src
     audioElement.currentTime = 0
@@ -173,6 +217,51 @@ export function AppShell() {
       })
     }
   }, [currentTrack, isPlaying])
+
+  useEffect(() => {
+    const localObjectUrls = localObjectUrlsRef.current
+
+    return () => {
+      localObjectUrls.forEach((url) => URL.revokeObjectURL(url))
+      localObjectUrls.clear()
+    }
+  }, [])
+
+  const importLocalFiles = useCallback(
+    async (files: File[]) => {
+      if (files.length === 0) return
+
+      const audioFiles = files.filter((file) => file.type.startsWith('audio/'))
+      if (audioFiles.length === 0) return
+
+      const importedTracks = await Promise.all(
+        audioFiles.map(async (file) => {
+          const objectUrl = URL.createObjectURL(file)
+          localObjectUrlsRef.current.add(objectUrl)
+          const duration = await readAudioDuration(objectUrl)
+
+          return {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            title: stripFileExtension(file.name),
+            artist: 'Local file',
+            src: objectUrl,
+            duration,
+            sizeBytes: file.size,
+            sourceType: 'local' as const,
+          }
+        }),
+      )
+
+      if (tracks.length === 0) {
+        setCurrentTrackIndex(0)
+      }
+
+      setTracks((prev) => [...prev, ...importedTracks])
+
+      setActiveScreen('library')
+    },
+    [tracks.length],
+  )
 
   useEffect(() => {
     const audioElement = audioRef.current
@@ -264,6 +353,7 @@ export function AppShell() {
             tracks={tracks}
             activeTrackId={currentTrack?.id ?? null}
             onSelectTrack={selectTrackById}
+            onImportFiles={importLocalFiles}
           />
         </aside>
       </section>
@@ -310,6 +400,7 @@ export function AppShell() {
             tracks={tracks}
             activeTrackId={currentTrack?.id ?? null}
             onSelectTrack={selectTrackById}
+            onImportFiles={importLocalFiles}
           />
         </aside>
 

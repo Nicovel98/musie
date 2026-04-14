@@ -5,4 +5,7 @@ export type Track = {
   title: string
   artist: string
   src: string
+  duration?: number
+  sizeBytes?: number
+  sourceType?: 'bundle' | 'local'
 }
