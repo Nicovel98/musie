@@ -1,295 +1,295 @@
 body {
-    margin: 0;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    color: var(--text-main);
-    background:
-        radial-gradient(circle at 0% 0%, #ffe7cf 0, transparent 40%),
-        radial-gradient(circle at 100% 100%, #c7edf8 0, transparent 36%),
-        var(--bg-main);
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text-main);
+  background:
+    radial-gradient(circle at 0% 0%, #ffe7cf 0, transparent 40%),
+    radial-gradient(circle at 100% 100%, #c7edf8 0, transparent 36%),
+    var(--bg-main);
 }
 
 #root {
-    min-height: 100vh;
-    display: grid;
-    place-items: center;
-    padding: 20px;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 20px;
 }
 
 .app-shell-wrap {
-    width: min(1180px, 100%);
+  width: min(1180px, 100%);
 }
 
 .app-shell {
-    display: grid;
-    grid-template-columns: 1fr 1.2fr 0.9fr;
-    gap: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 0.9fr;
+  gap: 16px;
 }
 
 .mobile-header,
 .mobile-nav,
 .mobile-screen {
-    display: none;
+  display: none;
 }
 
 .mobile-header {
-    margin-bottom: 12px;
+  margin-bottom: 12px;
 }
 
 .mobile-header h1 {
-    margin: 0;
-    font-size: 1.4rem;
+  margin: 0;
+  font-size: 1.4rem;
 }
 
 .mobile-header-eyebrow {
-    margin: 0 0 4px;
-    color: var(--text-muted);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-size: 0.72rem;
+  margin: 0 0 4px;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
 }
 
 .mobile-nav {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-    margin-bottom: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .mobile-nav button {
-    background: #fff;
-    color: var(--text-main);
-    border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-main);
+  border: 1px solid var(--border);
 }
 
 .mobile-nav button.is-active {
-    background: var(--accent);
-    color: #1e1009;
-    border-color: transparent;
+  background: var(--accent);
+  color: #1e1009;
+  border-color: transparent;
 }
 
 .mobile-screen.is-visible {
-    display: block;
+  display: block;
 }
 
 .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow);
-    padding: 18px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 18px;
 }
 
 .section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
 }
 
 .section-header h2 {
-    margin: 0;
-    font-size: 1rem;
+  margin: 0;
+  font-size: 1rem;
 }
 
 .import-label {
-    border-radius: var(--radius-sm);
-    background: var(--surface-strong);
-    color: #fff;
-    font-weight: 600;
-    padding: 8px 12px;
-    cursor: pointer;
+  border-radius: var(--radius-sm);
+  background: var(--surface-strong);
+  color: #fff;
+  font-weight: 600;
+  padding: 8px 12px;
+  cursor: pointer;
 }
 
 .file-input {
-    display: none;
+  display: none;
 }
 
 button {
-    border: 0;
-    border-radius: var(--radius-sm);
-    background: var(--surface-strong);
-    color: #fff;
-    font-weight: 600;
-    padding: 8px 12px;
-    cursor: pointer;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-strong);
+  color: #fff;
+  font-weight: 600;
+  padding: 8px 12px;
+  cursor: pointer;
 }
 
 .track-list,
 .queue-list {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    display: grid;
-    gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
 }
 
 .dropzone {
-    margin-bottom: 12px;
-    border: 1px dashed var(--border);
-    border-radius: var(--radius-md);
-    padding: 10px;
-    color: var(--text-muted);
-    font-size: 0.88rem;
-    text-align: center;
-    background: #fff;
+  margin-bottom: 12px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  text-align: center;
+  background: #fff;
 }
 
 .dropzone.is-dragging {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-    color: var(--text-main);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text-main);
 }
 
 .track-item,
 .queue-list li {
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    padding: 10px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px;
 }
 
 .track-item.is-active,
 .queue-list li.is-active {
-    border-color: var(--accent);
-    background: var(--accent-soft);
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .track-item p {
-    margin: 0;
-    font-weight: 600;
+  margin: 0;
+  font-weight: 600;
 }
 
 .track-item-empty {
-    border-style: dashed;
+  border-style: dashed;
 }
 
 .track-item span {
-    color: var(--text-muted);
-    font-size: 0.88rem;
+  color: var(--text-muted);
+  font-size: 0.88rem;
 }
 
 .track-item button {
-    margin-top: 8px;
-    padding: 6px 10px;
+  margin-top: 8px;
+  padding: 6px 10px;
 }
 
 .queue-list li {
-    cursor: pointer;
+  cursor: pointer;
 }
 
 .queue-list li.is-empty {
-    cursor: default;
-    border-style: dashed;
-    color: var(--text-muted);
+  cursor: default;
+  border-style: dashed;
+  color: var(--text-muted);
 }
 
 .now-playing-card {
-    display: grid;
-    gap: 14px;
+  display: grid;
+  gap: 14px;
 }
 
 .now-playing-card h1 {
-    margin: 4px 0 0;
+  margin: 4px 0 0;
 }
 
 .eyebrow {
-    margin: 0;
-    color: var(--text-muted);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-size: 0.75rem;
+  margin: 0;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
 }
 
 .cover {
-    aspect-ratio: 1;
-    border-radius: var(--radius-lg);
-    background: linear-gradient(130deg, #132a2f 0%, #2a4650 45%, #ff6a3d 100%);
+  aspect-ratio: 1;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(130deg, #132a2f 0%, #2a4650 45%, #ff6a3d 100%);
 }
 
 .track-meta h2 {
-    margin: 0;
-    font-size: 1.1rem;
+  margin: 0;
+  font-size: 1.1rem;
 }
 
 .track-meta p {
-    margin: 6px 0 0;
-    color: var(--text-muted);
+  margin: 6px 0 0;
+  color: var(--text-muted);
 }
 
 .progress-block {
-    display: grid;
-    gap: 8px;
+  display: grid;
+  gap: 8px;
 }
 
 .progress-block input,
 .volume-row input {
-    width: 100%;
+  width: 100%;
 }
 
 .time-row {
-    display: flex;
-    justify-content: space-between;
-    color: var(--text-muted);
-    font-size: 0.85rem;
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }
 
 .controls {
-    display: flex;
-    gap: 8px;
+  display: flex;
+  gap: 8px;
 }
 
 .controls button:nth-child(2) {
-    background: var(--accent);
-    color: #1e1009;
+  background: var(--accent);
+  color: #1e1009;
 }
 
 .secondary-controls {
-    display: flex;
-    gap: 8px;
+  display: flex;
+  gap: 8px;
 }
 
 .secondary-controls button {
-    background: #fff;
-    color: var(--text-main);
-    border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-main);
+  border: 1px solid var(--border);
 }
 
 .secondary-controls button.is-active {
-    background: var(--accent);
-    color: #1e1009;
-    border-color: transparent;
+  background: var(--accent);
+  color: #1e1009;
+  border-color: transparent;
 }
 
 .volume-row {
-    display: grid;
-    gap: 8px;
+  display: grid;
+  gap: 8px;
 }
 
 .volume-row label {
-    color: var(--text-muted);
-    font-size: 0.9rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
 }
 
 @media (max-width: 980px) {
-    #root {
-        place-items: stretch;
-        padding: 12px;
-    }
+  #root {
+    place-items: stretch;
+    padding: 12px;
+  }
 
-    .mobile-header,
-    .mobile-nav {
-        display: block;
-    }
+  .mobile-header,
+  .mobile-nav {
+    display: block;
+  }
 
-    .mobile-nav {
-        display: grid;
-    }
+  .mobile-nav {
+    display: grid;
+  }
 
-    .app-shell {
-        display: none;
-    }
+  .app-shell {
+    display: none;
+  }
 
-    .panel {
-        padding: 14px;
-        border-radius: 16px;
-    }
+  .panel {
+    padding: 14px;
+    border-radius: 16px;
+  }
 }

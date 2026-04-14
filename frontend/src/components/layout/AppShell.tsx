@@ -4,6 +4,10 @@ import { QueuePanel } from '../library/QueuePanel'
 import { NowPlayingCard } from '../player/NowPlayingCard'
 import type { RepeatMode, Track } from '../../types/player'
 import {
+  createBundledTrack,
+  createLocalTrack,
+} from '../../features/library/trackNormalization'
+import {
   loadPlayerSession,
   savePlayerSession,
   type PlayerScreen,
@@ -24,32 +28,25 @@ function getInitialTrackIndex() {
 }
 
 const initialTracks: Track[] = [
-  {
+  createBundledTrack({
     id: 'in-circles',
     title: 'Transistor - In Circles',
     artist: 'Red',
-    src: '/audio/in-circles.mp3',
-    sourceType: 'bundle',
-  },
-  {
+    fileName: 'in-circles.mp3',
+  }),
+  createBundledTrack({
     id: 'signals',
     title: 'Transistor - Signals',
     artist: 'Red',
-    src: '/audio/signals.mp3',
-    sourceType: 'bundle',
-  },
-  {
+    fileName: 'signals.mp3',
+  }),
+  createBundledTrack({
     id: 'she-shines',
     title: 'Transistor - She Shines',
     artist: 'Red',
-    src: '/audio/she-shines.mp3',
-    sourceType: 'bundle',
-  },
+    fileName: 'she-shines.mp3',
+  }),
 ]
-
-function stripFileExtension(fileName: string) {
-  return fileName.replace(/\.[^/.]+$/, '')
-}
 
 function readAudioDuration(src: string) {
   return new Promise<number>((resolve) => {
@@ -266,15 +263,12 @@ export function AppShell() {
           localObjectUrlsRef.current.add(objectUrl)
           const duration = await readAudioDuration(objectUrl)
 
-          return {
+          return createLocalTrack({
             id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-            title: stripFileExtension(file.name),
-            artist: 'Local file',
-            src: objectUrl,
+            file,
+            objectUrl,
             duration,
-            sizeBytes: file.size,
-            sourceType: 'local' as const,
-          }
+          })
         }),
       )
 
