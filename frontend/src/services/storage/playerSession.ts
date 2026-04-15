@@ -1,4 +1,4 @@
-import type { RepeatMode } from '../../types/player'
+import type { CoverLookupProvider, RepeatMode } from '../../types/player'
 
 export type PlayerScreen = 'library' | 'player' | 'queue'
 
@@ -6,6 +6,8 @@ export type PlayerSession = {
   volume: number
   shuffleEnabled: boolean
   repeatMode: RepeatMode
+  allowOnlineCoverLookup: boolean
+  coverLookupProvider: CoverLookupProvider
   activeScreen: PlayerScreen
   currentTrackId: string | null
   currentTime: number
@@ -21,6 +23,10 @@ function isRepeatMode(value: unknown): value is RepeatMode {
   return value === 'off' || value === 'all' || value === 'one'
 }
 
+function isCoverLookupProvider(value: unknown): value is CoverLookupProvider {
+  return value === 'auto' || value === 'itunes' || value === 'musicbrainz'
+}
+
 export function loadPlayerSession(): PlayerSession | null {
   if (typeof window === 'undefined') return null
 
@@ -33,6 +39,10 @@ export function loadPlayerSession(): PlayerSession | null {
     if (
       typeof parsed.volume !== 'number' ||
       typeof parsed.shuffleEnabled !== 'boolean' ||
+      (parsed.allowOnlineCoverLookup !== undefined &&
+        typeof parsed.allowOnlineCoverLookup !== 'boolean') ||
+      (parsed.coverLookupProvider !== undefined &&
+        !isCoverLookupProvider(parsed.coverLookupProvider)) ||
       !isRepeatMode(parsed.repeatMode) ||
       !isPlayerScreen(parsed.activeScreen) ||
       (parsed.currentTrackId !== null &&
@@ -46,6 +56,8 @@ export function loadPlayerSession(): PlayerSession | null {
       volume: Math.min(Math.max(parsed.volume, 0), 1),
       shuffleEnabled: parsed.shuffleEnabled,
       repeatMode: parsed.repeatMode,
+      allowOnlineCoverLookup: parsed.allowOnlineCoverLookup ?? false,
+      coverLookupProvider: parsed.coverLookupProvider ?? 'auto',
       activeScreen: parsed.activeScreen,
       currentTrackId: parsed.currentTrackId,
       currentTime: Math.max(parsed.currentTime, 0),

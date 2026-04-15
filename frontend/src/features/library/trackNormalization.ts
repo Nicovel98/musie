@@ -45,6 +45,7 @@ export type ParsedFileMetadata = {
   title: string
   artist: string
   coverDataUrl?: string
+  coverSource?: 'embedded' | 'online'
 }
 
 export async function extractFileMetadata(
@@ -72,6 +73,7 @@ export async function extractFileMetadata(
       title,
       artist,
       coverDataUrl,
+      coverSource: coverDataUrl ? 'embedded' : undefined,
     }
   } catch {
     return {
@@ -109,6 +111,7 @@ export function createLocalTrack(input: {
     artist: input.metadata.artist,
     src: input.objectUrl,
     coverUrl: input.metadata.coverDataUrl,
+    coverSource: input.metadata.coverSource,
     duration: input.duration,
     sizeBytes: input.file.size,
     sourceType: 'local',
@@ -125,6 +128,7 @@ export function createPersistedLocalTrack(input: {
     artist: input.record.artist,
     src: input.objectUrl,
     coverUrl: input.record.coverDataUrl,
+    coverSource: input.record.coverSource,
     duration: input.record.duration,
     sizeBytes: input.record.sizeBytes,
     sourceType: 'local',

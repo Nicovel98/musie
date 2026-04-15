@@ -7,6 +7,8 @@ describe('playerSession storage', () => {
       volume: 0.75,
       shuffleEnabled: true,
       repeatMode: 'all' as const,
+      allowOnlineCoverLookup: true,
+      coverLookupProvider: 'itunes' as const,
       activeScreen: 'player' as const,
       currentTrackId: 'in-circles',
       currentTime: 95,
@@ -36,6 +38,8 @@ describe('playerSession storage', () => {
         volume: 4,
         shuffleEnabled: false,
         repeatMode: 'off',
+        allowOnlineCoverLookup: false,
+        coverLookupProvider: 'musicbrainz',
         activeScreen: 'library',
         currentTrackId: null,
         currentTime: -100,
@@ -46,7 +50,34 @@ describe('playerSession storage', () => {
       volume: 1,
       shuffleEnabled: false,
       repeatMode: 'off',
+      allowOnlineCoverLookup: false,
+      coverLookupProvider: 'musicbrainz',
       activeScreen: 'library',
+      currentTrackId: null,
+      currentTime: 0,
+    })
+  })
+
+  it('defaults consent to false when field is absent', () => {
+    window.localStorage.setItem(
+      'musie.player-session.v1',
+      JSON.stringify({
+        volume: 0.5,
+        shuffleEnabled: false,
+        repeatMode: 'off',
+        activeScreen: 'queue',
+        currentTrackId: null,
+        currentTime: 0,
+      }),
+    )
+
+    expect(loadPlayerSession()).toEqual({
+      volume: 0.5,
+      shuffleEnabled: false,
+      repeatMode: 'off',
+      allowOnlineCoverLookup: false,
+      coverLookupProvider: 'auto',
+      activeScreen: 'queue',
       currentTrackId: null,
       currentTime: 0,
     })

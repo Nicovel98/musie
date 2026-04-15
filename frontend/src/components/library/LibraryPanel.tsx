@@ -1,16 +1,46 @@
 import { useId, useState, type ChangeEvent, type DragEvent } from 'react'
-import type { Track } from '../../types/player'
+import type { CoverLookupProvider, Track } from '../../types/player'
 
 type LibraryPanelProps = {
   tracks: Track[]
   activeTrackId: string | null
+  allowOnlineCoverLookup: boolean
+  coverLookupProvider: CoverLookupProvider
   searchQuery: string
   artistFilter: string
   artistOptions: string[]
+  onToggleOnlineCoverLookup: (enabled: boolean) => void
+  onCoverLookupProviderChange: (provider: CoverLookupProvider) => void
   onSearchChange: (value: string) => void
   onArtistFilterChange: (value: string) => void
   onSelectTrack: (trackId: string) => void
   onImportFiles: (files: File[]) => void
+}
+
+function formatCoverSource(track: Track) {
+  if (!track.coverUrl || !track.coverSource) return 'Portada: sin portada'
+  if (track.coverSource === 'embedded') return 'Portada: embebida'
+  return 'Portada: online'
+}
+
+function getCoverBadgeCode(track: Track) {
+  if (!track.coverUrl || !track.coverSource) return 'NONE'
+  return track.coverSource === 'embedded' ? 'EMB' : 'WEB'
+}
+
+function getCoverBadgeClass(track: Track) {
+  if (!track.coverUrl || !track.coverSource) return 'is-none'
+  return track.coverSource === 'embedded' ? 'is-embedded' : 'is-online'
+}
+
+function getCoverBadgeTitle(track: Track) {
+  if (!track.coverUrl || !track.coverSource) {
+    return 'Sin portada disponible'
+  }
+
+  return track.coverSource === 'embedded'
+    ? 'Extraida del archivo de audio'
+    : 'Obtenida por busqueda online'
 }
 
 function formatDuration(seconds?: number) {
@@ -23,9 +53,13 @@ function formatDuration(seconds?: number) {
 export function LibraryPanel({
   tracks,
   activeTrackId,
+  allowOnlineCoverLookup,
+  coverLookupProvider,
   searchQuery,
   artistFilter,
   artistOptions,
+  onToggleOnlineCoverLookup,
+  onCoverLookupProviderChange,
   onSearchChange,
   onArtistFilterChange,
   onSelectTrack,
@@ -105,6 +139,38 @@ export function LibraryPanel({
             </option>
           ))}
         </select>
+
+        <label className="consent-row">
+          <input
+            type="checkbox"
+            checked={allowOnlineCoverLookup}
+            onChange={(event) =>
+              onToggleOnlineCoverLookup(event.target.checked)
+            }
+          />
+          Buscar portada online si no existe en el archivo.
+        </label>
+
+        <p className="consent-note">
+          Solo se consulta titulo y artista cuando este permiso esta activo.
+        </p>
+
+        <label className="provider-row">
+          Proveedor de busqueda
+          <select
+            value={coverLookupProvider}
+            onChange={(event) =>
+              onCoverLookupProviderChange(
+                event.target.value as CoverLookupProvider,
+              )
+            }
+            disabled={!allowOnlineCoverLookup}
+          >
+            <option value="auto">Auto (iTunes + MusicBrainz)</option>
+            <option value="itunes">Solo iTunes</option>
+            <option value="musicbrainz">Solo MusicBrainz</option>
+          </select>
+        </label>
       </div>
 
       <ul className="track-list" aria-label="Track list">
@@ -135,6 +201,16 @@ export function LibraryPanel({
             <p>{track.title}</p>
             <span>{track.artist}</span>
             <span>{formatDuration(track.duration)}</span>
+            <div className="cover-source-row">
+              <span className="cover-source">{formatCoverSource(track)}</span>
+              <span
+                className={`cover-badge ${getCoverBadgeClass(track)}`}
+                title={getCoverBadgeTitle(track)}
+                aria-label={getCoverBadgeTitle(track)}
+              >
+                {getCoverBadgeCode(track)}
+              </span>
+            </div>
             <button type="button" onClick={() => onSelectTrack(track.id)}>
               Play
             </button>

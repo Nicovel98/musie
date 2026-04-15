@@ -2,13 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LibraryPanel } from '../library/LibraryPanel'
 import { QueuePanel } from '../library/QueuePanel'
 import { NowPlayingCard } from '../player/NowPlayingCard'
-import type { RepeatMode, Track } from '../../types/player'
+import type { CoverLookupProvider, RepeatMode, Track } from '../../types/player'
 import {
   createBundledTrack,
   createPersistedLocalTrack,
   createLocalTrack,
   extractFileMetadata,
 } from '../../features/library/trackNormalization'
+import { findOnlineCover } from '../../services/covers/onlineCoverLookup'
 import {
   loadPlayerSession,
   savePlayerSession,
@@ -99,6 +100,11 @@ export function AppShell() {
   const [repeatMode, setRepeatMode] = useState<RepeatMode>(
     savedSession?.repeatMode ?? 'all',
   )
+  const [allowOnlineCoverLookup, setAllowOnlineCoverLookup] = useState(
+    savedSession?.allowOnlineCoverLookup ?? false,
+  )
+  const [coverLookupProvider, setCoverLookupProvider] =
+    useState<CoverLookupProvider>(savedSession?.coverLookupProvider ?? 'auto')
   const [searchQuery, setSearchQuery] = useState('')
   const [artistFilter, setArtistFilter] = useState('all')
 
@@ -336,13 +342,27 @@ export function AppShell() {
           localObjectUrlsRef.current.add(objectUrl)
           const duration = await readAudioDuration(objectUrl)
           const metadata = await extractFileMetadata(file)
+          const onlineCover =
+            !metadata.coverDataUrl && allowOnlineCoverLookup
+              ? await findOnlineCover({
+                  title: metadata.title,
+                  artist: metadata.artist,
+                  provider: coverLookupProvider,
+                })
+              : undefined
+
+          const mergedMetadata = {
+            ...metadata,
+            coverDataUrl: metadata.coverDataUrl ?? onlineCover?.coverUrl,
+            coverSource: metadata.coverSource ?? onlineCover?.source,
+          }
 
           return createLocalTrack({
             id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             file,
             objectUrl,
             duration,
-            metadata,
+            metadata: mergedMetadata,
           })
         }),
       )
@@ -356,6 +376,7 @@ export function AppShell() {
           artist: track.artist,
           fileBlob: file,
           coverDataUrl: track.coverUrl,
+          coverSource: track.coverSource,
           duration: track.duration ?? 0,
           sizeBytes: track.sizeBytes ?? file.size,
           createdAt: Date.now() + index,
@@ -372,7 +393,7 @@ export function AppShell() {
 
       setActiveScreen('library')
     },
-    [tracks.length],
+    [tracks.length, allowOnlineCoverLookup, coverLookupProvider],
   )
 
   useEffect(() => {
@@ -451,6 +472,8 @@ export function AppShell() {
       volume,
       shuffleEnabled,
       repeatMode,
+      allowOnlineCoverLookup,
+      coverLookupProvider,
       activeScreen: activeScreen as PlayerScreen,
       currentTrackId: persistedTrackId,
       currentTime: persistedTrackId ? roundedCurrentTime : 0,
@@ -459,6 +482,8 @@ export function AppShell() {
     volume,
     shuffleEnabled,
     repeatMode,
+    allowOnlineCoverLookup,
+    coverLookupProvider,
     activeScreen,
     currentTrack,
     roundedCurrentTime,
@@ -504,9 +529,13 @@ export function AppShell() {
           <LibraryPanel
             tracks={filteredTracks}
             activeTrackId={currentTrack?.id ?? null}
+            allowOnlineCoverLookup={allowOnlineCoverLookup}
+            coverLookupProvider={coverLookupProvider}
             searchQuery={searchQuery}
             artistFilter={artistFilter}
             artistOptions={artistOptions}
+            onToggleOnlineCoverLookup={setAllowOnlineCoverLookup}
+            onCoverLookupProviderChange={setCoverLookupProvider}
             onSearchChange={setSearchQuery}
             onArtistFilterChange={setArtistFilter}
             onSelectTrack={selectTrackById}
@@ -556,9 +585,13 @@ export function AppShell() {
           <LibraryPanel
             tracks={filteredTracks}
             activeTrackId={currentTrack?.id ?? null}
+            allowOnlineCoverLookup={allowOnlineCoverLookup}
+            coverLookupProvider={coverLookupProvider}
             searchQuery={searchQuery}
             artistFilter={artistFilter}
             artistOptions={artistOptions}
+            onToggleOnlineCoverLookup={setAllowOnlineCoverLookup}
+            onCoverLookupProviderChange={setCoverLookupProvider}
             onSearchChange={setSearchQuery}
             onArtistFilterChange={setArtistFilter}
             onSelectTrack={selectTrackById}

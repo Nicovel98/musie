@@ -25,6 +25,10 @@ body {
   gap: 16px;
 }
 
+.panel {
+  min-width: 0;
+}
+
 .mobile-header,
 .mobile-nav,
 .mobile-screen {
@@ -33,6 +37,15 @@ body {
 
 .mobile-header {
   margin-bottom: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 8px 0 10px;
+  background: linear-gradient(180deg,
+      rgba(255, 250, 244, 0.96) 0%,
+      rgba(255, 250, 244, 0.9) 70%,
+      rgba(255, 250, 244, 0) 100%);
+  backdrop-filter: blur(10px);
 }
 
 .mobile-header h1 {
@@ -52,6 +65,15 @@ body {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 12px;
+  position: sticky;
+  top: 58px;
+  z-index: 5;
+  padding-bottom: 8px;
+  background: linear-gradient(180deg,
+      rgba(255, 250, 244, 0.96) 0%,
+      rgba(255, 250, 244, 0.9) 80%,
+      rgba(255, 250, 244, 0) 100%);
+  backdrop-filter: blur(10px);
 }
 
 .mobile-nav button {
@@ -68,6 +90,10 @@ body {
 
 .mobile-screen.is-visible {
   display: block;
+}
+
+.mobile-screen .panel {
+  min-height: calc(100dvh - 172px);
 }
 
 .panel {
@@ -155,6 +181,41 @@ button {
   color: var(--text-main);
 }
 
+.consent-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.consent-row input {
+  width: auto;
+  margin: 0;
+}
+
+.consent-note {
+  margin: -2px 0 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.provider-row {
+  display: grid;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.provider-row select:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .track-item,
 .queue-list li {
   background: #fff;
@@ -181,6 +242,51 @@ button {
 .track-item span {
   color: var(--text-muted);
   font-size: 0.88rem;
+}
+
+.track-item .cover-source {
+  font-size: 0.8rem;
+  color: #46626b;
+}
+
+.cover-source-row,
+.cover-origin-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cover-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: help;
+}
+
+.cover-badge.is-embedded {
+  background: #e7f8ed;
+  border-color: #8ad3a0;
+  color: #1f6a38;
+}
+
+.cover-badge.is-online {
+  background: #e8f2ff;
+  border-color: #89b2ff;
+  color: #1f4d96;
+}
+
+.cover-badge.is-none {
+  background: #eef2f5;
+  border-color: #c9d2d8;
+  color: #57656f;
 }
 
 .track-item button {
@@ -249,6 +355,21 @@ button {
 .track-meta p {
   margin: 6px 0 0;
   color: var(--text-muted);
+}
+
+.cover-origin {
+  margin-top: 6px;
+  display: inline-block;
+  font-size: 0.82rem;
+  color: #46626b;
+}
+
+.cover-origin-row {
+  margin-top: 6px;
+}
+
+.cover-origin-row .cover-origin {
+  margin-top: 0;
 }
 
 .progress-block {
@@ -327,5 +448,87 @@ button {
   .panel {
     padding: 14px;
     border-radius: 16px;
+  }
+}
+
+@media (min-width: 981px) and (max-width: 1200px) {
+  #root {
+    place-items: stretch;
+  }
+
+  .app-shell {
+    grid-template-columns: 1.05fr 0.95fr;
+  }
+
+  .panel-queue {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  #root {
+    padding: 10px;
+  }
+
+  .mobile-header {
+    top: 0;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+  }
+
+  .mobile-nav {
+    top: 54px;
+  }
+
+  .mobile-screen .panel {
+    min-height: calc(100dvh - 160px);
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .section-header .import-label,
+  .section-header button {
+    width: 100%;
+    text-align: center;
+  }
+
+  .controls,
+  .secondary-controls {
+    flex-wrap: wrap;
+  }
+
+  .controls button,
+  .secondary-controls button {
+    flex: 1 1 92px;
+  }
+
+  .track-item,
+  .queue-list li {
+    padding: 12px;
+  }
+
+  .track-cover {
+    width: 56px;
+    height: 56px;
+  }
+
+  .cover-source-row .cover-source,
+  .cover-origin-row .cover-origin {
+    display: none;
+  }
+
+  .cover-source-row,
+  .cover-origin-row {
+    margin-top: 4px;
+  }
+
+  .cover-badge {
+    min-width: 48px;
+    height: 24px;
+    font-size: 0.72rem;
   }
 }

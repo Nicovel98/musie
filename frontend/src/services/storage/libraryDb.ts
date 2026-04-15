@@ -6,6 +6,7 @@ export type LocalTrackRecord = {
   artist: string
   fileBlob: Blob
   coverDataUrl?: string
+  coverSource?: 'embedded' | 'online'
   duration: number
   sizeBytes: number
   createdAt: number

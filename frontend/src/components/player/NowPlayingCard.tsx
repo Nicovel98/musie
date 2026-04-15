@@ -24,6 +24,32 @@ function formatTime(seconds: number) {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
+function formatCoverSourceLabel(track: Track | null) {
+  if (!track?.coverUrl || !track.coverSource) return 'Portada: sin portada'
+  if (track.coverSource === 'embedded') return 'Portada embebida en archivo'
+  return 'Portada encontrada online'
+}
+
+function getCoverBadgeCode(track: Track | null) {
+  if (!track?.coverUrl || !track.coverSource) return 'NONE'
+  return track.coverSource === 'embedded' ? 'EMB' : 'WEB'
+}
+
+function getCoverBadgeClass(track: Track | null) {
+  if (!track?.coverUrl || !track.coverSource) return 'is-none'
+  return track.coverSource === 'embedded' ? 'is-embedded' : 'is-online'
+}
+
+function getCoverBadgeTitle(track: Track | null) {
+  if (!track?.coverUrl || !track.coverSource) {
+    return 'Sin portada disponible'
+  }
+
+  return track.coverSource === 'embedded'
+    ? 'Extraida del archivo de audio'
+    : 'Obtenida por busqueda online'
+}
+
 export function NowPlayingCard({
   currentTrack,
   isPlaying,
@@ -69,6 +95,18 @@ export function NowPlayingCard({
           {currentTrack?.artist ??
             'Importa canciones para empezar a reproducir.'}
         </p>
+        <div className="cover-origin-row">
+          <span className="cover-origin">
+            {formatCoverSourceLabel(currentTrack)}
+          </span>
+          <span
+            className={`cover-badge ${getCoverBadgeClass(currentTrack)}`}
+            title={getCoverBadgeTitle(currentTrack)}
+            aria-label={getCoverBadgeTitle(currentTrack)}
+          >
+            {getCoverBadgeCode(currentTrack)}
+          </span>
+        </div>
       </div>
 
       <div className="progress-block">
