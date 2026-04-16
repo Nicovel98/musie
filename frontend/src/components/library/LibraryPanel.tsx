@@ -1,4 +1,10 @@
-import { useId, useState, type ChangeEvent, type DragEvent } from 'react'
+import {
+  useId,
+  useMemo,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+} from 'react'
 import type { CoverLookupProvider, Track } from '../../types/player'
 
 type LibraryPanelProps = {
@@ -50,6 +56,8 @@ function formatDuration(seconds?: number) {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
+const TRACK_BATCH_SIZE = 60
+
 export function LibraryPanel({
   tracks,
   activeTrackId,
@@ -67,6 +75,14 @@ export function LibraryPanel({
 }: LibraryPanelProps) {
   const fileInputId = useId()
   const [isDragging, setIsDragging] = useState(false)
+  const [visibleCount, setVisibleCount] = useState(TRACK_BATCH_SIZE)
+
+  const visibleTracks = useMemo(
+    () => tracks.slice(0, visibleCount),
+    [tracks, visibleCount],
+  )
+
+  const hiddenCount = Math.max(tracks.length - visibleTracks.length, 0)
 
   function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
     const files = event.target.files
@@ -181,7 +197,7 @@ export function LibraryPanel({
           </li>
         ) : null}
 
-        {tracks.map((track) => (
+        {visibleTracks.map((track) => (
           <li
             key={track.id}
             className={`track-item ${activeTrackId === track.id ? 'is-active' : ''}`}
@@ -191,6 +207,8 @@ export function LibraryPanel({
                 className="track-cover"
                 src={track.coverUrl}
                 alt="Track cover"
+                loading="lazy"
+                decoding="async"
               />
             ) : (
               <div
@@ -216,6 +234,18 @@ export function LibraryPanel({
             </button>
           </li>
         ))}
+
+        {hiddenCount > 0 ? (
+          <li className="track-list-actions">
+            <button
+              type="button"
+              className="load-more-btn"
+              onClick={() => setVisibleCount((prev) => prev + TRACK_BATCH_SIZE)}
+            >
+              Cargar mas ({hiddenCount} restantes)
+            </button>
+          </li>
+        ) : null}
       </ul>
     </section>
   )

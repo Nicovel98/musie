@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { LibraryPanel } from '../library/LibraryPanel'
 import { QueuePanel } from '../library/QueuePanel'
 import { NowPlayingCard } from '../player/NowPlayingCard'
@@ -107,6 +114,7 @@ export function AppShell() {
     useState<CoverLookupProvider>(savedSession?.coverLookupProvider ?? 'auto')
   const [searchQuery, setSearchQuery] = useState('')
   const [artistFilter, setArtistFilter] = useState('all')
+  const deferredSearchQuery = useDeferredValue(searchQuery)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const localObjectUrlsRef = useRef<Set<string>>(new Set())
@@ -122,7 +130,7 @@ export function AppShell() {
   }, [tracks])
 
   const filteredTracks = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase()
+    const query = deferredSearchQuery.trim().toLowerCase()
 
     return tracks.filter((track) => {
       const artistMatches =
@@ -136,7 +144,7 @@ export function AppShell() {
       const artistTextMatches = track.artist.toLowerCase().includes(query)
       return titleMatches || artistTextMatches
     })
-  }, [tracks, searchQuery, artistFilter])
+  }, [tracks, deferredSearchQuery, artistFilter])
 
   const screenTitle = useMemo(() => {
     if (activeScreen === 'library') return 'Library'

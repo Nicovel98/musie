@@ -222,6 +222,8 @@ button {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 10px;
+  content-visibility: auto;
+  contain-intrinsic-size: 96px;
 }
 
 .track-item.is-active,
@@ -292,6 +294,20 @@ button {
 .track-item button {
   margin-top: 8px;
   padding: 6px 10px;
+}
+
+.track-list-actions,
+.queue-list-actions {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.load-more-btn {
+  width: 100%;
+  background: #fff;
+  border: 1px dashed var(--border);
+  color: var(--text-main);
 }
 
 .track-cover {
