@@ -9,11 +9,24 @@ Musie busca ser la alternativa ligera y estética a los reproductores pesados ac
 3. **Multiplataforma:** Una sola base de código para Web y Android mediante **Capacitor**.
 
 ## 🛠️ Stack Tecnológico
-*   **Core:** React 18 + Vite + TypeScript.
+*   **Core:** React 19 + Vite + TypeScript.
 *   **Audio Engine:** Web Audio API (Custom Hooks para gestión de nodos).
-*   **State Management:** Zustand o Context API.
+*   **State Management:** Hooks de React + estado local por componentes.
 *   **Storage:** IndexedDB para persistir metadatos y portadas de álbumes.
 *   **Mobile Bridge:** Capacitor para el acceso nativo al sistema de archivos.
+
+## 🌐 Demo Web Pública
+
+- URL de la demo: https://nicovel98.github.io/musie/
+- Deploy automático: GitHub Actions + GitHub Pages (rama main)
+
+## ⚠️ Limitaciones de la Demo Web
+
+1. La demo funciona en modo local-first del navegador: no sube tus canciones a ningún servidor.
+2. El catálogo importado depende del almacenamiento del navegador (IndexedDB); si borras datos del sitio, se pierde la biblioteca local guardada.
+3. En algunos navegadores móviles, la reproducción puede requerir interacción del usuario por políticas de autoplay.
+4. Las búsquedas de portada online son opcionales y se activan por consentimiento; pueden fallar según disponibilidad del proveedor externo.
+5. El build web no incluye todavía integración nativa de Android (Capacitor) ni reproducción en segundo plano del sistema operativo.
 
 ## 📋 Estado del Proyecto
 
@@ -57,29 +70,16 @@ Estandar oficial de nombres, appId y configuracion para web/Android:
 }
 ```
 
-## 📦 Entregables del Proyecto (Mes 1)
+## 📦 Progreso Actual (Abril 2026)
 
-Al finalizar el ciclo inicial de 30 días, el proyecto contará con:
-### 🗓️ Semana 1: Arquitectura y Motor de Audio
-*   **Día 1-2:** Setup de React + Vite + TypeScript. Configuración de ESLint y Prettier.
-*   **Día 3-4:** Implementación de `Web Audio API`. Creación de un custom hook `usePlayer` para manejar Play/Pause/Skip.
-*   **Día 5-7:** Sistema de carga de archivos locales (File System Access API) y persistencia básica de la lista en `Zustand`.
+Estado resumido del roadmap:
 
-### 🗓️ Semana 2: Gestión de Librería e IndexedDB
-*   **Día 8-10:** Integración de **IndexedDB** (Dexie.js) para guardar metadatos de canciones y portadas (evitar re-escaneo).
-*   **Día 11-13:** UI de la Librería: Buscador, filtrado por artista y álbum.
-*   **Día 14:** Implementación de persistencia de "Última canción reproducida".
+1. Semana 1 completada: base React + TypeScript, core del player y carga local inicial.
+2. Semana 2 completada: metadatos, biblioteca con búsqueda/filtros, cola con reanudación de sesión, responsive y optimización para listas largas.
+3. Demo web pública activa con despliegue automático por GitHub Actions + GitHub Pages.
+4. Siguiente etapa: Semana 3 (Web Audio API + presets + base de testing reforzada).
 
-### 🗓️ Semana 3: Audio Pro y Experiencia de Usuario
-*   **Día 15-17:** Creación del **Ecualizador de 5 bandas**.
-*   **Día 18-19:** Desarrollo de Presets (Bass Boost, Vocal, etc.) usando `BiquadFilterNode`.
-*   **Día 20-21:** Optimización Responsive: Ajustes finos para Mobile y Tablet (Touch gestures).
-
-### 🗓️ Semana 4: Android Pipeline y Lanzamiento
-*   **Día 22-23:** Integración de **Capacitor**. Configuración del proyecto Android en VS Code.
-*   **Día 24-25:** Manejo de permisos nativos de Android y controles de reproducción en segundo plano.
-*   **Día 26-28:** Generación del archivo `.aab` firmado y pruebas en dispositivos reales.
-*   **Día 29-30:** Subida a **Google Play Console** (Canal de Testing Interno) y documentación final.
+Para detalle diario y plan completo, ver [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## ⚠️ Riesgos Identificados
 1.  **Permisos de Archivos:** Android 13+ es estricto con el acceso a multimedia; requiere configuración especial en el `AndroidManifest`.

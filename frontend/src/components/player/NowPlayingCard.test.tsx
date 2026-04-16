@@ -37,7 +37,7 @@ describe('NowPlayingCard', () => {
     expect(
       screen.getByText('Importa canciones para empezar a reproducir.'),
     ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reproducir' })).toBeInTheDocument()
   })
 
   it('calls playback callbacks and updates sliders', () => {
@@ -66,9 +66,9 @@ describe('NowPlayingCard', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Prev' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Pause' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Anterior' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Pausar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
 
     fireEvent.change(screen.getByLabelText('Track progress'), {
       target: { value: '45' },

@@ -6,6 +6,7 @@ import {
   type DragEvent,
 } from 'react'
 import type { CoverLookupProvider, Track } from '../../types/player'
+import './LibraryPanel.css'
 
 type LibraryPanelProps = {
   tracks: Track[]
@@ -15,6 +16,8 @@ type LibraryPanelProps = {
   searchQuery: string
   artistFilter: string
   artistOptions: string[]
+  isTrackFavorite: (trackId: string) => boolean
+  onToggleTrackFavorite: (trackId: string) => void
   onToggleOnlineCoverLookup: (enabled: boolean) => void
   onCoverLookupProviderChange: (provider: CoverLookupProvider) => void
   onSearchChange: (value: string) => void
@@ -66,6 +69,8 @@ export function LibraryPanel({
   searchQuery,
   artistFilter,
   artistOptions,
+  isTrackFavorite,
+  onToggleTrackFavorite,
   onToggleOnlineCoverLookup,
   onCoverLookupProviderChange,
   onSearchChange,
@@ -120,7 +125,7 @@ export function LibraryPanel({
   }
 
   return (
-    <section>
+    <section className="library-panel">
       <header className="section-header">
         <h2>Library</h2>
         <label className="import-label" htmlFor={fileInputId}>
@@ -211,6 +216,19 @@ export function LibraryPanel({
             key={track.id}
             className={`track-item ${activeTrackId === track.id ? 'is-active' : ''}`}
           >
+            <button
+              type="button"
+              className={`favorite-toggle ${isTrackFavorite(track.id) ? 'is-favorite' : ''}`}
+              aria-label={
+                isTrackFavorite(track.id)
+                  ? 'Quitar de favoritos'
+                  : 'Agregar a favoritos'
+              }
+              onClick={() => onToggleTrackFavorite(track.id)}
+            >
+              {isTrackFavorite(track.id) ? '★' : '☆'}
+            </button>
+
             {track.coverUrl ? (
               <img
                 className="track-cover"

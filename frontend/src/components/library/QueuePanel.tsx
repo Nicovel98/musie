@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { Track } from '../../types/player'
+import './QueuePanel.css'
 
 const QUEUE_BATCH_SIZE = 80
 
@@ -8,6 +9,13 @@ type QueuePanelProps = {
   activeTrackId: string | null
   onSelectTrack: (trackId: string) => void
   onClearQueue: () => void
+}
+
+function formatDuration(seconds?: number) {
+  if (!seconds || !Number.isFinite(seconds)) return '--:--'
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
 export function QueuePanel({
@@ -26,15 +34,23 @@ export function QueuePanel({
   const hiddenCount = Math.max(tracks.length - visibleTracks.length, 0)
 
   return (
-    <section>
-      <header className="section-header">
+    <section className="queue-panel">
+      <header className="section-header queue-panel-header">
         <h2>Queue</h2>
-        <button type="button" onClick={onClearQueue}>
-          Clear
-        </button>
+        <div className="queue-panel-actions">
+          <span className="queue-count-chip">{tracks.length} en cola</span>
+          <button
+            type="button"
+            className="queue-clear-btn"
+            onClick={onClearQueue}
+            disabled={tracks.length === 0}
+          >
+            Clear queue
+          </button>
+        </div>
       </header>
 
-      <ol className="queue-list" aria-label="Playback queue">
+      <ol className="queue-list queue-panel-list" aria-label="Playback queue">
         {tracks.length === 0 ? (
           <li className="is-empty">La cola esta vacia.</li>
         ) : null}
@@ -50,7 +66,10 @@ export function QueuePanel({
               onClick={() => onSelectTrack(track.id)}
               aria-label={`Reproducir ${track.title}`}
             >
-              {track.title}
+              <span className="queue-track-title">{track.title}</span>
+              <span className="queue-track-meta">
+                {track.artist} · {formatDuration(track.duration)}
+              </span>
             </button>
           </li>
         ))}

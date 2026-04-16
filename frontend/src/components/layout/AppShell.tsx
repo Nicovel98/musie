@@ -5,11 +5,13 @@ import {
   useMemo,
   useRef,
   useState,
+  type ChangeEvent,
 } from 'react'
-import { LibraryPanel } from '../library/LibraryPanel'
-import { QueuePanel } from '../library/QueuePanel'
-import { NowPlayingCard } from '../player/NowPlayingCard'
+import { DesktopWorkspace } from './DesktopWorkspace'
+import { MobileWorkspace } from './MobileWorkspace'
 import type { CoverLookupProvider, RepeatMode, Track } from '../../types/player'
+import type { LibraryViewMode, ScreenKey, ThemeMode } from './layoutTypes'
+import './AppShell.css'
 import {
   createBundledTrack,
   createPersistedLocalTrack,
@@ -28,9 +30,44 @@ import {
   saveLocalTracks,
 } from '../../services/storage/libraryDb'
 
-type ScreenKey = 'library' | 'player' | 'queue'
+const THEME_STORAGE_KEY = 'musie.theme.v1'
+const FAVORITES_STORAGE_KEY = 'musie.favorites.v1'
+const DESKTOP_SPLIT_MEDIA_QUERY = '(min-width: 1360px)'
 
 const savedSession = loadPlayerSession()
+
+function getInitialThemeMode(): ThemeMode {
+  if (typeof window === 'undefined') return 'light'
+
+  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
+  return storedTheme === 'light' ? 'light' : 'dark'
+}
+
+function getInitialFavoriteTrackIds() {
+  if (typeof window === 'undefined') return new Set<string>()
+
+  try {
+    const stored = window.localStorage.getItem(FAVORITES_STORAGE_KEY)
+    if (!stored) return new Set<string>()
+
+    const parsed = JSON.parse(stored) as unknown
+    if (!Array.isArray(parsed)) return new Set<string>()
+
+    const favoriteIds = parsed.filter(
+      (entry): entry is string => typeof entry === 'string' && entry.length > 0,
+    )
+
+    return new Set(favoriteIds)
+  } catch {
+    return new Set<string>()
+  }
+}
+
+function getInitialDesktopSplitMode() {
+  if (typeof window === 'undefined') return false
+  if (typeof window.matchMedia !== 'function') return false
+  return window.matchMedia(DESKTOP_SPLIT_MEDIA_QUERY).matches
+}
 
 function getInitialTrackIndex() {
   if (!savedSession?.currentTrackId) return 0
@@ -112,11 +149,20 @@ export function AppShell() {
   )
   const [coverLookupProvider, setCoverLookupProvider] =
     useState<CoverLookupProvider>(savedSession?.coverLookupProvider ?? 'auto')
+  const [themeMode, setThemeMode] = useState<ThemeMode>(getInitialThemeMode)
+  const [libraryViewMode, setLibraryViewMode] = useState<LibraryViewMode>('all')
+  const [favoriteTrackIds, setFavoriteTrackIds] = useState<Set<string>>(
+    getInitialFavoriteTrackIds,
+  )
+  const [isDesktopSplitMode, setIsDesktopSplitMode] = useState(
+    getInitialDesktopSplitMode,
+  )
   const [searchQuery, setSearchQuery] = useState('')
   const [artistFilter, setArtistFilter] = useState('all')
   const deferredSearchQuery = useDeferredValue(searchQuery)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const sidebarFileInputRef = useRef<HTMLInputElement | null>(null)
   const localObjectUrlsRef = useRef<Set<string>>(new Set())
   const pendingResumeTimeRef = useRef(savedSession?.currentTime ?? 0)
   const pendingResumeTrackIdRef = useRef(savedSession?.currentTrackId ?? null)
@@ -134,6 +180,11 @@ export function AppShell() {
     const query = deferredSearchQuery.trim().toLowerCase()
 
     return tracks.filter((track) => {
+      const favoriteMatches =
+        libraryViewMode === 'all' || favoriteTrackIds.has(track.id)
+
+      if (!favoriteMatches) return false
+
       const artistMatches =
         artistFilter === 'all' ||
         track.artist.toLowerCase() === artistFilter.toLowerCase()
@@ -145,13 +196,33 @@ export function AppShell() {
       const artistTextMatches = track.artist.toLowerCase().includes(query)
       return titleMatches || artistTextMatches
     })
-  }, [tracks, deferredSearchQuery, artistFilter])
+  }, [tracks, deferredSearchQuery, artistFilter, libraryViewMode, favoriteTrackIds])
+
+  function toggleThemeMode() {
+    setThemeMode((prev) => (prev === 'dark' ? 'light' : 'dark'))
+  }
+
+  function toggleTrackFavorite(trackId: string) {
+    setFavoriteTrackIds((prev) => {
+      const next = new Set(prev)
+
+      if (next.has(trackId)) {
+        next.delete(trackId)
+      } else {
+        next.add(trackId)
+      }
+
+      return next
+    })
+  }
 
   const screenTitle = useMemo(() => {
     if (activeScreen === 'library') return 'Library'
     if (activeScreen === 'queue') return 'Queue'
     return 'Now Playing'
   }, [activeScreen])
+
+  const showDiscoveryDashboard = activeScreen === 'library' && !isPlaying
 
   function selectTrackById(trackId: string) {
     const trackIndex = tracks.findIndex((track) => track.id === trackId)
@@ -302,6 +373,34 @@ export function AppShell() {
   }, [])
 
   useEffect(() => {
+    document.documentElement.setAttribute('data-theme', themeMode)
+    window.localStorage.setItem(THEME_STORAGE_KEY, themeMode)
+  }, [themeMode])
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      FAVORITES_STORAGE_KEY,
+      JSON.stringify(Array.from(favoriteTrackIds)),
+    )
+  }, [favoriteTrackIds])
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+
+    const mediaQuery = window.matchMedia(DESKTOP_SPLIT_MEDIA_QUERY)
+
+    const updateDesktopMode = (event: MediaQueryListEvent) => {
+      setIsDesktopSplitMode(event.matches)
+    }
+
+    mediaQuery.addEventListener('change', updateDesktopMode)
+
+    return () => {
+      mediaQuery.removeEventListener('change', updateDesktopMode)
+    }
+  }, [])
+
+  useEffect(() => {
     let isDisposed = false
 
     async function restoreLocalTracks() {
@@ -416,6 +515,22 @@ export function AppShell() {
     [tracks.length, allowOnlineCoverLookup, coverLookupProvider],
   )
 
+  function handleSidebarImportChange(event: ChangeEvent<HTMLInputElement>) {
+    const files = event.target.files
+    if (!files || files.length === 0) return
+
+    const audioFiles = Array.from(files).filter((file) =>
+      file.type.startsWith('audio/'),
+    )
+    if (audioFiles.length === 0) {
+      event.target.value = ''
+      return
+    }
+
+    importLocalFiles(audioFiles)
+    event.target.value = ''
+  }
+
   useEffect(() => {
     const audioElement = audioRef.current
     if (!audioElement) return
@@ -483,7 +598,6 @@ export function AppShell() {
   }, [repeatMode, tracks.length, getNextIndex, currentTrack?.id])
 
   const roundedCurrentTime = Math.floor(currentTime)
-
   useEffect(() => {
     const persistedTrackId = currentTrack?.id ?? null
 
@@ -511,141 +625,95 @@ export function AppShell() {
   return (
     <main className="app-shell-wrap">
       <audio ref={audioRef} preload="metadata" />
+      <input
+        ref={sidebarFileInputRef}
+        className="file-input"
+        type="file"
+        accept="audio/*"
+        multiple
+        onChange={handleSidebarImportChange}
+      />
 
-      <header className="mobile-header" aria-label="Current screen">
-        <p className="mobile-header-eyebrow">Musie</p>
-        <h1>{screenTitle}</h1>
-      </header>
+      <MobileWorkspace
+        activeScreen={activeScreen}
+        screenTitle={screenTitle}
+        tracks={filteredTracks}
+        currentTrack={currentTrack}
+        isPlaying={isPlaying}
+        currentTime={currentTime}
+        duration={duration}
+        volume={volume}
+        shuffleEnabled={shuffleEnabled}
+        repeatMode={repeatMode}
+        allowOnlineCoverLookup={allowOnlineCoverLookup}
+        coverLookupProvider={coverLookupProvider}
+        searchQuery={searchQuery}
+        artistFilter={artistFilter}
+        artistOptions={artistOptions}
+        isTrackFavorite={(trackId) => favoriteTrackIds.has(trackId)}
+        onOpenScreen={setActiveScreen}
+        onToggleTrackFavorite={toggleTrackFavorite}
+        onToggleOnlineCoverLookup={setAllowOnlineCoverLookup}
+        onCoverLookupProviderChange={setCoverLookupProvider}
+        onSearchChange={setSearchQuery}
+        onArtistFilterChange={setArtistFilter}
+        onSelectTrack={selectTrackById}
+        onImportFiles={importLocalFiles}
+        onPrev={prevTrack}
+        onTogglePlay={togglePlay}
+        onNext={nextTrack}
+        onSeek={seekTrack}
+        onVolumeChange={handleVolumeChange}
+        onToggleShuffle={toggleShuffle}
+        onCycleRepeat={cycleRepeat}
+        onClearQueue={clearQueue}
+      />
 
-      <nav className="mobile-nav" aria-label="Primary navigation">
-        <button
-          type="button"
-          className={activeScreen === 'library' ? 'is-active' : ''}
-          onClick={() => setActiveScreen('library')}
-        >
-          Library
-        </button>
-        <button
-          type="button"
-          className={activeScreen === 'player' ? 'is-active' : ''}
-          onClick={() => setActiveScreen('player')}
-        >
-          Player
-        </button>
-        <button
-          type="button"
-          className={activeScreen === 'queue' ? 'is-active' : ''}
-          onClick={() => setActiveScreen('queue')}
-        >
-          Queue
-        </button>
-      </nav>
-
-      <section
-        className={`mobile-screen mobile-screen-library ${activeScreen === 'library' ? 'is-visible' : ''}`}
-      >
-        <aside className="panel panel-library" aria-label="Library">
-          <LibraryPanel
-            tracks={filteredTracks}
-            activeTrackId={currentTrack?.id ?? null}
-            allowOnlineCoverLookup={allowOnlineCoverLookup}
-            coverLookupProvider={coverLookupProvider}
-            searchQuery={searchQuery}
-            artistFilter={artistFilter}
-            artistOptions={artistOptions}
-            onToggleOnlineCoverLookup={setAllowOnlineCoverLookup}
-            onCoverLookupProviderChange={setCoverLookupProvider}
-            onSearchChange={setSearchQuery}
-            onArtistFilterChange={setArtistFilter}
-            onSelectTrack={selectTrackById}
-            onImportFiles={importLocalFiles}
-          />
-        </aside>
-      </section>
-
-      <section
-        className={`mobile-screen mobile-screen-player ${activeScreen === 'player' ? 'is-visible' : ''}`}
-      >
-        <section className="panel panel-player" aria-label="Now playing">
-          <NowPlayingCard
-            currentTrack={currentTrack}
-            isPlaying={isPlaying}
-            currentTime={currentTime}
-            duration={duration}
-            volume={volume}
-            shuffleEnabled={shuffleEnabled}
-            repeatMode={repeatMode}
-            onPrev={prevTrack}
-            onTogglePlay={togglePlay}
-            onNext={nextTrack}
-            onSeek={seekTrack}
-            onVolumeChange={handleVolumeChange}
-            onToggleShuffle={toggleShuffle}
-            onCycleRepeat={cycleRepeat}
-          />
-        </section>
-      </section>
-
-      <section
-        className={`mobile-screen mobile-screen-queue ${activeScreen === 'queue' ? 'is-visible' : ''}`}
-      >
-        <aside className="panel panel-queue" aria-label="Queue">
-          <QueuePanel
-            tracks={tracks}
-            activeTrackId={currentTrack?.id ?? null}
-            onSelectTrack={selectTrackById}
-            onClearQueue={clearQueue}
-          />
-        </aside>
-      </section>
-
-      <section className="app-shell" aria-label="Desktop layout">
-        <aside className="panel panel-library" aria-label="Library">
-          <LibraryPanel
-            tracks={filteredTracks}
-            activeTrackId={currentTrack?.id ?? null}
-            allowOnlineCoverLookup={allowOnlineCoverLookup}
-            coverLookupProvider={coverLookupProvider}
-            searchQuery={searchQuery}
-            artistFilter={artistFilter}
-            artistOptions={artistOptions}
-            onToggleOnlineCoverLookup={setAllowOnlineCoverLookup}
-            onCoverLookupProviderChange={setCoverLookupProvider}
-            onSearchChange={setSearchQuery}
-            onArtistFilterChange={setArtistFilter}
-            onSelectTrack={selectTrackById}
-            onImportFiles={importLocalFiles}
-          />
-        </aside>
-
-        <section className="panel panel-player" aria-label="Now playing">
-          <NowPlayingCard
-            currentTrack={currentTrack}
-            isPlaying={isPlaying}
-            currentTime={currentTime}
-            duration={duration}
-            volume={volume}
-            shuffleEnabled={shuffleEnabled}
-            repeatMode={repeatMode}
-            onPrev={prevTrack}
-            onTogglePlay={togglePlay}
-            onNext={nextTrack}
-            onSeek={seekTrack}
-            onVolumeChange={handleVolumeChange}
-            onToggleShuffle={toggleShuffle}
-            onCycleRepeat={cycleRepeat}
-          />
-        </section>
-
-        <aside className="panel panel-queue" aria-label="Queue">
-          <QueuePanel
-            tracks={tracks}
-            activeTrackId={currentTrack?.id ?? null}
-            onSelectTrack={selectTrackById}
-            onClearQueue={clearQueue}
-          />
-        </aside>
-      </section>
+      <DesktopWorkspace
+        activeScreen={activeScreen}
+        themeMode={themeMode}
+        libraryViewMode={libraryViewMode}
+        favoriteCount={favoriteTrackIds.size}
+        isDesktopSplitMode={isDesktopSplitMode}
+        showDiscoveryDashboard={showDiscoveryDashboard}
+        tracks={tracks}
+        filteredTracks={filteredTracks}
+        currentTrack={currentTrack}
+        isPlaying={isPlaying}
+        currentTime={currentTime}
+        duration={duration}
+        volume={volume}
+        shuffleEnabled={shuffleEnabled}
+        repeatMode={repeatMode}
+        allowOnlineCoverLookup={allowOnlineCoverLookup}
+        coverLookupProvider={coverLookupProvider}
+        artistFilter={artistFilter}
+        artistOptions={artistOptions}
+        isTrackFavorite={(trackId) => favoriteTrackIds.has(trackId)}
+        onOpenScreen={setActiveScreen}
+        onShowAllTracks={() => setLibraryViewMode('all')}
+        onShowFavorites={() => setLibraryViewMode('favorites')}
+        onToggleTheme={toggleThemeMode}
+        onAddMusic={() => {
+          sidebarFileInputRef.current?.click()
+        }}
+        onSelectTrack={selectTrackById}
+        onPrev={prevTrack}
+        onTogglePlay={togglePlay}
+        onNext={nextTrack}
+        onSeek={seekTrack}
+        onVolumeChange={handleVolumeChange}
+        onToggleShuffle={toggleShuffle}
+        onCycleRepeat={cycleRepeat}
+        onToggleTrackFavorite={toggleTrackFavorite}
+        onToggleOnlineCoverLookup={setAllowOnlineCoverLookup}
+        onCoverLookupProviderChange={setCoverLookupProvider}
+        onSearchChange={setSearchQuery}
+        onArtistFilterChange={setArtistFilter}
+        onImportFiles={importLocalFiles}
+        onClearQueue={clearQueue}
+        searchQuery={searchQuery}
+      />
     </main>
   )
 }

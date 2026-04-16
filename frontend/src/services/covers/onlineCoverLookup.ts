@@ -1,6 +1,15 @@
 import type { CoverLookupProvider } from '../../types/player'
 
-const coverCache = new Map<string, { coverUrl?: string; source?: 'online' }>()
+type CoverCacheEntry = {
+  coverUrl?: string
+  source?: 'online'
+  expiresAt: number
+}
+
+const POSITIVE_CACHE_TTL_MS = 1000 * 60 * 60 * 6
+const NEGATIVE_CACHE_TTL_MS = 1000 * 60 * 5
+
+const coverCache = new Map<string, CoverCacheEntry>()
 
 function normalizeText(value: string) {
   return value
@@ -19,6 +28,13 @@ type LookupInput = {
 type LookupResult = {
   coverUrl?: string
   source?: 'online'
+}
+
+function buildCacheEntry(result: LookupResult, ttlMs: number): CoverCacheEntry {
+  return {
+    ...result,
+    expiresAt: Date.now() + ttlMs,
+  }
 }
 
 async function lookupInItunes(title: string, artist: string) {
@@ -92,13 +108,16 @@ export async function findOnlineCover({
   }
 
   const cacheKey = `${provider}::${normalizedArtist}::${normalizedTitle}`
-  if (coverCache.has(cacheKey)) {
-    return (
-      coverCache.get(cacheKey) ?? {
-        coverUrl: undefined,
-        source: undefined,
+  const cached = coverCache.get(cacheKey)
+  if (cached) {
+    if (cached.expiresAt > Date.now()) {
+      return {
+        coverUrl: cached.coverUrl,
+        source: cached.source,
       }
-    )
+    }
+
+    coverCache.delete(cacheKey)
   }
 
   try {
@@ -116,17 +135,23 @@ export async function findOnlineCover({
           coverUrl,
           source: 'online' as const,
         }
-        coverCache.set(cacheKey, result)
+        coverCache.set(cacheKey, buildCacheEntry(result, POSITIVE_CACHE_TTL_MS))
         return result
       }
     }
 
     const emptyResult = { source: undefined, coverUrl: undefined }
-    coverCache.set(cacheKey, emptyResult)
+    coverCache.set(
+      cacheKey,
+      buildCacheEntry(emptyResult, NEGATIVE_CACHE_TTL_MS),
+    )
     return emptyResult
   } catch {
     const emptyResult = { source: undefined, coverUrl: undefined }
-    coverCache.set(cacheKey, emptyResult)
+    coverCache.set(
+      cacheKey,
+      buildCacheEntry(emptyResult, NEGATIVE_CACHE_TTL_MS),
+    )
     return emptyResult
   }
 }

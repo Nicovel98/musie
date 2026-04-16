@@ -15,6 +15,8 @@ function renderLibraryPanel(onImportFiles = vi.fn()) {
       searchQuery=""
       artistFilter="all"
       artistOptions={[]}
+      isTrackFavorite={vi.fn(() => false)}
+      onToggleTrackFavorite={vi.fn()}
       onToggleOnlineCoverLookup={vi.fn()}
       onCoverLookupProviderChange={vi.fn()}
       onSearchChange={vi.fn()}
