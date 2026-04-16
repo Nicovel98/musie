@@ -87,7 +87,16 @@ export function LibraryPanel({
   function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
     const files = event.target.files
     if (!files || files.length === 0) return
-    onImportFiles(Array.from(files))
+
+    const audioFiles = Array.from(files).filter((file) =>
+      file.type.startsWith('audio/'),
+    )
+    if (audioFiles.length === 0) {
+      event.target.value = ''
+      return
+    }
+
+    onImportFiles(audioFiles)
     event.target.value = ''
   }
 
