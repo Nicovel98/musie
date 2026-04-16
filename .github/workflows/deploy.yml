@@ -6,6 +6,11 @@ on:
     paths:
       - "frontend/**"
       - ".github/workflows/deploy.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
 permissions:
@@ -39,6 +44,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Run tests
+        run: npm run test
+
       - name: Build
         run: |
           # For project pages, assets must use the repository base path.
@@ -53,6 +61,7 @@ jobs:
           path: frontend/dist
 
   deploy:
+    if: github.event_name != 'pull_request'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

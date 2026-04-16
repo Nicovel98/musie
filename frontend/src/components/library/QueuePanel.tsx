@@ -43,9 +43,15 @@ export function QueuePanel({
           <li
             key={track.id}
             className={activeTrackId === track.id ? 'is-active' : ''}
-            onClick={() => onSelectTrack(track.id)}
           >
-            {track.title}
+            <button
+              type="button"
+              className="queue-track-btn"
+              onClick={() => onSelectTrack(track.id)}
+              aria-label={`Reproducir ${track.title}`}
+            >
+              {track.title}
+            </button>
           </li>
         ))}
 

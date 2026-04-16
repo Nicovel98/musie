@@ -120,6 +120,7 @@ export function AppShell() {
   const localObjectUrlsRef = useRef<Set<string>>(new Set())
   const pendingResumeTimeRef = useRef(savedSession?.currentTime ?? 0)
   const pendingResumeTrackIdRef = useRef(savedSession?.currentTrackId ?? null)
+  const pendingTrackRestoreRef = useRef(savedSession?.currentTrackId ?? null)
 
   const currentTrack = tracks[currentTrackIndex] ?? null
 
@@ -337,6 +338,17 @@ export function AppShell() {
     }
   }, [])
 
+  useEffect(() => {
+    const pendingTrackId = pendingTrackRestoreRef.current
+    if (!pendingTrackId || tracks.length === 0) return
+
+    const resumedTrackIndex = tracks.findIndex((track) => track.id === pendingTrackId)
+    if (resumedTrackIndex === -1) return
+
+    setCurrentTrackIndex(resumedTrackIndex)
+    pendingTrackRestoreRef.current = null
+  }, [tracks])
+
   const importLocalFiles = useCallback(
     async (files: File[]) => {
       if (files.length === 0) return
@@ -473,8 +485,7 @@ export function AppShell() {
   const roundedCurrentTime = Math.floor(currentTime)
 
   useEffect(() => {
-    const persistedTrackId =
-      currentTrack?.sourceType === 'bundle' ? currentTrack.id : null
+    const persistedTrackId = currentTrack?.id ?? null
 
     savePlayerSession({
       volume,
