@@ -2,17 +2,19 @@
 
 Este documento concentra la planificación de evolución de Musie hacia un reproductor local-first moderno, escalable y preparado para Android.
 
-## 📊 Estado General (Abril 2026)
+## 📊 Estado General (27 de Abril 2026)
+
+**Fase Actual:** Semana 3, Día 1 (AudioEngine Implementation - Web Audio API)
 
 | Componente | Estado | Notas |
 | --- | --- | --- |
 | **Base React + TS** | ✅ Hecho | Vite, ESLint, Prettier, Husky configurados |
 | **Reproducción local** | ✅ Hecho | Play/pause/next/prev/seek/volumen funcional |
 | **Biblioteca + Búsqueda** | ✅ Hecho | Metadatos normalizados, filtros, cola con reanudación |
-| **Web Audio API** | 🚧 En progreso | Pipeline de audio, ecualizador, presets pendientes |
-| **Testing** | 🟡 Parcial | 2 tests básicos; necesita cobertura integral |
+| **Web Audio API** | � En progreso | Implementando AudioEngine y presets |
+| **Testing** | 🟡 Parcial | 2 tests básicos; upgrade a >80% en Semana 3 |
 | **Mobile (Capacitor)** | 📅 Pendiente | Después de Semana 3 completada |
-| **Vite config** | 🟡 Incompleto | Falta base path para GitHub Pages |
+| **Vite config** | 🟡 Incompleto | Falta base path para GitHub Pages (Semana 3) |
 
 ## 🎯 Objetivo del Mes
 
@@ -39,10 +41,11 @@ Meta: base limpia, mantenible y lista para crecimiento.
 6. ✅ Implementar biblioteca local (file input + drag and drop desktop)
 7. ✅ Persistir estado básico (tema, volumen, última pista)
 
-### Semana 2 - Biblioteca y UX ✅ (Completada)
+### Semana 2 - Biblioteca y UX ✅ (Completada - Día 8: Cierre y Documentación)
 
 Meta: experiencia local-first estable y fluida.
 
+**Entregables completados:**
 1. ✅ Normalizar tracks y metadatos (título, artista, duración, cover)
 2. ✅ Búsqueda y orden de biblioteca
 3. ✅ Cola de reproducción y reanudación de sesión
@@ -52,169 +55,223 @@ Meta: experiencia local-first estable y fluida.
 7. ✅ Configurar GitHub Actions para build y deploy automático
 8. ✅ Documentar URL pública de demo y limitaciones en README
 
-### Semana 3 - Web Audio API, Presets y Refactorización 🚧 (En Progreso)
+**Día 8 - Cierre y Preparación para Semana 3:**
+- ✅ Revisión exhaustiva del proyecto completada
+- ✅ Documentación actualizada: ROADMAP.md, MEJORAS_IDENTIFICADAS.md, SEMANA3_CHECKLIST.md
+- ✅ Resumen ejecutivo creado (RESUMEN_REVISION.md)
+- ✅ Identificadas 10 mejoras en 6 áreas clave
+- ✅ KPIs y métricas definidas para Semana 3
+- ✅ Team briefing sobre AudioEngine y testing
+- ✅ Preparación de ambiente para Web Audio API
+
+### Semana 3 - Web Audio API, Presets y Refactorización 📅 (Próxima - Comienza Día 9)
+
+### Semana 3 - Web Audio API, Presets y Refactorización � (En Progreso - Día 1)
 
 Meta: Mejorar calidad de sonido, arquitectura interna y cobertura de testing.
 
-#### Parte A: Audio Engine (Días 1-2)
+**Semana 3 (7 días):**
 
-1. Crear `src/features/audio/audioEngine.ts`: AudioEngine tipado en TypeScript
-2. Pipeline recomendado: source → gain → eq → compressor (opcional) → destination
-3. Métodos principales:
-   - `initAudioContext()`: Crear/reutilizar contexto
-   - `attachAudioElement(element)`: Conectar elemento HTML
-   - `disconnect()`: Cleanup seguro
-   - `setFrequency(band, value)`: Actualizar EQ
-   - `setPreset(presetName)`: Aplicar preset
-4. Documentación JSDoc en cada método
+#### Día 1 - AudioEngine Setup y Estructura (HOY - Lunes)
 
-#### Parte B: Presets e Interfaz (Días 2-3)
+**Objetivos:**
+1. ✅ Habilitar TypeScript `strict: true` en `tsconfig.app.json`
+2. ✅ Crear estructura de carpetas:
+   - `src/features/audio/` (AudioEngine)
+   - `src/features/equalizer/` (presets)
+   - `src/types/audio.ts` (tipos)
+   - `src/test/mocks/` (mocks para testing)
 
-5. Definir presets iniciales en `src/features/equalizer/presets.ts`:
-   - **Flat**: Sin modificación (ganancia unitaria)
-   - **Vocal Boost**: +3dB mid (~1.5kHz)
-   - **Bass Boost**: +5dB low (~60Hz) + +3dB mid-bass (~250Hz)
-   - **Treble Boost**: +3dB high (~8kHz)
-   - **Instrumental Focus**: +2dB low, -2dB mid, +2dB high
+3. ✅ Crear template de AudioEngine en `src/features/audio/audioEngine.ts`
+4. ✅ Documentación inicial: tipos, interfaces, JSDoc
+5. ✅ Setup de mocks para AudioContext
 
-6. Control de clipping: `PresetBuilder` con validación de ganancia máxima (0dB)
-7. Crear componente `EqualizerPanel.tsx` con:
+**Deliverables:**
+- ✅ Estructura lista
+- ✅ AudioEngine interface definida
+- ✅ Sin errores TypeScript strict
+
+---
+
+#### Día 2 - AudioEngine Core Implementation (Martes)
+
+**Objetivos:**
+1. Implementar `initAudioContext()` 
+2. Implementar `attachAudioElement(element)`
+3. Implementar `disconnect()`
+4. Crear BiquadFilter nodes para EQ (5 bandas)
+5. Crear gain node para preamp
+
+**Deliverables:**
+- AudioEngine funcional para lectura
+- Métodos core testeados manualmente
+- Primera prueba en browser
+
+---
+
+#### Día 3 - Presets e Interfaz de Control (Miércoles)
+
+**Objetivos:**
+1. Definir 5 presets en `src/features/equalizer/presets.ts`
+2. Implementar `setPreset(presetName)` en AudioEngine
+3. Implementar `setFrequency(band, gain)` en AudioEngine
+4. Crear componente `EqualizerPanel.tsx` con:
    - Dropdown de presets
-   - Sliders por banda
+   - 5 sliders para bandas
    - Preamp slider
    - Reset button
    - Validación anti-clipping
 
-#### Parte C: Testing Integral (Días 3-4)
+**Deliverables:**
+- UI de ecualizador funcional
+- Cambio de presets funciona
+- Validación de clipping activa
 
-8. Restructurar tests en carpetas por features:
-   - `src/components/__tests__/`
-   - `src/features/__tests__/`
-   - `src/services/__tests__/`
+---
 
-9. Cubrir casos críticos con cobertura >80%:
-   - **Player controls**: play, pause, next, prev, seek
-   - **Importación de biblioteca**: single/múltiple archivos, validación
-   - **Persistencia**: localStorage/IndexedDB save/load
-   - **AudioEngine**: preset switching, frequency updates
-   - **trackNormalization**: parsing de metadatos, edge-cases
+#### Día 4 - Testing Setup y Unit Tests (Jueves)
 
-10. Crear mocks para AudioContext, IndexedDB, fetch
-11. Ejecutar: `npm run test` y validar >80%
+**Objetivos:**
+1. Crear mocks para AudioContext en `src/test/mocks/audioContext.mock.ts`
+2. Crear `src/features/audio/__tests__/audioEngine.test.ts`:
+   - Test: initialization
+   - Test: preset switching
+   - Test: frequency updates
+   - Test: clipping prevention
+3. Crear `src/features/equalizer/__tests__/presets.test.ts`
+4. Meta: >80% coverage para audio features
 
-#### Parte D: Refactorización Arquitectónica (Días 4-5)
+**Deliverables:**
+- ✅ Tests implementados
+- ✅ Coverage report: >80%
+- ✅ CI/CD green ✨
 
-12. Extraer custom hooks de `AppShell.tsx`:
-    - `useAudioPlayer()`: play/pause/seek, volumen, estado
-    - `useLibraryState()`: tracks, filtros, búsqueda
-    - `usePersistenceSession()`: save/load session
+---
 
-13. Crear `src/hooks/index.ts` para re-export centralizado
-14. Mejorar `src/services/storage/` con:
-    - Retry logic para fallos de IndexedDB
-    - Fallback a in-memory si IndexedDB no disponible
-    - Error handling robusto
+#### Día 5 - Refactorización - Custom Hooks (Viernes)
 
-15. Crear `src/ARCHITECTURE.md`: estructura, flujo de datos, patrones
-16. Crear `src/utils/errorBoundary.ts`: recuperación de errores
+**Objetivos:**
+1. Crear `src/hooks/useAudioPlayer.ts`:
+   - Extraer play/pause/seek logic de AppShell
+   - Manejar volumen, progreso, estado
+2. Crear `src/hooks/useLibraryState.ts`:
+   - Búsqueda, filtros, sort
+3. Crear `src/hooks/usePersistenceSession.ts`:
+   - Save/load de sesión
+4. Crear `src/hooks/index.ts` para re-export
+5. Refactorizar AppShell para usar hooks
 
-#### Parte E: Configuración y CI/CD (Día 5)
+**Deliverables:**
+- ✅ AppShell simplificado
+- ✅ Hooks reutilizables
+- ✅ Tests de hooks passing
 
-17. **Vite config**: Agregar base path para GitHub Pages
-    ```typescript
-    base: process.env.NODE_ENV === 'production' ? '/musie/' : '/',
-    ```
+---
 
-18. **ESLint mejorado**: Habilitar rules más estrictas
-19. **GitHub Actions**: Agregar `npm run test` antes de deploy
-20. **TypeScript estricto**: Activar `strict: true` en tsconfig
-21. **Husky pre-commit**: Incluir `npm run test` en hook
+#### Día 6 - Error Handling y Mejoras (Sábado)
 
-### Semana 4 - Optimizaciones, Capacitor y Google Play 📅 (Pendiente)
+**Objetivos:**
+1. Mejorar `src/services/storage/` con:
+   - Retry logic para IndexedDB
+   - Fallback a in-memory
+   - Error logging sin bloqueo
+2. Crear `src/utils/errorBoundary.ts`
+3. Implementar validación de archivos (audio MIME types)
+4. Agregar JSDoc a funciones críticas
+
+**Deliverables:**
+- ✅ Error handling robusto
+- ✅ Fallbacks implementados
+- ✅ Storage más resiliente
+
+---
+
+#### Día 7 - Documentación y Cierre de Semana 3 (Domingo)
+
+**Objetivos:**
+1. Crear `src/ARCHITECTURE.md`:
+   - Estructura de carpetas
+   - Flujo de datos
+   - Patrones usados
+   - Diagrama simple ASCII
+2. Crear `CONTRIBUTING.md` completo:
+   - Setup instructions
+   - Testing guide
+   - PR workflow
+   - Code style
+3. Actualizar README.md con nueva versión
+4. Tag versión en Git: `git tag -a v2.0.0-audio-engine`
+
+**Deliverables:**
+- ✅ Documentación completa
+- ✅ Guía para contribuidores
+- ✅ Ready para Semana 4
+
+---
+
+### Semana 4 - Optimizaciones, Capacitor y Google Play 📅 (Próxima - Comienza Día 8)
 
 Meta: Primera build Android funcional + optimizaciones de performance.
 
-#### Parte A: Optimizaciones de Performance (Días 1-2)
+### Semana 4 - Optimizaciones, Capacitor y Google Play 📅 (Próxima - Comienza Día 8)
 
-1. **Web Workers** para trackNormalization:
-   - Crear `src/workers/trackNormalizer.worker.ts`
-   - Descargar parsing de MP3 del hilo principal
-   - Medir impacto en tiempos de import
+Meta: Primera build Android funcional + optimizaciones de performance.
 
-2. **Virtualización de listas** (si >500 tracks):
-   - Implementar `react-virtual` en `LibraryPanel.tsx`
-   - Medir scroll performance
+**Semana 4 (7 días):**
 
-3. **Lazy loading de covers**:
-   - Cargar bajo demanda con intersection observer
-   - Limitar requests simultáneos a 3-5
+#### Día 1 - Web Workers Setup (Lunes)
 
-4. **Memoización agresiva**:
-   - `useMemo()` para filtros
-   - `React.memo()` para componentes de lista
+1. Crear `src/workers/trackNormalizer.worker.ts`
+2. Descargar parsing de MP3 del hilo principal
+3. Implementar comunicación worker ↔ main thread
+4. Medir: import de 100 tracks antes/después
+5. Meta: <2 segundos
 
-#### Parte B: Capacitor Integration (Días 2-4)
+#### Día 2 - Virtualización de Listas (Martes)
 
-5. Instalar Capacitor:
-   ```bash
-   npm install @capacitor/core @capacitor/cli
-   npx cap init
-   ```
+1. Instalar y configurar `react-window`
+2. Implementar en `LibraryPanel.tsx`
+3. Pruebas con 1000+ tracks
+4. Meta: 60 FPS scroll
 
-6. Configurar `capacitor.config.ts`:
-   ```typescript
-   const config: CapacitorConfig = {
-     appId: 'com.nicovel98.musie',
-     appName: 'Musie',
-     webDir: 'dist',
-   }
-   ```
+#### Día 3 - Lazy Loading y Optimizaciones (Miércoles)
 
-7. Generar plataforma Android:
-   ```bash
-   npx cap add android
-   ```
+1. Intersection Observer para covers
+2. Limitar requests simultáneos a 3-5
+3. Memoización: `useMemo()`, `React.memo()`
+4. Validación anti-clipping visual
 
-8. Configurar permisos en `AndroidManifest.xml`:
-   - READ_MEDIA_AUDIO (Android 13+)
-   - READ_MEDIA_IMAGES
-   - READ_EXTERNAL_STORAGE (Android <13)
+#### Día 4 - Capacitor Setup (Jueves)
 
-9. Generar keystore:
-   ```bash
-   keytool -genkey -v -keystore musie-release-key.keystore \
-     -keyalg RSA -keysize 2048 -validity 10000
-   ```
+1. Instalar Capacitor
+2. Configurar `capacitor.config.ts`
+3. Generar plataforma Android
+4. Configurar permisos en `AndroidManifest.xml`
 
-10. Generar AAB firmado:
-    ```bash
-    cd android && ./gradlew bundleRelease
-    ```
+#### Día 5 - Android Build y Firma (Viernes)
 
-#### Parte C: Play Console y QA (Días 4-5)
+1. Generar keystore
+2. Configurar gradle para firma
+3. Generar AAB
+4. Probar en dispositivo real
 
-11. Crear app en Google Play Console
-12. Cargar AAB (v1.0.0, versionCode 1)
-13. Escribir descripción, screenshots, política de privacidad
-14. Invitar testers internos, recopilar feedback
-15. QA Checklist:
-    - ✅ Importar canciones (local, drag-drop)
-    - ✅ Play, pause, next, prev, seek
-    - ✅ Volumen, shuffle, repeat
-    - ✅ Presets de audio
-    - ✅ Reanudación de sesión
-    - ✅ Búsqueda y filtros
-    - ✅ Tema light/dark
-    - ✅ Permisos READ_MEDIA_AUDIO
+#### Día 6 - Google Play Console (Sábado)
 
-16. Fixes críticos y optimizaciones
+1. Crear app en Play Console
+2. Cargar AAB (v1.0.0)
+3. Escribir descripción y screenshots
+4. Invitar testers internos
 
-#### Parte D: Documentación Final (Día 5)
+#### Día 7 - Cierre y Release (Domingo)
 
-17. Crear `CONTRIBUTING.md`: setup, testing, PR guidelines
-18. Actualizar `README.md` con instrucciones para build Android
-19. Tag versión: `git tag -a v1.0.0`
-20. Celebrar primer release en testing
+1. QA final checklist
+2. Documentación de deployment
+3. Tag v3.0.0 en Git
+4. Celebrar primer release 🎉
+
+---
+
+### Semana 5+ - Futuro 📅 (Próximas iteraciones)
 
 ---
 
