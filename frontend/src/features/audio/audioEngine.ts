@@ -207,6 +207,99 @@ export class AudioEngine {
   isReady(): boolean {
     return this.isInitialized && this.audioContext?.state === 'running'
   }
+
+  /**
+   * Apply a preset by name
+   * @param presetName Name of preset to apply
+   */
+  applyPreset(presetName: string): void {
+    const preset = PRESETS[presetName as keyof typeof PRESETS]
+    if (preset) {
+      this.setPreset(preset)
+    }
+  }
+
+  /**
+   * Get a preset by name
+   * @param presetName Name of preset
+   * @returns Preset configuration or undefined
+   */
+  getPreset(presetName: string): { name: string; bands: number[]; preamp: number } | undefined {
+    const preset = PRESETS[presetName as keyof typeof PRESETS]
+    if (!preset) return undefined
+
+    return {
+      name: preset.name,
+      bands: preset.bands.map((b) => b.gain),
+      preamp: preset.preamp,
+    }
+  }
+
+  /**
+   * Reset all EQ bands to neutral (alias for reset)
+   */
+  resetBands(): void {
+    this.reset()
+  }
+}
+
+// Predefined EQ Presets
+export const PRESETS = {
+  Flat: {
+    name: 'Flat',
+    bands: [
+      { frequency: 60, gain: 0, Q: 1 },
+      { frequency: 250, gain: 0, Q: 1 },
+      { frequency: 1500, gain: 0, Q: 1 },
+      { frequency: 8000, gain: 0, Q: 1 },
+      { frequency: 12000, gain: 0, Q: 1 },
+    ],
+    preamp: 0,
+  },
+  Vocal: {
+    name: 'Vocal',
+    bands: [
+      { frequency: 60, gain: 2, Q: 1 },
+      { frequency: 250, gain: 4, Q: 1 },
+      { frequency: 1500, gain: 3, Q: 1 },
+      { frequency: 8000, gain: 2, Q: 1 },
+      { frequency: 12000, gain: 1, Q: 1 },
+    ],
+    preamp: -1,
+  },
+  Bass: {
+    name: 'Bass',
+    bands: [
+      { frequency: 60, gain: 8, Q: 1 },
+      { frequency: 250, gain: 4, Q: 1 },
+      { frequency: 1500, gain: 0, Q: 1 },
+      { frequency: 8000, gain: -2, Q: 1 },
+      { frequency: 12000, gain: -4, Q: 1 },
+    ],
+    preamp: 0,
+  },
+  Treble: {
+    name: 'Treble',
+    bands: [
+      { frequency: 60, gain: -4, Q: 1 },
+      { frequency: 250, gain: -2, Q: 1 },
+      { frequency: 1500, gain: 0, Q: 1 },
+      { frequency: 8000, gain: 4, Q: 1 },
+      { frequency: 12000, gain: 8, Q: 1 },
+    ],
+    preamp: -2,
+  },
+  Instrumental: {
+    name: 'Instrumental',
+    bands: [
+      { frequency: 60, gain: 2, Q: 1 },
+      { frequency: 250, gain: 1, Q: 1 },
+      { frequency: 1500, gain: -1, Q: 1 },
+      { frequency: 8000, gain: 1, Q: 1 },
+      { frequency: 12000, gain: 3, Q: 1 },
+    ],
+    preamp: -1,
+  },
 }
 
 // Singleton instance

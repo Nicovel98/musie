@@ -1,0 +1,306 @@
+/* Equalizer Panel Styles */
+
+.equalizer-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background: var(--bg-secondary, #1a1a1a);
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-color, #333);
+}
+
+/* Header */
+.equalizer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.equalizer-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary, #fff);
+}
+
+.clipping-warning {
+    padding: 0.5rem 1rem;
+    background: rgba(255, 107, 107, 0.15);
+    border: 1px solid rgba(255, 107, 107, 0.5);
+    border-radius: 0.25rem;
+    color: #ff6b6b;
+    font-size: 0.875rem;
+    font-weight: 600;
+    white-space: nowrap;
+    animation: pulse-warning 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-warning {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
+}
+
+/* Presets Section */
+.presets-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.presets-section>label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary, #bbb);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.presets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 0.5rem;
+}
+
+.preset-btn {
+    padding: 0.5rem 1rem;
+    background: var(--bg-tertiary, #242424);
+    border: 2px solid var(--border-color, #333);
+    border-radius: 0.25rem;
+    color: var(--text-primary, #fff);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.preset-btn:hover {
+    border-color: var(--accent-primary, #6b9bff);
+    background: var(--bg-secondary, #1a1a1a);
+}
+
+.preset-btn.active {
+    border-color: var(--accent-primary, #6b9bff);
+    background: var(--accent-primary, #6b9bff);
+    color: #000;
+}
+
+/* EQ Bands Section */
+.eq-bands-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.eq-bands-section>label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary, #bbb);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.eq-bands-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+    gap: 1rem;
+}
+
+.eq-band {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.band-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary, #bbb);
+    text-transform: uppercase;
+}
+
+.band-slider {
+    width: 100%;
+    height: 120px;
+    writing-mode: bt-lr;
+    -webkit-appearance: slider-vertical;
+    appearance: slider-vertical;
+    cursor: pointer;
+}
+
+.band-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    background: var(--accent-primary, #6b9bff);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.band-slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    background: var(--accent-primary, #6b9bff);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
+
+.band-value {
+    font-size: 0.75rem;
+    color: var(--text-primary, #fff);
+    min-width: 35px;
+    text-align: center;
+    font-weight: 600;
+}
+
+/* Preamp Section */
+.preamp-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color, #333);
+}
+
+.preamp-section>label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary, #bbb);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.preamp-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.preamp-slider {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--bg-tertiary, #242424);
+    outline: none;
+    cursor: pointer;
+    -webkit-appearance: none;
+}
+
+.preamp-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--accent-primary, #6b9bff);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.preamp-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: var(--accent-primary, #6b9bff);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
+
+.preamp-value {
+    min-width: 45px;
+    text-align: right;
+    font-weight: 600;
+    color: var(--text-primary, #fff);
+}
+
+/* Controls Section */
+.controls-section {
+    display: flex;
+    gap: 0.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color, #333);
+}
+
+.reset-btn {
+    flex: 1;
+    padding: 0.75rem 1.5rem;
+    background: var(--bg-tertiary, #242424);
+    border: 1px solid var(--border-color, #333);
+    border-radius: 0.25rem;
+    color: var(--text-primary, #fff);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.reset-btn:hover {
+    background: var(--accent-primary, #6b9bff);
+    border-color: var(--accent-primary, #6b9bff);
+    color: #000;
+}
+
+.reset-btn:active {
+    transform: scale(0.98);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .equalizer-panel {
+        padding: 1rem;
+        gap: 1rem;
+    }
+
+    .eq-bands-container {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 0.5rem;
+    }
+
+    .eq-band {
+        gap: 0.25rem;
+    }
+
+    .band-slider {
+        height: 80px;
+    }
+
+    .presets-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .equalizer-panel {
+        padding: 0.75rem;
+        gap: 0.75rem;
+    }
+
+    .eq-bands-container {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 0.25rem;
+    }
+
+    .band-slider {
+        height: 60px;
+    }
+
+    .presets-grid {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 0.25rem;
+    }
+
+    .preset-btn {
+        padding: 0.35rem 0.5rem;
+        font-size: 0.75rem;
+    }
+}

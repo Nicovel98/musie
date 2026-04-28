@@ -1,16 +1,16 @@
 import {
-  useCallback,
-  useDeferredValue,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type ChangeEvent,
 } from 'react'
 import { DesktopWorkspace } from './DesktopWorkspace'
 import { MobileWorkspace } from './MobileWorkspace'
-import type { CoverLookupProvider, RepeatMode, Track } from '../../types/player'
-import type { LibraryViewMode, ScreenKey, ThemeMode } from './layoutTypes'
+import { EqualizerPanel } from '../player/EqualizerPanel'
+import type { CoverLookupProvider, Track } from '../../types/player'
+import type { ScreenKey, ThemeMode } from './layoutTypes'
+import type { PlayerScreen } from '../../services/storage/playerSession'
+import { AudioEngine } from '../../features/audio/audioEngine'
 import './AppShell.css'
 import {
   createBundledTrack,
@@ -19,67 +19,13 @@ import {
   extractFileMetadata,
 } from '../../features/library/trackNormalization'
 import { findOnlineCover } from '../../services/covers/onlineCoverLookup'
-import {
-  loadPlayerSession,
-  savePlayerSession,
-  type PlayerScreen,
-} from '../../services/storage/playerSession'
-import {
-  clearLocalTracks,
-  getAllLocalTracks,
-  saveLocalTracks,
-} from '../../services/storage/libraryDb'
+import { useAudioPlayer } from '../../hooks/useAudioPlayer'
+import { useLibraryState } from '../../hooks/useLibraryState'
+import { usePersistenceSession } from '../../hooks/usePersistenceSession'
 
-const THEME_STORAGE_KEY = 'musie.theme.v1'
-const FAVORITES_STORAGE_KEY = 'musie.favorites.v1'
 const DESKTOP_SPLIT_MEDIA_QUERY = '(min-width: 1360px)'
 
-const savedSession = loadPlayerSession()
-
-function getInitialThemeMode(): ThemeMode {
-  if (typeof window === 'undefined') return 'light'
-
-  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
-  return storedTheme === 'light' ? 'light' : 'dark'
-}
-
-function getInitialFavoriteTrackIds() {
-  if (typeof window === 'undefined') return new Set<string>()
-
-  try {
-    const stored = window.localStorage.getItem(FAVORITES_STORAGE_KEY)
-    if (!stored) return new Set<string>()
-
-    const parsed = JSON.parse(stored) as unknown
-    if (!Array.isArray(parsed)) return new Set<string>()
-
-    const favoriteIds = parsed.filter(
-      (entry): entry is string => typeof entry === 'string' && entry.length > 0,
-    )
-
-    return new Set(favoriteIds)
-  } catch {
-    return new Set<string>()
-  }
-}
-
-function getInitialDesktopSplitMode() {
-  if (typeof window === 'undefined') return false
-  if (typeof window.matchMedia !== 'function') return false
-  return window.matchMedia(DESKTOP_SPLIT_MEDIA_QUERY).matches
-}
-
-function getInitialTrackIndex() {
-  if (!savedSession?.currentTrackId) return 0
-
-  const trackIndex = initialTracks.findIndex(
-    (track) => track.id === savedSession.currentTrackId,
-  )
-
-  return trackIndex === -1 ? 0 : trackIndex
-}
-
-const initialTracks: Track[] = [
+const initialTracks = [
   createBundledTrack({
     id: 'in-circles',
     title: 'Transistor - In Circles',
@@ -128,262 +74,70 @@ function readAudioDuration(src: string) {
 }
 
 export function AppShell() {
+  // Audio Engine singleton instance
+  const audioEngineRef = useRef<AudioEngine>(new AudioEngine())
+  
+  // Initialize custom hooks
+  const persistence = usePersistenceSession()
+  const savedSessionData = persistence.restoreSession()
+  
+  // Local state for all tracks (bundled + imported/restored local)
+  const [allTracks, setAllTracks] = useState<Track[]>(initialTracks)
+  
+  const audioPlayer = useAudioPlayer({
+    tracks: allTracks,
+    initialIsPlaying: false,
+    initialVolume: savedSessionData?.volume ?? 0.8,
+    initialShuffleEnabled: savedSessionData?.shuffleEnabled ?? false,
+    initialRepeatMode: savedSessionData?.repeatMode ?? 'all',
+    initialCurrentTrackIndex: savedSessionData?.currentTrackId 
+      ? allTracks.findIndex(t => t.id === savedSessionData.currentTrackId) 
+      : 0,
+  })
+
+  const libraryState = useLibraryState({
+    initialTracks,
+    initialSearchQuery: '',
+    initialArtistFilter: 'all',
+    initialLibraryViewMode: 'all',
+    initialFavoriteTrackIds: persistence.restoreFavorites(),
+  })
+
+  // Local state
   const [activeScreen, setActiveScreen] = useState<ScreenKey>(
-    (savedSession?.activeScreen as ScreenKey) ?? 'player',
+    (savedSessionData?.activeScreen as ScreenKey) ?? 'player',
   )
-  const [tracks, setTracks] = useState<Track[]>(initialTracks)
-  const [currentTrackIndex, setCurrentTrackIndex] =
-    useState(getInitialTrackIndex)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [currentTime, setCurrentTime] = useState(savedSession?.currentTime ?? 0)
-  const [duration, setDuration] = useState(0)
-  const [volume, setVolume] = useState(savedSession?.volume ?? 0.8)
-  const [shuffleEnabled, setShuffleEnabled] = useState(
-    savedSession?.shuffleEnabled ?? false,
-  )
-  const [repeatMode, setRepeatMode] = useState<RepeatMode>(
-    savedSession?.repeatMode ?? 'all',
-  )
+  const [themeMode, setThemeMode] = useState<ThemeMode>(persistence.restoreTheme)
   const [allowOnlineCoverLookup, setAllowOnlineCoverLookup] = useState(
-    savedSession?.allowOnlineCoverLookup ?? false,
+    savedSessionData?.allowOnlineCoverLookup ?? false,
   )
   const [coverLookupProvider, setCoverLookupProvider] =
-    useState<CoverLookupProvider>(savedSession?.coverLookupProvider ?? 'auto')
-  const [themeMode, setThemeMode] = useState<ThemeMode>(getInitialThemeMode)
-  const [libraryViewMode, setLibraryViewMode] = useState<LibraryViewMode>('all')
-  const [favoriteTrackIds, setFavoriteTrackIds] = useState<Set<string>>(
-    getInitialFavoriteTrackIds,
-  )
+    useState<CoverLookupProvider>(savedSessionData?.coverLookupProvider ?? 'auto')
   const [isDesktopSplitMode, setIsDesktopSplitMode] = useState(
-    getInitialDesktopSplitMode,
+    () => {
+      if (typeof window === 'undefined') return false
+      if (typeof window.matchMedia !== 'function') return false
+      return window.matchMedia(DESKTOP_SPLIT_MEDIA_QUERY).matches
+    }
   )
-  const [searchQuery, setSearchQuery] = useState('')
-  const [artistFilter, setArtistFilter] = useState('all')
-  const deferredSearchQuery = useDeferredValue(searchQuery)
 
-  const audioRef = useRef<HTMLAudioElement | null>(null)
   const sidebarFileInputRef = useRef<HTMLInputElement | null>(null)
   const localObjectUrlsRef = useRef<Set<string>>(new Set())
-  const pendingResumeTimeRef = useRef(savedSession?.currentTime ?? 0)
-  const pendingResumeTrackIdRef = useRef(savedSession?.currentTrackId ?? null)
-  const pendingTrackRestoreRef = useRef(savedSession?.currentTrackId ?? null)
 
-  const currentTrack = tracks[currentTrackIndex] ?? null
+  const screenTitle = activeScreen === 'library' ? 'Library' : activeScreen === 'queue' ? 'Queue' : 'Now Playing'
+  const showDiscoveryDashboard = activeScreen === 'library' && !audioPlayer.isPlaying
 
-  const artistOptions = useMemo(() => {
-    return Array.from(new Set(tracks.map((track) => track.artist))).sort(
-      (a, b) => a.localeCompare(b),
-    )
-  }, [tracks])
-
-  const filteredTracks = useMemo(() => {
-    const query = deferredSearchQuery.trim().toLowerCase()
-
-    return tracks.filter((track) => {
-      const favoriteMatches =
-        libraryViewMode === 'all' || favoriteTrackIds.has(track.id)
-
-      if (!favoriteMatches) return false
-
-      const artistMatches =
-        artistFilter === 'all' ||
-        track.artist.toLowerCase() === artistFilter.toLowerCase()
-
-      if (!artistMatches) return false
-      if (!query) return true
-
-      const titleMatches = track.title.toLowerCase().includes(query)
-      const artistTextMatches = track.artist.toLowerCase().includes(query)
-      return titleMatches || artistTextMatches
-    })
-  }, [tracks, deferredSearchQuery, artistFilter, libraryViewMode, favoriteTrackIds])
-
-  function toggleThemeMode() {
-    setThemeMode((prev) => (prev === 'dark' ? 'light' : 'dark'))
-  }
-
-  function toggleTrackFavorite(trackId: string) {
-    setFavoriteTrackIds((prev) => {
-      const next = new Set(prev)
-
-      if (next.has(trackId)) {
-        next.delete(trackId)
-      } else {
-        next.add(trackId)
-      }
-
-      return next
-    })
-  }
-
-  const screenTitle = useMemo(() => {
-    if (activeScreen === 'library') return 'Library'
-    if (activeScreen === 'queue') return 'Queue'
-    return 'Now Playing'
-  }, [activeScreen])
-
-  const showDiscoveryDashboard = activeScreen === 'library' && !isPlaying
-
-  function selectTrackById(trackId: string) {
-    const trackIndex = tracks.findIndex((track) => track.id === trackId)
-    if (trackIndex === -1) return
-
-    setCurrentTrackIndex(trackIndex)
-    setActiveScreen('player')
-    setIsPlaying(true)
-  }
-
-  const getNextIndex = useCallback(() => {
-    if (tracks.length === 0) return -1
-
-    if (shuffleEnabled) {
-      if (tracks.length === 1) return 0
-
-      let randomIndex = Math.floor(Math.random() * tracks.length)
-      while (randomIndex === currentTrackIndex) {
-        randomIndex = Math.floor(Math.random() * tracks.length)
-      }
-      return randomIndex
-    }
-
-    const isLastTrack = currentTrackIndex >= tracks.length - 1
-    if (isLastTrack) {
-      if (repeatMode === 'all') return 0
-      if (repeatMode === 'off') return -1
-    }
-
-    return Math.min(currentTrackIndex + 1, tracks.length - 1)
-  }, [tracks, shuffleEnabled, currentTrackIndex, repeatMode])
-
-  const getPrevIndex = useCallback(() => {
-    if (tracks.length === 0) return -1
-
-    if (shuffleEnabled) {
-      if (tracks.length === 1) return 0
-
-      let randomIndex = Math.floor(Math.random() * tracks.length)
-      while (randomIndex === currentTrackIndex) {
-        randomIndex = Math.floor(Math.random() * tracks.length)
-      }
-      return randomIndex
-    }
-
-    const isFirstTrack = currentTrackIndex <= 0
-    if (isFirstTrack) {
-      if (repeatMode === 'all') return tracks.length - 1
-      if (repeatMode === 'off') return -1
-    }
-
-    return Math.max(currentTrackIndex - 1, 0)
-  }, [tracks, shuffleEnabled, currentTrackIndex, repeatMode])
-
-  function nextTrack() {
-    const nextIndex = getNextIndex()
-    if (nextIndex === -1) {
-      setIsPlaying(false)
-      return
-    }
-
-    setCurrentTrackIndex(nextIndex)
-    setIsPlaying(true)
-  }
-
-  function prevTrack() {
-    const prevIndex = getPrevIndex()
-    if (prevIndex === -1) return
-
-    setCurrentTrackIndex(prevIndex)
-    setIsPlaying(true)
-  }
-
-  function togglePlay() {
-    if (!audioRef.current || tracks.length === 0) return
-    setIsPlaying((prev) => !prev)
-  }
-
-  function seekTrack(value: number) {
-    if (!audioRef.current) return
-    audioRef.current.currentTime = value
-    setCurrentTime(value)
-  }
-
-  function handleVolumeChange(value: number) {
-    setVolume(value)
-  }
-
-  function toggleShuffle() {
-    setShuffleEnabled((prev) => !prev)
-  }
-
-  function cycleRepeat() {
-    setRepeatMode((prev) => {
-      if (prev === 'off') return 'all'
-      if (prev === 'all') return 'one'
-      return 'off'
-    })
-  }
-
-  function clearQueue() {
-    localObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url))
-    localObjectUrlsRef.current.clear()
-
-    clearLocalTracks().catch(() => {
-      // Best effort cleanup for local cache.
-    })
-
-    setTracks(initialTracks)
-    setCurrentTrackIndex(0)
-    setCurrentTime(0)
-    setDuration(0)
-    setIsPlaying(false)
-  }
-
+  // Effect: handle theme changes
   useEffect(() => {
-    if (!audioRef.current) return
-    audioRef.current.volume = volume
-  }, [volume])
+    persistence.persistTheme(themeMode)
+  }, [themeMode, persistence])
 
+  // Effect: handle favorites persistence
   useEffect(() => {
-    const audioElement = audioRef.current
-    if (!audioElement) return
+    persistence.persistFavorites(libraryState.favoriteTrackIds)
+  }, [libraryState.favoriteTrackIds, persistence])
 
-    if (!currentTrack) {
-      audioElement.removeAttribute('src')
-      audioElement.load()
-      return
-    }
-
-    audioElement.src = currentTrack.src
-    audioElement.currentTime = 0
-
-    if (isPlaying) {
-      audioElement.play().catch(() => {
-        setIsPlaying(false)
-      })
-    }
-  }, [currentTrack, isPlaying])
-
-  useEffect(() => {
-    const localObjectUrls = localObjectUrlsRef.current
-
-    return () => {
-      localObjectUrls.forEach((url) => URL.revokeObjectURL(url))
-      localObjectUrls.clear()
-    }
-  }, [])
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', themeMode)
-    window.localStorage.setItem(THEME_STORAGE_KEY, themeMode)
-  }, [themeMode])
-
-  useEffect(() => {
-    window.localStorage.setItem(
-      FAVORITES_STORAGE_KEY,
-      JSON.stringify(Array.from(favoriteTrackIds)),
-    )
-  }, [favoriteTrackIds])
-
+  // Effect: handle desktop split mode
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return
 
@@ -400,11 +154,12 @@ export function AppShell() {
     }
   }, [])
 
+  // Effect: restore local tracks from IndexedDB
   useEffect(() => {
     let isDisposed = false
 
     async function restoreLocalTracks() {
-      const records = await getAllLocalTracks()
+      const records = await persistence.restoreLocalTracks()
       if (isDisposed || records.length === 0) return
 
       const restoredTracks = records.map((record) => {
@@ -417,7 +172,17 @@ export function AppShell() {
         })
       })
 
-      setTracks((prev) => {
+      setAllTracks((prev) => {
+        const existingIds = new Set(prev.map((track) => track.id))
+        const uniqueRestored = restoredTracks.filter(
+          (track) => !existingIds.has(track.id),
+        )
+
+        if (uniqueRestored.length === 0) return prev
+        return [...prev, ...uniqueRestored]
+      })
+
+      libraryState.setTracks((prev) => {
         const existingIds = new Set(prev.map((track) => track.id))
         const uniqueRestored = restoredTracks.filter(
           (track) => !existingIds.has(track.id),
@@ -435,26 +200,67 @@ export function AppShell() {
     return () => {
       isDisposed = true
     }
+  }, [libraryState, persistence])
+
+  // Effect: update current track if it's in restored library tracks
+  useEffect(() => {
+    if (!savedSessionData?.currentTrackId) return
+
+    // Check if the saved track is now in allTracks after restoration
+    const trackIndex = allTracks.findIndex(
+      (t) => t.id === savedSessionData.currentTrackId
+    )
+
+    if (trackIndex !== -1 && trackIndex !== audioPlayer.currentTrackIndex) {
+      // Track was found and needs to be selected
+      audioPlayer.setCurrentTrackIndex(trackIndex)
+    }
+  }, [allTracks, audioPlayer, savedSessionData?.currentTrackId])
+
+  // Effect: cleanup local object URLs on unmount
+  useEffect(() => {
+    return () => {
+      localObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url))
+      localObjectUrlsRef.current.clear()
+    }
   }, [])
 
+  // Effect: persist player session state
   useEffect(() => {
-    const pendingTrackId = pendingTrackRestoreRef.current
-    if (!pendingTrackId || tracks.length === 0) return
+    const roundedCurrentTime = Math.floor(audioPlayer.currentTime)
+    persistence.persistPlayerState({
+      volume: audioPlayer.volume,
+      shuffleEnabled: audioPlayer.shuffleEnabled,
+      repeatMode: audioPlayer.repeatMode,
+      allowOnlineCoverLookup,
+      coverLookupProvider,
+      activeScreen: activeScreen as PlayerScreen,
+      currentTrackId: audioPlayer.currentTrack?.id ?? null,
+      currentTime: audioPlayer.currentTrack?.id ? roundedCurrentTime : 0,
+    })
+  }, [
+    audioPlayer.volume,
+    audioPlayer.shuffleEnabled,
+    audioPlayer.repeatMode,
+    allowOnlineCoverLookup,
+    coverLookupProvider,
+    activeScreen,
+    audioPlayer.currentTrack,
+    audioPlayer.currentTime,
+    persistence,
+  ])
 
-    const resumedTrackIndex = tracks.findIndex((track) => track.id === pendingTrackId)
-    if (resumedTrackIndex === -1) return
+  function toggleThemeMode() {
+    setThemeMode((prev) => (prev === 'dark' ? 'light' : 'dark'))
+  }
 
-    setCurrentTrackIndex(resumedTrackIndex)
-    pendingTrackRestoreRef.current = null
-  }, [tracks])
+  async function importLocalFiles(files: File[]) {
+    if (files.length === 0) return
 
-  const importLocalFiles = useCallback(
-    async (files: File[]) => {
-      if (files.length === 0) return
+    const audioFiles = files.filter((file) => file.type.startsWith('audio/'))
+    if (audioFiles.length === 0) return
 
-      const audioFiles = files.filter((file) => file.type.startsWith('audio/'))
-      if (audioFiles.length === 0) return
-
+    try {
       const importedTracks = await Promise.all(
         audioFiles.map(async (file) => {
           const objectUrl = URL.createObjectURL(file)
@@ -502,18 +308,13 @@ export function AppShell() {
         }
       })
 
-      await saveLocalTracks(localRecords)
-
-      if (tracks.length === 0) {
-        setCurrentTrackIndex(0)
-      }
-
-      setTracks((prev) => [...prev, ...importedTracks])
-
+      await persistence.persistLocalTracks(localRecords)
+      libraryState.importTracks(importedTracks)
       setActiveScreen('library')
-    },
-    [tracks.length, allowOnlineCoverLookup, coverLookupProvider],
-  )
+    } catch (error) {
+      console.error('Failed to import files:', error)
+    }
+  }
 
   function handleSidebarImportChange(event: ChangeEvent<HTMLInputElement>) {
     const files = event.target.files
@@ -531,100 +332,22 @@ export function AppShell() {
     event.target.value = ''
   }
 
-  useEffect(() => {
-    const audioElement = audioRef.current
-    if (!audioElement) return
+  async function clearQueueAndReset() {
+    localObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url))
+    localObjectUrlsRef.current.clear()
 
-    if (isPlaying) {
-      audioElement.play().catch(() => {
-        setIsPlaying(false)
-      })
-    } else {
-      audioElement.pause()
-    }
-  }, [isPlaying])
+    await persistence.clearPersistedLocalTracks()
 
-  useEffect(() => {
-    const audioElement = audioRef.current
-    if (!audioElement) return
-
-    const onTimeUpdate = () => setCurrentTime(audioElement.currentTime)
-    const onLoadedMetadata = () => {
-      const loadedDuration = audioElement.duration || 0
-      setDuration(loadedDuration)
-
-      if (
-        pendingResumeTimeRef.current > 0 &&
-        currentTrack?.id &&
-        currentTrack.id === pendingResumeTrackIdRef.current
-      ) {
-        const safeResumeTime = Math.min(
-          pendingResumeTimeRef.current,
-          Math.max(loadedDuration - 0.5, 0),
-        )
-        audioElement.currentTime = safeResumeTime
-        setCurrentTime(safeResumeTime)
-        pendingResumeTimeRef.current = 0
-      }
-    }
-    const onEnded = () => {
-      if (repeatMode === 'one') {
-        audioElement.currentTime = 0
-        audioElement.play().catch(() => {
-          setIsPlaying(false)
-        })
-        return
-      }
-
-      const nextIndex = getNextIndex()
-      if (nextIndex === -1 || tracks.length === 0) {
-        setIsPlaying(false)
-        return
-      }
-
-      setCurrentTrackIndex(nextIndex)
-      setIsPlaying(true)
-    }
-
-    audioElement.addEventListener('timeupdate', onTimeUpdate)
-    audioElement.addEventListener('loadedmetadata', onLoadedMetadata)
-    audioElement.addEventListener('ended', onEnded)
-
-    return () => {
-      audioElement.removeEventListener('timeupdate', onTimeUpdate)
-      audioElement.removeEventListener('loadedmetadata', onLoadedMetadata)
-      audioElement.removeEventListener('ended', onEnded)
-    }
-  }, [repeatMode, tracks.length, getNextIndex, currentTrack?.id])
-
-  const roundedCurrentTime = Math.floor(currentTime)
-  useEffect(() => {
-    const persistedTrackId = currentTrack?.id ?? null
-
-    savePlayerSession({
-      volume,
-      shuffleEnabled,
-      repeatMode,
-      allowOnlineCoverLookup,
-      coverLookupProvider,
-      activeScreen: activeScreen as PlayerScreen,
-      currentTrackId: persistedTrackId,
-      currentTime: persistedTrackId ? roundedCurrentTime : 0,
-    })
-  }, [
-    volume,
-    shuffleEnabled,
-    repeatMode,
-    allowOnlineCoverLookup,
-    coverLookupProvider,
-    activeScreen,
-    currentTrack,
-    roundedCurrentTime,
-  ])
+    libraryState.setTracks(initialTracks)
+    audioPlayer.setCurrentTrackIndex(0)
+    audioPlayer.setCurrentTime(0)
+    audioPlayer.setDuration(0)
+    audioPlayer.setIsPlaying(false)
+  }
 
   return (
     <main className="app-shell-wrap">
-      <audio ref={audioRef} preload="metadata" />
+      <audio ref={audioPlayer.audioRef} preload="metadata" />
       <input
         ref={sidebarFileInputRef}
         className="file-input"
@@ -637,83 +360,103 @@ export function AppShell() {
       <MobileWorkspace
         activeScreen={activeScreen}
         screenTitle={screenTitle}
-        tracks={filteredTracks}
-        currentTrack={currentTrack}
-        isPlaying={isPlaying}
-        currentTime={currentTime}
-        duration={duration}
-        volume={volume}
-        shuffleEnabled={shuffleEnabled}
-        repeatMode={repeatMode}
+        tracks={libraryState.filteredTracks}
+        currentTrack={audioPlayer.currentTrack}
+        isPlaying={audioPlayer.isPlaying}
+        currentTime={audioPlayer.currentTime}
+        duration={audioPlayer.duration}
+        volume={audioPlayer.volume}
+        shuffleEnabled={audioPlayer.shuffleEnabled}
+        repeatMode={audioPlayer.repeatMode}
         allowOnlineCoverLookup={allowOnlineCoverLookup}
         coverLookupProvider={coverLookupProvider}
-        searchQuery={searchQuery}
-        artistFilter={artistFilter}
-        artistOptions={artistOptions}
-        isTrackFavorite={(trackId) => favoriteTrackIds.has(trackId)}
+        searchQuery={libraryState.searchQuery}
+        artistFilter={libraryState.artistFilter}
+        artistOptions={libraryState.artistOptions}
+        isTrackFavorite={(trackId) => libraryState.favoriteTrackIds.has(trackId)}
         onOpenScreen={setActiveScreen}
-        onToggleTrackFavorite={toggleTrackFavorite}
+        onToggleTrackFavorite={libraryState.toggleTrackFavorite}
         onToggleOnlineCoverLookup={setAllowOnlineCoverLookup}
         onCoverLookupProviderChange={setCoverLookupProvider}
-        onSearchChange={setSearchQuery}
-        onArtistFilterChange={setArtistFilter}
-        onSelectTrack={selectTrackById}
+        onSearchChange={libraryState.setSearchQuery}
+        onArtistFilterChange={libraryState.setArtistFilter}
+        onSelectTrack={(trackId) => {
+          const index = libraryState.selectTrackById(trackId)
+          if (index !== null) {
+            audioPlayer.selectTrackByIndex(index)
+            setActiveScreen('player')
+          }
+        }}
         onImportFiles={importLocalFiles}
-        onPrev={prevTrack}
-        onTogglePlay={togglePlay}
-        onNext={nextTrack}
-        onSeek={seekTrack}
-        onVolumeChange={handleVolumeChange}
-        onToggleShuffle={toggleShuffle}
-        onCycleRepeat={cycleRepeat}
-        onClearQueue={clearQueue}
+        onPrev={audioPlayer.prevTrack}
+        onTogglePlay={audioPlayer.togglePlay}
+        onNext={audioPlayer.nextTrack}
+        onSeek={audioPlayer.seekTrack}
+        onVolumeChange={audioPlayer.handleVolumeChange}
+        onToggleShuffle={audioPlayer.toggleShuffle}
+        onCycleRepeat={audioPlayer.cycleRepeat}
+        onClearQueue={clearQueueAndReset}
       />
 
       <DesktopWorkspace
         activeScreen={activeScreen}
         themeMode={themeMode}
-        libraryViewMode={libraryViewMode}
-        favoriteCount={favoriteTrackIds.size}
+        libraryViewMode={libraryState.libraryViewMode}
+        favoriteCount={libraryState.favoriteTrackIds.size}
         isDesktopSplitMode={isDesktopSplitMode}
         showDiscoveryDashboard={showDiscoveryDashboard}
-        tracks={tracks}
-        filteredTracks={filteredTracks}
-        currentTrack={currentTrack}
-        isPlaying={isPlaying}
-        currentTime={currentTime}
-        duration={duration}
-        volume={volume}
-        shuffleEnabled={shuffleEnabled}
-        repeatMode={repeatMode}
+        tracks={libraryState.tracks}
+        filteredTracks={libraryState.filteredTracks}
+        currentTrack={audioPlayer.currentTrack}
+        isPlaying={audioPlayer.isPlaying}
+        currentTime={audioPlayer.currentTime}
+        duration={audioPlayer.duration}
+        volume={audioPlayer.volume}
+        shuffleEnabled={audioPlayer.shuffleEnabled}
+        repeatMode={audioPlayer.repeatMode}
         allowOnlineCoverLookup={allowOnlineCoverLookup}
         coverLookupProvider={coverLookupProvider}
-        artistFilter={artistFilter}
-        artistOptions={artistOptions}
-        isTrackFavorite={(trackId) => favoriteTrackIds.has(trackId)}
+        artistFilter={libraryState.artistFilter}
+        artistOptions={libraryState.artistOptions}
+        isTrackFavorite={(trackId) => libraryState.favoriteTrackIds.has(trackId)}
         onOpenScreen={setActiveScreen}
-        onShowAllTracks={() => setLibraryViewMode('all')}
-        onShowFavorites={() => setLibraryViewMode('favorites')}
+        onShowAllTracks={() => libraryState.setLibraryViewMode('all')}
+        onShowFavorites={() => libraryState.setLibraryViewMode('favorites')}
         onToggleTheme={toggleThemeMode}
         onAddMusic={() => {
           sidebarFileInputRef.current?.click()
         }}
-        onSelectTrack={selectTrackById}
-        onPrev={prevTrack}
-        onTogglePlay={togglePlay}
-        onNext={nextTrack}
-        onSeek={seekTrack}
-        onVolumeChange={handleVolumeChange}
-        onToggleShuffle={toggleShuffle}
-        onCycleRepeat={cycleRepeat}
-        onToggleTrackFavorite={toggleTrackFavorite}
+        onSelectTrack={(trackId) => {
+          const index = libraryState.selectTrackById(trackId)
+          if (index !== null) {
+            audioPlayer.selectTrackByIndex(index)
+            setActiveScreen('player')
+          }
+        }}
+        onPrev={audioPlayer.prevTrack}
+        onTogglePlay={audioPlayer.togglePlay}
+        onNext={audioPlayer.nextTrack}
+        onSeek={audioPlayer.seekTrack}
+        onVolumeChange={audioPlayer.handleVolumeChange}
+        onToggleShuffle={audioPlayer.toggleShuffle}
+        onCycleRepeat={audioPlayer.cycleRepeat}
+        onToggleTrackFavorite={libraryState.toggleTrackFavorite}
         onToggleOnlineCoverLookup={setAllowOnlineCoverLookup}
         onCoverLookupProviderChange={setCoverLookupProvider}
-        onSearchChange={setSearchQuery}
-        onArtistFilterChange={setArtistFilter}
+        onSearchChange={libraryState.setSearchQuery}
+        onArtistFilterChange={libraryState.setArtistFilter}
         onImportFiles={importLocalFiles}
-        onClearQueue={clearQueue}
-        searchQuery={searchQuery}
+        onClearQueue={clearQueueAndReset}
+        searchQuery={libraryState.searchQuery}
       />
+
+      {/* Equalizer Panel - Audio Control Section */}
+      {activeScreen === 'player' && audioEngineRef.current && (
+        <aside className="equalizer-sidebar">
+          {/* eslint-disable-next-line react-hooks/rules-of-hooks */}
+          <EqualizerPanel audioEngine={audioEngineRef.current} />
+        </aside>
+      )}
     </main>
   )
 }
