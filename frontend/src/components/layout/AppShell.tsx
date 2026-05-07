@@ -19,9 +19,9 @@ import {
   extractFileMetadata,
 } from '../../features/library/trackNormalization'
 import { findOnlineCover } from '../../services/covers/onlineCoverLookup'
-import { useAudioPlayer } from '../../hooks/useAudioPlayer'
-import { useLibraryState } from '../../hooks/useLibraryState'
-import { usePersistenceSession } from '../../hooks/usePersistenceSession'
+import { usePlayer } from '../../hooks/usePlayer'
+import { useLibrary } from '../../hooks/useLibrary'
+import { useSettings } from '../../hooks/useSettings'
 
 const DESKTOP_SPLIT_MEDIA_QUERY = '(min-width: 1360px)'
 
@@ -77,42 +77,62 @@ export function AppShell() {
   // Audio Engine singleton instance
   const audioEngineRef = useRef<AudioEngine>(new AudioEngine())
   
-  // Initialize custom hooks
-  const persistence = usePersistenceSession()
-  const savedSessionData = persistence.restoreSession()
-  
   // Local state for all tracks (bundled + imported/restored local)
   const [allTracks, setAllTracks] = useState<Track[]>(initialTracks)
   
-  const audioPlayer = useAudioPlayer({
+  // Initialize consolidated hooks
+  const audioPlayer = usePlayer({
     tracks: allTracks,
     initialIsPlaying: false,
-    initialVolume: savedSessionData?.volume ?? 0.8,
-    initialShuffleEnabled: savedSessionData?.shuffleEnabled ?? false,
-    initialRepeatMode: savedSessionData?.repeatMode ?? 'all',
-    initialCurrentTrackIndex: savedSessionData?.currentTrackId 
-      ? allTracks.findIndex(t => t.id === savedSessionData.currentTrackId) 
-      : 0,
+    initialVolume: 0.8,
+    initialShuffleEnabled: false,
+    initialRepeatMode: 'all',
+    initialCurrentTrackIndex: 0,
   })
 
-  const libraryState = useLibraryState({
+  const libraryState = useLibrary({
     initialTracks,
     initialSearchQuery: '',
     initialArtistFilter: 'all',
     initialLibraryViewMode: 'all',
-    initialFavoriteTrackIds: persistence.restoreFavorites(),
   })
 
+  const { theme: themeMode, setTheme: setThemeMode } = useSettings()
+
   // Local state
-  const [activeScreen, setActiveScreen] = useState<ScreenKey>(
-    (savedSessionData?.activeScreen as ScreenKey) ?? 'player',
-  )
-  const [themeMode, setThemeMode] = useState<ThemeMode>(persistence.restoreTheme)
-  const [allowOnlineCoverLookup, setAllowOnlineCoverLookup] = useState(
-    savedSessionData?.allowOnlineCoverLookup ?? false,
-  )
+  const [activeScreen, setActiveScreen] = useState<ScreenKey>('player')
+  const [allowOnlineCoverLookup, setAllowOnlineCoverLookup] = useState(false)
   const [coverLookupProvider, setCoverLookupProvider] =
-    useState<CoverLookupProvider>(savedSessionData?.coverLookupProvider ?? 'auto')
+    useState<CoverLookupProvider>('auto')
+  
+  // Restore saved session data on mount
+  useEffect(() => {
+    async function restoreSession() {
+      const saved = await audioPlayer.restoreSession()
+      if (saved) {
+        audioPlayer.setVolume(saved.volume)
+        audioPlayer.setShuffleEnabled(saved.shuffleEnabled)
+        audioPlayer.setRepeatMode(saved.repeatMode)
+        setActiveScreen((saved.activeScreen as ScreenKey) ?? 'player')
+        setAllowOnlineCoverLookup(saved.allowOnlineCoverLookup)
+        setCoverLookupProvider(saved.coverLookupProvider)
+      }
+      
+      const savedFavorites = libraryState.restoreFavorites()
+      if (savedFavorites.size > 0) {
+        // Update favorites in library state
+        savedFavorites.forEach(id => {
+          if (!libraryState.favoriteTrackIds.has(id)) {
+            libraryState.toggleTrackFavorite(id)
+          }
+        })
+      }
+    }
+    
+    restoreSession().catch(() => {
+      // Silently fail
+    })
+  }, [])
   const [isDesktopSplitMode, setIsDesktopSplitMode] = useState(
     () => {
       if (typeof window === 'undefined') return false
@@ -129,13 +149,13 @@ export function AppShell() {
 
   // Effect: handle theme changes
   useEffect(() => {
-    persistence.persistTheme(themeMode)
-  }, [themeMode, persistence])
+    setThemeMode(themeMode)
+  }, [themeMode, setThemeMode])
 
   // Effect: handle favorites persistence
   useEffect(() => {
-    persistence.persistFavorites(libraryState.favoriteTrackIds)
-  }, [libraryState.favoriteTrackIds, persistence])
+    libraryState.persistFavorites(libraryState.favoriteTrackIds)
+  }, [libraryState.favoriteTrackIds, libraryState])
 
   // Effect: handle desktop split mode
   useEffect(() => {
@@ -159,7 +179,7 @@ export function AppShell() {
     let isDisposed = false
 
     async function restoreLocalTracks() {
-      const records = await persistence.restoreLocalTracks()
+      const records = await libraryState.restoreLocalTracks()
       if (isDisposed || records.length === 0) return
 
       const restoredTracks = records.map((record) => {
@@ -200,22 +220,7 @@ export function AppShell() {
     return () => {
       isDisposed = true
     }
-  }, [libraryState, persistence])
-
-  // Effect: update current track if it's in restored library tracks
-  useEffect(() => {
-    if (!savedSessionData?.currentTrackId) return
-
-    // Check if the saved track is now in allTracks after restoration
-    const trackIndex = allTracks.findIndex(
-      (t) => t.id === savedSessionData.currentTrackId
-    )
-
-    if (trackIndex !== -1 && trackIndex !== audioPlayer.currentTrackIndex) {
-      // Track was found and needs to be selected
-      audioPlayer.setCurrentTrackIndex(trackIndex)
-    }
-  }, [allTracks, audioPlayer, savedSessionData?.currentTrackId])
+  }, [libraryState])
 
   // Effect: cleanup local object URLs on unmount
   useEffect(() => {
@@ -228,7 +233,7 @@ export function AppShell() {
   // Effect: persist player session state
   useEffect(() => {
     const roundedCurrentTime = Math.floor(audioPlayer.currentTime)
-    persistence.persistPlayerState({
+    audioPlayer.persistPlayerState({
       volume: audioPlayer.volume,
       shuffleEnabled: audioPlayer.shuffleEnabled,
       repeatMode: audioPlayer.repeatMode,
@@ -247,11 +252,12 @@ export function AppShell() {
     activeScreen,
     audioPlayer.currentTrack,
     audioPlayer.currentTime,
-    persistence,
+    audioPlayer,
   ])
 
   function toggleThemeMode() {
-    setThemeMode((prev) => (prev === 'dark' ? 'light' : 'dark'))
+    const newTheme: ThemeMode = themeMode === 'dark' ? 'light' : 'dark'
+    setThemeMode(newTheme)
   }
 
   async function importLocalFiles(files: File[]) {
@@ -308,7 +314,7 @@ export function AppShell() {
         }
       })
 
-      await persistence.persistLocalTracks(localRecords)
+      await libraryState.persistLocalTracks(localRecords)
       libraryState.importTracks(importedTracks)
       setActiveScreen('library')
     } catch (error) {
@@ -336,7 +342,7 @@ export function AppShell() {
     localObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url))
     localObjectUrlsRef.current.clear()
 
-    await persistence.clearPersistedLocalTracks()
+    await libraryState.clearPersistedLocalTracks()
 
     libraryState.setTracks(initialTracks)
     audioPlayer.setCurrentTrackIndex(0)

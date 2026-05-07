@@ -13,7 +13,7 @@ import {
  */
 export interface UsePlayerReturn {
   // Audio element reference
-  audioRef: React.RefObject<HTMLAudioElement>
+  audioRef: React.RefObject<HTMLAudioElement | null>
 
   // Playback state
   isPlaying: boolean
@@ -232,7 +232,7 @@ export function usePlayer({
           shuffleEnabled,
           repeatMode,
           allowOnlineCoverLookup: true,
-          coverLookupProvider: 'deezer',
+          coverLookupProvider: 'auto',
           activeScreen: 'player' as PlayerScreen,
           currentTrackId: currentTrack.id,
           currentTime,

@@ -13,7 +13,7 @@ import {
   clearLocalTracks,
   getAllLocalTracks,
   saveLocalTracks,
-  type StoredTrack,
+  type LocalTrackRecord,
 } from '../services/storage/libraryDb'
 
 const FAVORITES_STORAGE_KEY = 'musie.favorites.v1'
@@ -43,8 +43,8 @@ export interface UseLibraryReturn {
   clearLibrary: () => void
 
   // Persistence methods
-  restoreLocalTracks: () => Promise<StoredTrack[]>
-  persistLocalTracks: (tracks: StoredTrack[]) => Promise<void>
+  restoreLocalTracks: () => Promise<LocalTrackRecord[]>
+  persistLocalTracks: (tracks: LocalTrackRecord[]) => Promise<void>
   clearPersistedLocalTracks: () => Promise<void>
   restoreFavorites: () => Set<string>
   persistFavorites: (favorites: Set<string>) => void
@@ -193,7 +193,7 @@ export function useLibrary({
   }
 
   // Persistence: restore local tracks from IndexedDB
-  async function restoreLocalTracks(): Promise<StoredTrack[]> {
+  async function restoreLocalTracks(): Promise<LocalTrackRecord[]> {
     try {
       const records = await getAllLocalTracks()
       return records
@@ -204,7 +204,7 @@ export function useLibrary({
   }
 
   // Persistence: save local tracks to IndexedDB
-  async function persistLocalTracks(tracksToSave: StoredTrack[]): Promise<void> {
+  async function persistLocalTracks(tracksToSave: LocalTrackRecord[]): Promise<void> {
     try {
       await saveLocalTracks(tracksToSave)
     } catch (error) {

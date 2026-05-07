@@ -61,8 +61,12 @@ export function useSettings(): UseSettingsReturn {
   }, [])
 
   const toggleTheme = useCallback(() => {
-    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'))
-  }, [setTheme])
+    setThemeState((prev: ThemeMode) => {
+      const newTheme = (prev === 'light' ? 'dark' : 'light') as ThemeMode
+      persistThemeInternal(newTheme)
+      return newTheme
+    })
+  }, [])
 
   return {
     theme,

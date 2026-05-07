@@ -11,9 +11,8 @@ const mockTracks: Track[] = [
     duration: 180,
     src: 'data:audio/mp3;base64,ID3',
     coverUrl: '',
-    coverSource: 'local',
+    coverSource: 'embedded',
     sizeBytes: 1000,
-    createdAt: Date.now(),
   },
   {
     id: 'track-2',
@@ -22,9 +21,8 @@ const mockTracks: Track[] = [
     duration: 200,
     src: 'data:audio/mp3;base64,ID3',
     coverUrl: '',
-    coverSource: 'local',
+    coverSource: 'embedded',
     sizeBytes: 2000,
-    createdAt: Date.now(),
   },
   {
     id: 'track-3',
@@ -33,22 +31,21 @@ const mockTracks: Track[] = [
     duration: 150,
     src: 'data:audio/mp3;base64,ID3',
     coverUrl: '',
-    coverSource: 'local',
+    coverSource: 'embedded',
     sizeBytes: 1500,
-    createdAt: Date.now(),
   },
 ]
 
 describe('useLibrary (consolidated hook)', () => {
   beforeEach(() => {
-    // Mock localStorage
+    // Mock localStorage - use window not global
     const localStorageMock = {
       getItem: vi.fn(),
       setItem: vi.fn(),
       removeItem: vi.fn(),
       clear: vi.fn(),
     }
-    global.localStorage = localStorageMock as any
+    window.localStorage = localStorageMock as any
 
     // Mock IndexedDB
     vi.mock('../services/storage/libraryDb', () => ({

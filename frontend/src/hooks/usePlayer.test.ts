@@ -11,9 +11,8 @@ const mockTracks: Track[] = [
     duration: 180,
     src: 'data:audio/mp3;base64,ID3',
     coverUrl: '',
-    coverSource: 'local',
+    coverSource: 'embedded',
     sizeBytes: 1000,
-    createdAt: Date.now(),
   },
   {
     id: 'track-2',
@@ -22,9 +21,8 @@ const mockTracks: Track[] = [
     duration: 200,
     src: 'data:audio/mp3;base64,ID3',
     coverUrl: '',
-    coverSource: 'local',
+    coverSource: 'embedded',
     sizeBytes: 2000,
-    createdAt: Date.now(),
   },
   {
     id: 'track-3',
@@ -33,9 +31,8 @@ const mockTracks: Track[] = [
     duration: 150,
     src: 'data:audio/mp3;base64,ID3',
     coverUrl: '',
-    coverSource: 'local',
+    coverSource: 'embedded',
     sizeBytes: 1500,
-    createdAt: Date.now(),
   },
 ]
 
@@ -46,14 +43,14 @@ describe('usePlayer (consolidated hook)', () => {
     vi.spyOn(HTMLMediaElement.prototype, 'addEventListener').mockImplementation(() => {})
     vi.spyOn(HTMLMediaElement.prototype, 'removeEventListener').mockImplementation(() => {})
     
-    // Mock localStorage
+    // Mock localStorage - don't use 'global'
     const localStorageMock = {
       getItem: vi.fn(),
       setItem: vi.fn(),
       removeItem: vi.fn(),
       clear: vi.fn(),
     }
-    global.localStorage = localStorageMock as any
+    window.localStorage = localStorageMock as any
   })
 
   afterEach(() => {
@@ -267,7 +264,7 @@ describe('usePlayer (consolidated hook)', () => {
           shuffleEnabled: true,
           repeatMode: 'one',
           allowOnlineCoverLookup: false,
-          coverLookupProvider: 'deezer',
+          coverLookupProvider: 'auto',
           activeScreen: 'player',
           currentTrackId: 'track-1',
           currentTime: 45,

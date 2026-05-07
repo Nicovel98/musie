@@ -4,7 +4,7 @@ import { useSettings } from './useSettings'
 
 describe('useSettings (consolidated hook)', () => {
   beforeEach(() => {
-    // Mock localStorage to return light theme by default
+    // Mock localStorage to return light theme by default - use window not global
     const localStorageMock = {
       getItem: vi.fn((key) => {
         if (key === 'musie.theme.v1') return 'light'
@@ -14,7 +14,7 @@ describe('useSettings (consolidated hook)', () => {
       removeItem: vi.fn(),
       clear: vi.fn(),
     }
-    global.localStorage = localStorageMock as any
+    window.localStorage = localStorageMock as any
 
     // Mock document.documentElement
     const mockElement = {
@@ -70,7 +70,7 @@ describe('useSettings (consolidated hook)', () => {
 
   describe('Theme Persistence', () => {
     it('should restore theme from localStorage', () => {
-      ;(global.localStorage.getItem as any).mockReturnValue('dark')
+      ;(window.localStorage.getItem as any).mockReturnValue('dark')
 
       const { result } = renderHook(() => useSettings())
 
@@ -78,7 +78,7 @@ describe('useSettings (consolidated hook)', () => {
     })
 
     it('should default to dark theme if localStorage is empty', () => {
-      ;(global.localStorage.getItem as any).mockReturnValue(null)
+      ;(window.localStorage.getItem as any).mockReturnValue(null)
 
       const { result } = renderHook(() => useSettings())
 
@@ -95,7 +95,7 @@ describe('useSettings (consolidated hook)', () => {
         result.current.setTheme('dark')
       })
 
-      expect(global.localStorage.setItem).toHaveBeenCalledWith(
+      expect((window.localStorage.setItem as any)).toHaveBeenCalledWith(
         'musie.theme.v1',
         'dark'
       )
@@ -134,7 +134,7 @@ describe('useSettings (consolidated hook)', () => {
 
   describe('Error Handling', () => {
     it('should handle localStorage errors gracefully', () => {
-      ;(global.localStorage.setItem as any).mockImplementation(() => {
+      ;(window.localStorage.setItem as any).mockImplementation(() => {
         throw new Error('Storage full')
       })
 
