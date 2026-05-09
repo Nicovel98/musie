@@ -4,8 +4,7 @@ import {
   useState,
   type ChangeEvent,
 } from 'react'
-import { DesktopWorkspace } from './DesktopWorkspace'
-import { MobileWorkspace } from './MobileWorkspace'
+import { Workspace } from './Workspace'
 import { EqualizerPanel } from '../player/EqualizerPanel'
 import type { CoverLookupProvider, Track } from '../../types/player'
 import type { ScreenKey, ThemeMode } from './layoutTypes'
@@ -363,54 +362,14 @@ export function AppShell() {
         onChange={handleSidebarImportChange}
       />
 
-      <MobileWorkspace
-        activeScreen={activeScreen}
-        screenTitle={screenTitle}
-        tracks={libraryState.filteredTracks}
-        currentTrack={audioPlayer.currentTrack}
-        isPlaying={audioPlayer.isPlaying}
-        currentTime={audioPlayer.currentTime}
-        duration={audioPlayer.duration}
-        volume={audioPlayer.volume}
-        shuffleEnabled={audioPlayer.shuffleEnabled}
-        repeatMode={audioPlayer.repeatMode}
-        allowOnlineCoverLookup={allowOnlineCoverLookup}
-        coverLookupProvider={coverLookupProvider}
-        searchQuery={libraryState.searchQuery}
-        artistFilter={libraryState.artistFilter}
-        artistOptions={libraryState.artistOptions}
-        isTrackFavorite={(trackId) => libraryState.favoriteTrackIds.has(trackId)}
-        onOpenScreen={setActiveScreen}
-        onToggleTrackFavorite={libraryState.toggleTrackFavorite}
-        onToggleOnlineCoverLookup={setAllowOnlineCoverLookup}
-        onCoverLookupProviderChange={setCoverLookupProvider}
-        onSearchChange={libraryState.setSearchQuery}
-        onArtistFilterChange={libraryState.setArtistFilter}
-        onSelectTrack={(trackId) => {
-          const index = libraryState.selectTrackById(trackId)
-          if (index !== null) {
-            audioPlayer.selectTrackByIndex(index)
-            setActiveScreen('player')
-          }
-        }}
-        onImportFiles={importLocalFiles}
-        onPrev={audioPlayer.prevTrack}
-        onTogglePlay={audioPlayer.togglePlay}
-        onNext={audioPlayer.nextTrack}
-        onSeek={audioPlayer.seekTrack}
-        onVolumeChange={audioPlayer.handleVolumeChange}
-        onToggleShuffle={audioPlayer.toggleShuffle}
-        onCycleRepeat={audioPlayer.cycleRepeat}
-        onClearQueue={clearQueueAndReset}
-      />
-
-      <DesktopWorkspace
+      <Workspace
         activeScreen={activeScreen}
         themeMode={themeMode}
         libraryViewMode={libraryState.libraryViewMode}
         favoriteCount={libraryState.favoriteTrackIds.size}
         isDesktopSplitMode={isDesktopSplitMode}
         showDiscoveryDashboard={showDiscoveryDashboard}
+        screenTitle={screenTitle}
         tracks={libraryState.tracks}
         filteredTracks={libraryState.filteredTracks}
         currentTrack={audioPlayer.currentTrack}
@@ -424,6 +383,7 @@ export function AppShell() {
         coverLookupProvider={coverLookupProvider}
         artistFilter={libraryState.artistFilter}
         artistOptions={libraryState.artistOptions}
+        searchQuery={libraryState.searchQuery}
         isTrackFavorite={(trackId) => libraryState.favoriteTrackIds.has(trackId)}
         onOpenScreen={setActiveScreen}
         onShowAllTracks={() => libraryState.setLibraryViewMode('all')}
@@ -453,7 +413,6 @@ export function AppShell() {
         onArtistFilterChange={libraryState.setArtistFilter}
         onImportFiles={importLocalFiles}
         onClearQueue={clearQueueAndReset}
-        searchQuery={libraryState.searchQuery}
       />
 
       {/* Equalizer Panel - Audio Control Section */}
