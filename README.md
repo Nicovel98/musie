@@ -6,13 +6,16 @@
 Musie busca ser la alternativa ligera y estética a los reproductores pesados actuales. Priorizamos:
 1. **Privacidad Absoluta:** Tus archivos nunca salen de tu dispositivo.
 2. **Fidelidad Sonora:** Control total mediante **Web Audio API** con ecualizador paramétrico.
-3. **Multiplataforma:** Una sola base de código para Web y Android mediante **Capacitor**.
+3. **Multiplataforma:** Una sola base de código.
 
 ## 🛠️ Stack Tecnológico
-- React 19 + Vite + TypeScript
+- React + Vite + Typescript + Tailwind
 - Web Audio API
 - IndexedDB para persistencia
-- Capacitor para mobile
+- Lucide React: Iconos minimalistas y ligeros (Heart, ChevronDown, Play, Pause).
+- Howler.js Para manejar el audio.
+- Web Audio API: crear el Visualizer, para analizar las frecuencias en tiempo real.
+- Framer Motion para animaciones suaves.
 
 ## 🚀 Quick Start
 
