@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import {
   Heart,
   MoreHorizontal,
@@ -8,10 +9,13 @@ import {
   Repeat,
   Shuffle,
   ChevronDown,
+  Moon,
+  Sun,
   Volume1,
   Volume2,
   VolumeX,
 } from 'lucide-react';
+import heroThumbnail from '../assets/hero.png';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { useVisualizer } from '../hooks/useVisualizer';
 
@@ -20,12 +24,26 @@ interface NowPlayingProps {
 }
 
 export const NowPlaying = ({ setView }: NowPlayingProps) => {
-  const { currentTrack, isPlaying, togglePlay, seek, duration, setSeek, volume, setVolume } =
-    usePlayerStore();
+  const [isLightMode, setIsLightMode] = useState(
+    document.documentElement.classList.contains('light')
+  );
+  const {
+    songs,
+    currentTrack,
+    lastTrack,
+    isPlaying,
+    togglePlay,
+    seek,
+    duration,
+    setSeek,
+    volume,
+    setVolume,
+    setTrack,
+  } = usePlayerStore();
 
   const audioData = useVisualizer();
 
-  if (!currentTrack) return null;
+  const featuredTrack = currentTrack ?? lastTrack ?? songs[songs.length - 1] ?? songs[0] ?? null;
 
   const formatTime = (s: number) =>
     `${Math.floor(s / 60)}:${Math.floor(s % 60)
@@ -34,8 +52,112 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
 
   const progressPercent = (seek / duration) * 100 || 0;
 
+  useEffect(() => {
+    const syncTheme = () => {
+      setIsLightMode(document.documentElement.classList.contains('light'));
+    };
+
+    window.addEventListener('themechange', syncTheme);
+    return () => window.removeEventListener('themechange', syncTheme);
+  }, []);
+
+  const toggleTheme = () => {
+    document.documentElement.classList.toggle('light');
+    window.dispatchEvent(new Event('themechange'));
+  };
+
+  if (!currentTrack) {
+    return (
+      <div className="flex-1 h-full flex flex-col items-center justify-between p-4 pb-[calc(4rem+env(safe-area-inset-bottom)+1rem)] md:p-10 relative overflow-hidden transition-colors duration-500 bg-[var(--bg-main)]">
+        <div className="absolute inset-0 -z-10 opacity-20 blur-[140px] scale-150 transition-all duration-1000">
+          <img
+            src={featuredTrack?.coverUrl || heroThumbnail}
+            alt=""
+            className="w-full h-full object-cover"
+          />
+        </div>
+
+        <div className="w-full max-w-4xl flex flex-col items-center justify-between gap-4 h-full">
+          <div className="w-full flex justify-between items-center shrink-0 px-2 py-2">
+            <button
+              onClick={() => setView('library')}
+              className="p-2 -ml-2 text-[var(--text-main)] opacity-40 hover:opacity-100 transition-all active:scale-90"
+            >
+              <ChevronDown size={32} strokeWidth={2.5} />
+            </button>
+            <span className="text-[10px] uppercase tracking-[0.5em] text-[var(--text-main)] opacity-30 font-black">
+              Now Playing
+            </span>
+            <button className="text-[var(--text-main)] opacity-40 hover:opacity-100 transition-colors">
+              <MoreHorizontal size={24} />
+            </button>
+          </div>
+
+          <div className="flex-1 w-full flex flex-col items-center justify-center gap-6 min-h-0">
+            <button
+              onClick={() => featuredTrack && setTrack(featuredTrack)}
+              className="group relative w-full max-w-[320px] aspect-square rounded-[40px] overflow-hidden border border-[var(--glass-border)] shadow-[0_40px_80px_rgba(0,0,0,0.35)] transition-transform duration-500 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <img
+                src={featuredTrack?.coverUrl || heroThumbnail}
+                alt={featuredTrack ? featuredTrack.title : 'Musie'}
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+              <div className="absolute left-4 right-4 bottom-4 flex items-end justify-between gap-3 text-left">
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-[0.5em] text-white/60 font-black">
+                    {featuredTrack ? 'Featured thumbnail' : 'Home'}
+                  </p>
+                  <h2 className="mt-2 text-2xl font-black text-white tracking-tighter truncate">
+                    {featuredTrack ? featuredTrack.title : 'Tu reproductor está listo'}
+                  </h2>
+                  <p className="text-sm text-white/70 font-semibold uppercase tracking-[0.25em] truncate">
+                    {featuredTrack ? featuredTrack.artist : 'Entra a Library para cargar música'}
+                  </p>
+                </div>
+                {featuredTrack ? (
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-black shadow-2xl transition-transform group-hover:scale-105">
+                    <Play size={20} fill="currentColor" className="ml-0.5" />
+                  </div>
+                ) : null}
+              </div>
+            </button>
+
+            <div className="max-w-md text-center space-y-3 px-6">
+              <h3 className="text-[clamp(1.35rem,4vw,2rem)] font-black tracking-tighter text-[var(--text-main)]">
+                Home
+              </h3>
+              <p className="text-sm md:text-base text-[var(--text-muted)] leading-relaxed">
+                {featuredTrack
+                  ? 'Toca el thumbnail para iniciar la reproducción y entrar al modo Now Playing.'
+                  : 'Sube o selecciona una canción desde Library para que aparezca aquí el thumbnail inicial.'}
+              </p>
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <button
+                  onClick={() => setView('library')}
+                  className="px-5 py-3 rounded-full bg-[var(--text-main)] text-[var(--bg-main)] font-black text-sm uppercase tracking-[0.2em] hover:scale-105 transition-transform"
+                >
+                  Ir a Library
+                </button>
+                {featuredTrack ? (
+                  <button
+                    onClick={() => setTrack(featuredTrack)}
+                    className="px-5 py-3 rounded-full border border-[var(--glass-border)] text-[var(--text-main)] font-black text-sm uppercase tracking-[0.2em] hover:bg-[var(--glass-bg)] transition-colors"
+                  >
+                    Play
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex-1 h-full flex flex-col items-center justify-between p-4 md:p-10 relative overflow-hidden transition-colors duration-500 bg-[var(--bg-main)]">
+    <div className="flex-1 h-full flex flex-col items-center justify-between p-4 pb-[calc(4rem+env(safe-area-inset-bottom)+1rem)] md:p-10 relative overflow-hidden transition-colors duration-500 bg-[var(--bg-main)]">
       {/* 1. FONDO DINÁMICO (Blur Profundo) */}
       <div className="absolute inset-0 -z-10 opacity-20 blur-[140px] scale-150 transition-all duration-1000">
         <img src={currentTrack.coverUrl} alt="" className="w-full h-full object-cover" />
@@ -70,6 +192,16 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
 
         {/* 4. INFO PISTA CENTRADA (Tipografía Fluida) */}
         <div className="w-full flex items-center justify-center px-8 shrink-0 relative py-2">
+          <button
+            className="absolute left-2 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-muted)] shadow-[var(--glass-shadow)] backdrop-blur-xl hover:text-[var(--text-main)] active:scale-95 transition-all shrink-0"
+            onClick={toggleTheme}
+          >
+            {isLightMode ? (
+              <Sun size={18} className="md:size-[20px] transition-colors" />
+            ) : (
+              <Moon size={18} className="md:size-[20px] transition-colors" />
+            )}
+          </button>
           <div className="flex flex-col items-center text-center max-w-[80%]">
             <h2 className="text-[clamp(1.25rem,4.5vw,1.9rem)] font-black text-[var(--text-main)] tracking-tighter leading-tight truncate w-full">
               {currentTrack.title}
@@ -78,8 +210,8 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
               {currentTrack.artist}
             </p>
           </div>
-          <button className="absolute right-0 text-gray-500 hover:text-red-500 active:scale-125 hidden md:block">
-            <Heart size={28} className="hover:fill-red-500 transition-colors" />
+          <button className="absolute right-2 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-muted)] shadow-[var(--glass-shadow)] backdrop-blur-xl hover:text-red-500 active:scale-95 transition-all shrink-0">
+            <Heart size={18} className="md:size-[20px] hover:fill-red-500 transition-colors" />
           </button>
         </div>
 

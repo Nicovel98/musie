@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Home,
   Library,
@@ -36,8 +36,19 @@ export const Sidebar = ({
 }) => {
   const [isPinned, setIsPinned] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(
+    !document.documentElement.classList.contains('light')
+  );
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const syncTheme = () => {
+      setIsDarkMode(!document.documentElement.classList.contains('light'));
+    };
+
+    window.addEventListener('themechange', syncTheme);
+    return () => window.removeEventListener('themechange', syncTheme);
+  }, []);
 
   const handleMouseEnter = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -49,8 +60,8 @@ export const Sidebar = ({
   };
 
   const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
     document.documentElement.classList.toggle('light');
+    window.dispatchEvent(new Event('themechange'));
   };
 
   const isExpanded = isPinned || isHovered;

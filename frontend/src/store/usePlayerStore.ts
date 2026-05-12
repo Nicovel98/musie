@@ -7,6 +7,7 @@ import type { Track } from '../types/track';
 interface PersistedPlayerState {
   songs: Track[];
   volume: number;
+  lastTrack: Track | null;
 }
 
 interface HowlInternal extends Howl {
@@ -22,6 +23,7 @@ const customBinaryStorage: PersistStorage<PersistedPlayerState> = {
 interface PlayerState {
   songs: Track[];
   currentTrack: Track | null;
+  lastTrack: Track | null;
   isPlaying: boolean;
   volume: number;
   seek: number;
@@ -42,6 +44,7 @@ export const usePlayerStore = create<PlayerState>()(
     (set, get) => ({
       songs: [],
       currentTrack: null,
+      lastTrack: null,
       isPlaying: false,
       volume: 0.5,
       seek: 0,
@@ -64,7 +67,14 @@ export const usePlayerStore = create<PlayerState>()(
       clearSongs: () => {
         const { howl } = get();
         if (howl) howl.unload();
-        set({ songs: [], currentTrack: null, isPlaying: false, analyzer: null, howl: null });
+        set({
+          songs: [],
+          currentTrack: null,
+          lastTrack: null,
+          isPlaying: false,
+          analyzer: null,
+          howl: null,
+        });
       },
 
       setTrack: (track) => {
@@ -76,12 +86,13 @@ export const usePlayerStore = create<PlayerState>()(
         const file = track.fileData as File;
         const extension = file.name?.split('.').pop()?.toLowerCase() || 'mp3';
         const activeUrl = URL.createObjectURL(file);
+        const playbackVolume = Math.min(get().volume, 1);
 
         const newHowl = new Howl({
           src: [activeUrl],
           format: [extension],
           html5: true,
-          volume: get().volume,
+          volume: playbackVolume,
           onplay: () => {
             set({ isPlaying: true, duration: newHowl.duration() });
 
@@ -105,11 +116,13 @@ export const usePlayerStore = create<PlayerState>()(
           },
           onpause: () => set({ isPlaying: false }),
           onend: () => set({ isPlaying: false, seek: 0 }),
-          onload: () => set({ duration: newHowl.duration() }),
+          onload: function () {
+            set({ duration: this.duration() });
+          },
         });
 
         newHowl.play();
-        set({ currentTrack: track, howl: newHowl, isPlaying: true });
+        set({ currentTrack: track, lastTrack: track, howl: newHowl, isPlaying: true });
       },
 
       togglePlay: () => {
@@ -126,7 +139,7 @@ export const usePlayerStore = create<PlayerState>()(
 
       setVolume: (val) => {
         const { howl } = get();
-        if (howl) howl.volume(val);
+        if (howl) howl.volume(Math.min(val, 1));
         set({ volume: val });
       },
 
@@ -152,6 +165,7 @@ export const usePlayerStore = create<PlayerState>()(
       partialize: (state): PersistedPlayerState => ({
         songs: state.songs,
         volume: state.volume,
+        lastTrack: state.lastTrack,
       }),
     }
   )
