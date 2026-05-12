@@ -32,8 +32,7 @@ Abre http://localhost:5173 en tu navegador.
 - Deploy automático: GitHub Actions + GitHub Pages
 
 ## 📋 Documentación
-- **Roadmap & Planificación:** [docs/ROADMAP.md](docs/ROADMAP.md)
-- **Identidad & Naming:** [docs/NAMING.md](docs/NAMING.md)
+- **Roadmap & Planificación:** [docs/ROADMAP.md](docs/WIREFRAME_REPRODUCTOR.md)
 
 ## 🎨 Diseño
 El diseño se centra en la legibilidad y una estética moderna (Glassmorphism).
