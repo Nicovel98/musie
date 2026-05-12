@@ -1,26 +1,48 @@
 @import "tailwindcss";
-/* O las directivas de Tailwind 4 que ya tienes */
 
-/* Optimizaciones para PWA y tipografía */
+/* 1. CONFIGURACIÓN DE VARIABLES (Temas dinámicos) */
 :root {
-  /* Evita que el usuario pueda seleccionar texto accidentalmente al pulsar botones */
-  user-select: none;
+  --bg-main: #080808;
+  --text-main: #ffffff;
+  --text-muted: #6b7280;
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --accent-primary: #3b82f6;
+  --accent-secondary: #a855f7;
+
+  /* Evita el resaltado azul al tocar en móviles */
   -webkit-tap-highlight-color: transparent;
 }
 
-body {
-  background-color: black;
-  color: white;
-  /* Usa la tipografía nativa del sistema para que parezca una app real */
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  /* Suavizado de fuente */
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+:root.light {
+  --bg-main: #f8fafc;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --glass-bg: rgba(15, 23, 42, 0.04);
+  --glass-border: rgba(15, 23, 42, 0.08);
 }
 
-/* Scrollbars minimalistas para que no arruinen el diseño oscuro */
+/* 2. ESTILOS BASE */
+body {
+  margin: 0;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.5s ease, color 0.5s ease;
+  /* Importante para PWA: evita rebotes elásticos molestos en el body */
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  position: fixed;
+}
+
+/* 3. OPTIMIZACIONES DE UI */
+
+/* Scrollbar Minimalista */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
@@ -28,15 +50,11 @@ body {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #333;
+  background: var(--glass-border);
   border-radius: 10px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #444;
-}
-
-/* Clase para ocultar el scrollbar pero mantener la funcionalidad */
+/* Ocultar scrollbar */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -44,4 +62,45 @@ body {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* 4. UTILIDADES DE ÁREA SEGURA (Critical para móviles) */
+
+/* Padding bottom que suma la altura de MobileTabs (64px) + el Notch + espacio extra */
+.pb-mobile-controls {
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom) + 80px);
+}
+
+/* Asegura que el contenido se vea bajo el notch arriba si es necesario */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 5. ANIMACIONES */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-view-entry {
+  animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Efecto de cristal para el PlayerBar y Tabs */
+.glass-effect {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-border);
 }

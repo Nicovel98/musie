@@ -3,8 +3,12 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  // 1. DEFINIR LA BASE (Crucial para GitHub Pages)
+  base: '/musie/',
+
   plugins: [
     react(),
+    // 2. CONFIGURACIÓN PWA PARA OFFLINE
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
@@ -14,7 +18,9 @@ export default defineConfig({
         description: 'Tu reproductor de música local minimalista',
         theme_color: '#000000',
         background_color: '#000000',
-        display: 'standalone', // Hace que se vea como una app nativa, sin barra de navegador
+        display: 'standalone',
+        scope: '/musie/',
+        start_url: '/musie/',
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -30,7 +36,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Aumentamos el límite de caché para que no ignore tus archivos de JS si crecen mucho
+        // Cachear archivos de hasta 5MB para el Service Worker
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
       },

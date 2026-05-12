@@ -53,7 +53,7 @@ export const usePlayerStore = create<PlayerState>()(
         const newTracks = files.map((file) => ({
           id: crypto.randomUUID(),
           title: file.name.replace(/\.[^/.]+$/, ''),
-          artist: 'Local Archive',
+          artist: 'Archivo Local',
           coverUrl: 'https://unsplash.com',
           audioUrl: '',
           fileData: file,
@@ -64,33 +64,42 @@ export const usePlayerStore = create<PlayerState>()(
       clearSongs: () => {
         const { howl } = get();
         if (howl) howl.unload();
-        set({ songs: [], currentTrack: null, isPlaying: false, analyzer: null });
+        set({ songs: [], currentTrack: null, isPlaying: false, analyzer: null, howl: null });
       },
 
       setTrack: (track) => {
-        const { howl } = get();
-        if (howl) howl.unload();
+        const { howl: oldHowl } = get();
+        if (oldHowl) oldHowl.unload();
         if (!track.fileData) return;
 
-        const activeUrl = URL.createObjectURL(track.fileData);
+        // Solución al error de TS: Forzamos a File para acceder a .name
+        const file = track.fileData as File;
+        const extension = file.name?.split('.').pop()?.toLowerCase() || 'mp3';
+        const activeUrl = URL.createObjectURL(file);
+
         const newHowl = new Howl({
           src: [activeUrl],
-          format: ['mp3', 'wav', 'm4a', 'aac', 'ogg'],
+          format: [extension],
           html5: true,
           volume: get().volume,
           onplay: () => {
             set({ isPlaying: true, duration: newHowl.duration() });
+
+            // Conexión del Analizador
             const node = (newHowl as unknown as HowlInternal)._sounds?.[0]?._node;
-            if (node && !get().analyzer) {
+            if (node) {
               try {
-                const source = Howler.ctx.createMediaElementSource(node);
-                const analyzer = Howler.ctx.createAnalyser();
-                analyzer.fftSize = 256;
-                source.connect(analyzer);
-                analyzer.connect(Howler.ctx.destination);
-                set({ analyzer });
-              } catch (e) {
-                console.warn(e);
+                let analyzer = get().analyzer;
+                if (!analyzer) {
+                  const source = Howler.ctx.createMediaElementSource(node);
+                  analyzer = Howler.ctx.createAnalyser();
+                  analyzer.fftSize = 256;
+                  source.connect(analyzer);
+                  analyzer.connect(Howler.ctx.destination);
+                  set({ analyzer });
+                }
+              } catch {
+                console.debug('Audio node already connected');
               }
             }
           },
@@ -98,6 +107,7 @@ export const usePlayerStore = create<PlayerState>()(
           onend: () => set({ isPlaying: false, seek: 0 }),
           onload: () => set({ duration: newHowl.duration() }),
         });
+
         newHowl.play();
         set({ currentTrack: track, howl: newHowl, isPlaying: true });
       },
@@ -105,8 +115,13 @@ export const usePlayerStore = create<PlayerState>()(
       togglePlay: () => {
         const { howl, isPlaying } = get();
         if (!howl) return;
-        if (isPlaying) howl.pause();
-        else howl.play();
+
+        if (isPlaying) {
+          howl.pause();
+        } else {
+          if (Howler.ctx.state === 'suspended') Howler.ctx.resume();
+          howl.play();
+        }
       },
 
       setVolume: (val) => {
@@ -124,8 +139,8 @@ export const usePlayerStore = create<PlayerState>()(
       },
 
       updateProgress: () => {
-        const { howl } = get();
-        if (howl?.playing()) {
+        const { howl, isPlaying } = get();
+        if (howl && isPlaying) {
           const s = howl.seek();
           if (typeof s === 'number') set({ seek: s });
         }
@@ -134,7 +149,10 @@ export const usePlayerStore = create<PlayerState>()(
     {
       name: 'musie-pwa-storage',
       storage: customBinaryStorage,
-      partialize: (state): PersistedPlayerState => ({ songs: state.songs, volume: state.volume }),
+      partialize: (state): PersistedPlayerState => ({
+        songs: state.songs,
+        volume: state.volume,
+      }),
     }
   )
 );

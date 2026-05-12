@@ -2,7 +2,8 @@ name: Deploy Frontend to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: ["main"] # Asegúrate de que tu rama principal se llame main
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -10,30 +11,32 @@ permissions:
   id-token: write
 
 jobs:
-  build-and-deploy:
+  build_and_deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20.19.0"
+          node-version: 20
+          cache: "npm"
 
       - name: Install dependencies
-        working-directory: frontend
-        run: npm ci
+        run: npm install
 
-      - name: Build frontend
-        working-directory: frontend
+      - name: Build project
         run: npm run build
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v1
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          path: ./frontend/dist
+          path: "./dist" # Vite genera la salida en esta carpeta
 
       - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v1
+        id: deployment
+        uses: actions/deploy-pages@v4

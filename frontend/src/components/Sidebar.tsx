@@ -5,7 +5,6 @@ import {
   Disc,
   ListMusic,
   Heart,
-  Mic2,
   SlidersHorizontal,
   Activity,
   Settings,
@@ -13,14 +12,28 @@ import {
   Pin,
   Moon,
   Sun,
+  type LucideIcon,
 } from 'lucide-react';
 
-interface SidebarProps {
-  currentView: 'home' | 'library';
-  setView: (view: 'home' | 'library') => void;
+type View = 'home' | 'library';
+
+interface NavItem {
+  icon: LucideIcon;
+  label: string;
 }
 
-export const Sidebar = ({ currentView, setView }: SidebarProps) => {
+interface SidebarSection {
+  title: string;
+  items: NavItem[];
+}
+
+export const Sidebar = ({
+  currentView,
+  setView,
+}: {
+  currentView: View;
+  setView: (v: View) => void;
+}) => {
   const [isPinned, setIsPinned] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -35,119 +48,139 @@ export const Sidebar = ({ currentView, setView }: SidebarProps) => {
     timeoutRef.current = setTimeout(() => setIsHovered(false), 700);
   };
 
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+    document.documentElement.classList.toggle('light');
+  };
+
   const isExpanded = isPinned || isHovered;
 
-  const libraryItems = [
-    { icon: Disc, label: 'Albums' },
-    { icon: ListMusic, label: 'Playlists' },
-    { icon: Heart, label: 'Favorites' },
-    { icon: Mic2, label: 'Lyrics' },
-  ];
-
-  const settingItems = [
-    { icon: SlidersHorizontal, label: 'Equalizer' },
-    { icon: Activity, label: 'Visualizer' },
-    { icon: Settings, label: 'Preferences' },
+  const sections: SidebarSection[] = [
+    {
+      title: 'Space',
+      items: [
+        { icon: Disc, label: 'Albums' },
+        { icon: ListMusic, label: 'Playlists' },
+        { icon: Heart, label: 'Favorites' },
+      ],
+    },
+    {
+      title: 'Settings',
+      items: [
+        { icon: SlidersHorizontal, label: 'Equalizer' },
+        { icon: Activity, label: 'Visualizer' },
+        { icon: Settings, label: 'Preferences' },
+      ],
+    },
   ];
 
   return (
     <aside
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={`h-screen flex flex-col bg-black border-r border-white/5 z-40 transition-[width] duration-700 ease-in-out shadow-2xl shrink-0
+      className={`h-full flex flex-col z-40 transition-[width,background-color] duration-700 ease-in-out shrink-0 border-r
         ${isExpanded ? 'w-56' : 'w-20'}
+        ${
+          isDarkMode
+            ? 'bg-[#050505] border-white/5 shadow-[20px_0_50px_rgba(0,0,0,0.5)]'
+            : 'bg-white border-black/5 shadow-[20px_0_50px_rgba(0,0,0,0.05)]'
+        }
       `}
     >
-      {/* 1. CABECERA: LOGO + PIN */}
-      <div className="h-24 flex items-center px-[26px] shrink-0 overflow-hidden">
-        <div className="flex items-center justify-between min-w-[172px]">
-          <div className="flex items-center gap-4">
-            <div className="w-7 h-7 bg-blue-600 rounded-lg shrink-0 shadow-[0_0_15px_rgba(37,99,235,0.4)]" />
+      {/* 1. LOGO Y PIN */}
+      <div className="h-20 flex items-center px-[26px] shrink-0 overflow-hidden">
+        <div className="flex items-center justify-between min-w-[172px] w-full">
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-7 h-7 rounded-lg shrink-0 transition-all duration-500 shadow-lg
+              ${
+                isDarkMode
+                  ? 'bg-gradient-to-br from-blue-600 to-purple-600 shadow-blue-500/20'
+                  : 'bg-gradient-to-br from-blue-500 to-cyan-400 shadow-blue-500/40'
+              }`}
+            />
             <h1
-              className={`text-xl font-black tracking-tighter bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent transition-opacity duration-500 whitespace-nowrap
-              ${isExpanded ? 'opacity-100' : 'opacity-0'}
-            `}
+              className={`text-lg font-black tracking-tighter transition-all duration-500
+              ${isDarkMode ? 'text-white' : 'text-black'}
+              ${isExpanded ? 'opacity-100' : 'opacity-0'}`}
             >
               MUSIE
             </h1>
           </div>
           <button
             onClick={() => setIsPinned(!isPinned)}
-            className={`transition-all duration-500 hover:text-white shrink-0
-              ${isPinned ? 'text-blue-500 rotate-45' : 'text-gray-600'}
-              ${isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}
-            `}
+            className={`transition-all duration-500 hover:scale-110
+            ${isPinned ? 'text-blue-500 rotate-45' : 'text-gray-500'}
+            ${isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
           >
-            <Pin size={16} fill={isPinned ? 'currentColor' : 'none'} />
+            <Pin size={14} fill={isPinned ? 'currentColor' : 'none'} />
           </button>
         </div>
       </div>
 
       {/* 2. NAVEGACIÓN PRINCIPAL */}
-      <nav className="flex-1 space-y-8 overflow-y-auto no-scrollbar overflow-x-hidden pt-4">
-        <section className="px-4">
-          <ul className="space-y-2">
-            {[
-              { id: 'home', label: 'Home', icon: Home },
-              { id: 'library', label: 'Library', icon: Library },
-            ].map((item) => (
+      <nav className="flex-1 space-y-5 overflow-y-auto no-scrollbar overflow-x-hidden pt-2 px-4">
+        <ul className="space-y-1">
+          {(['home', 'library'] as View[]).map((id) => {
+            const Icon = id === 'home' ? Home : Library;
+            const isActive = currentView === id;
+            return (
               <li
-                key={item.id}
-                onClick={() => setView(item.id as 'home' | 'library')}
-                className={`group/nav flex items-center h-12 rounded-2xl cursor-pointer transition-all duration-300 overflow-hidden ${
-                  currentView === item.id
-                    ? 'bg-blue-600/20 text-white border border-white/10'
-                    : 'text-gray-500 hover:text-gray-200 hover:bg-white/5'
-                }`}
+                key={id}
+                onClick={() => setView(id)}
+                className={`group/nav flex items-center h-11 rounded-xl cursor-pointer transition-all duration-300 overflow-hidden
+                  ${
+                    isActive
+                      ? isDarkMode
+                        ? 'bg-blue-600/15 text-blue-400 border border-blue-500/20'
+                        : 'bg-blue-50 text-blue-600 border border-blue-200'
+                      : isDarkMode
+                        ? 'text-gray-500 hover:bg-white/5 hover:text-white'
+                        : 'text-gray-500 hover:bg-black/5 hover:text-black'
+                  }`}
               >
                 <div className="flex items-center gap-4 px-3.5 min-w-[200px]">
-                  <item.icon
-                    size={24}
-                    className={`shrink-0 transition-colors duration-300 ${
-                      currentView === item.id ? 'text-blue-500' : 'group-hover/nav:text-blue-400'
-                    }`}
+                  <Icon
+                    size={22}
+                    className={`shrink-0 transition-colors ${isActive ? 'text-blue-500' : 'group-hover/nav:text-blue-400'}`}
                   />
                   <span
-                    className={`font-black text-lg tracking-tight whitespace-nowrap transition-all duration-500
-                    ${isExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'}
-                  `}
+                    className={`font-black text-base tracking-tight whitespace-nowrap transition-all duration-700
+                    ${isExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'}`}
                   >
-                    {item.label}
+                    {id === 'home' ? 'Home' : 'Library'}
                   </span>
                 </div>
               </li>
-            ))}
-          </ul>
-        </section>
+            );
+          })}
+        </ul>
 
-        {/* SECCIONES SECUNDARIAS */}
-        {[
-          { title: 'Your Space', items: libraryItems },
-          { title: 'Adjustments', items: settingItems },
-        ].map((section) => (
-          <section key={section.title} className="px-4 space-y-4">
+        {/* SECCIONES DINÁMICAS */}
+        {sections.map((section) => (
+          <section key={section.title} className="space-y-2">
             <p
-              className={`px-3.5 text-[9px] uppercase tracking-[0.3em] font-black text-gray-600 transition-opacity duration-500 whitespace-nowrap
-              ${isExpanded ? 'opacity-100' : 'opacity-0'}
-            `}
+              className={`px-3.5 text-[8px] uppercase tracking-[0.3em] font-black transition-opacity duration-500
+              ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}
+              ${isExpanded ? 'opacity-100' : 'opacity-0'}`}
             >
               {section.title}
             </p>
-            <ul className="space-y-1">
+            <ul className="space-y-0.5">
               {section.items.map((item) => (
                 <li
                   key={item.label}
-                  className="flex items-center h-10 rounded-xl cursor-pointer group/item transition-colors overflow-hidden"
+                  className={`flex items-center h-9 rounded-lg cursor-pointer group/item transition-all overflow-hidden
+                  ${isDarkMode ? 'text-gray-500 hover:bg-white/5 hover:text-white' : 'text-gray-500 hover:bg-black/5 hover:text-black'}`}
                 >
                   <div className="flex items-center gap-4 px-3.5 min-w-[200px]">
                     <item.icon
-                      size={20}
-                      className="shrink-0 group-hover/item:text-blue-400 transition-colors text-gray-500"
+                      size={18}
+                      className="shrink-0 group-hover/item:text-blue-400 transition-colors"
                     />
                     <span
-                      className={`text-[14px] font-bold whitespace-nowrap transition-all duration-500 text-gray-500 group-hover/item:text-white
-                      ${isExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'}
-                    `}
+                      className={`text-[13px] font-bold whitespace-nowrap transition-all duration-700
+                      ${isExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'}`}
                     >
                       {item.label}
                     </span>
@@ -159,42 +192,57 @@ export const Sidebar = ({ currentView, setView }: SidebarProps) => {
         ))}
       </nav>
 
-      {/* 3. BOTÓN MODO OSCURO */}
-      <div className="px-4 mb-2">
-        <div
-          onClick={() => setIsDarkMode(!isDarkMode)}
-          className="flex items-center h-12 rounded-2xl cursor-pointer hover:bg-white/5 transition-all overflow-hidden"
-        >
-          <div className="flex items-center gap-4 px-3.5 min-w-[200px]">
-            {isDarkMode ? (
-              <Moon size={22} className="text-blue-400 shrink-0" />
-            ) : (
-              <Sun size={22} className="text-yellow-500 shrink-0" />
-            )}
-            <span
-              className={`text-[14px] font-bold whitespace-nowrap transition-all duration-700 ${isExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'}`}
-            >
-              {isDarkMode ? 'Dark Mode' : 'Light Mode'}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* 4. PERFIL DE USUARIO (SIN CORTES) */}
-      <div className="p-4 border-t border-white/5 shrink-0">
-        <div className="flex items-center h-14 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all duration-700 overflow-hidden cursor-pointer">
-          {/* El px-[11px] asegura que el avatar de 40px esté perfectamente centrado en los 80px del colapso */}
-          <div className="flex items-center gap-4 px-[11px] min-w-[200px]">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center shrink-0 shadow-lg border border-white/10">
-              <User size={20} className="text-white" />
+      {/* 3. TEMA Y USUARIO */}
+      <div
+        className={`shrink-0 pt-2 border-t transition-colors ${isDarkMode ? 'border-white/5' : 'border-black/5'}`}
+      >
+        <div className="px-4 mb-1">
+          <button
+            onClick={toggleTheme}
+            className={`flex items-center w-full h-10 rounded-xl transition-all overflow-hidden group/theme
+            ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}
+          >
+            <div className="flex items-center gap-4 px-3.5 min-w-[200px]">
+              <div
+                className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors
+                ${isDarkMode ? 'bg-white/5' : 'bg-black/5'}`}
+              >
+                {isDarkMode ? (
+                  <Moon size={16} className="text-blue-400" />
+                ) : (
+                  <Sun size={16} className="text-yellow-500" />
+                )}
+              </div>
+              <span
+                className={`text-[13px] font-bold transition-all duration-700
+                ${isDarkMode ? 'text-gray-500 group-hover/theme:text-white' : 'text-gray-500 group-hover/theme:text-black'}
+                ${isExpanded ? 'opacity-100' : 'opacity-0'}`}
+              >
+                {isDarkMode ? 'Dark' : 'Light'}
+              </span>
             </div>
-            <div
-              className={`flex flex-col transition-all duration-700 ${isExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'}`}
-            >
-              <p className="text-sm font-black text-white whitespace-nowrap">Usuario</p>
-              <p className="text-[10px] text-blue-400 font-black uppercase tracking-tighter whitespace-nowrap">
-                Pro Plan
-              </p>
+          </button>
+        </div>
+
+        <div className="p-3">
+          <div
+            className={`flex items-center h-12 rounded-xl transition-all duration-700 overflow-hidden cursor-pointer border
+            ${isDarkMode ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-black/5 border-black/5 hover:bg-black/10'}`}
+          >
+            <div className="flex items-center gap-4 px-[11px] min-w-[200px]">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center shrink-0 shadow-md">
+                <User size={16} className="text-white" />
+              </div>
+              <div
+                className={`flex flex-col transition-all duration-700 ${isExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'}`}
+              >
+                <p className={`text-xs font-black ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                  Usuario
+                </p>
+                <p className="text-[8px] text-blue-400 font-black uppercase tracking-tighter">
+                  Pro Plan
+                </p>
+              </div>
             </div>
           </div>
         </div>
