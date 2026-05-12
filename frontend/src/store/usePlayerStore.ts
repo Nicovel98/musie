@@ -117,7 +117,7 @@ export const usePlayerStore = create<PlayerState>()(
           onpause: () => set({ isPlaying: false }),
           onend: () => set({ isPlaying: false, seek: 0 }),
           onload: function () {
-            set({ duration: this.duration() });
+            set({ duration: newHowl.duration() });
           },
         });
 
