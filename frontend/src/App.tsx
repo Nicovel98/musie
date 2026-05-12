@@ -15,8 +15,8 @@ function App() {
 
   return (
     <div className="flex flex-col h-screen w-full bg-[var(--bg-main)] text-[var(--text-main)] overflow-hidden font-sans transition-colors duration-500 relative">
-      {/* 1. CUERPO SUPERIOR (Sidebar + Contenido) */}
-      <div className="flex flex-1 overflow-hidden relative">
+      {/* 1. CUERPO SUPERIOR (Sidebar + Contenido) - Reserva espacio para tabs en móvil */}
+      <div className="flex flex-1 overflow-hidden relative md:mb-0 mb-[calc(var(--mobile-tabs-height)+env(safe-area-inset-bottom))]">
         {/* SIDEBAR: Solo visible en escritorio */}
         <div className="hidden md:flex h-full shrink-0 border-r border-[var(--glass-border)]">
           <Sidebar setView={setCurrentView} currentView={currentView} />
@@ -41,7 +41,6 @@ function App() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                /* pb-60 asegura que el scroll no quede tapado por los controles en móvil */
                 className="h-full overflow-y-auto custom-scrollbar pb-60 md:pb-0"
               >
                 <Library />
@@ -52,27 +51,27 @@ function App() {
       </div>
 
       {/* 2. ZONA DE CONTROLES INFERIOR */}
-      <div className="relative shrink-0 w-full">
-        {/* PLAYERBAR: Flotante sobre tabs en móvil, fija al fondo en desktop */}
+      <div className="relative shrink-0 w-full hidden md:block">
+        {/* PLAYERBAR: Solo en desktop */}
         <AnimatePresence>
           {currentView !== 'home' && (
             <motion.div
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
-              className="fixed left-0 right-0 px-3 z-40 pointer-events-auto mobile-tabs-offset md:relative md:bottom-0 md:px-0 md:bg-[var(--glass-bg)] md:border-t md:border-[var(--glass-border)]"
+              className="relative bg-[var(--glass-bg)] border-t border-[var(--glass-border)]"
             >
-              <div className="max-w-7xl mx-auto glass-effect md:shadow-none rounded-2xl md:rounded-none overflow-hidden border border-[var(--glass-border)] md:border-none">
+              <div className="max-w-7xl mx-auto px-0">
                 <PlayerBar />
               </div>
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
 
-        {/* MOBILETABS: Siempre anclada al fondo en móvil */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 mobile-tabs-shell z-50">
-          <MobileTabs currentView={currentView} setView={setCurrentView} />
-        </div>
+      {/* 3. MOBILETABS: Separada y fija en móvil */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 mobile-tabs-shell">
+        <MobileTabs currentView={currentView} setView={setCurrentView} />
       </div>
     </div>
   );

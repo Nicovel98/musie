@@ -14,7 +14,7 @@ export const MobileTabs = ({ currentView, setView }: MobileTabsProps) => {
   ] as const;
 
   return (
-    <nav className="glass-effect md:hidden fixed bottom-0 left-0 right-0 h-14 bg-[var(--glass-bg)] px-6 flex items-center justify-between z-50 pb-safe">
+    <nav className="glass-effect w-full h-full bg-[var(--glass-bg)] px-6 flex items-center justify-between pb-safe">
       {tabs.map((tab) => {
         const isActive = currentView === tab.id;
 

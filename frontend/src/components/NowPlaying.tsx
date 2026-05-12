@@ -68,7 +68,7 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
 
   if (!currentTrack) {
     return (
-      <div className="flex-1 h-full flex flex-col items-center justify-between p-4 pb-mobile-controls md:p-10 relative overflow-hidden transition-colors duration-500 bg-[var(--bg-main)]">
+      <div className="flex-1 h-full flex flex-col items-center justify-between p-4 md:p-10 relative overflow-hidden transition-colors duration-500 bg-[var(--bg-main)]">
         <div className="absolute inset-0 -z-10 opacity-20 blur-[140px] scale-150 transition-all duration-1000">
           <img
             src={featuredTrack?.coverUrl || heroThumbnail}
@@ -157,7 +157,7 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
   }
 
   return (
-    <div className="flex-1 h-full flex flex-col items-center justify-between p-4 pb-mobile-controls md:p-10 relative overflow-hidden transition-colors duration-500 bg-[var(--bg-main)]">
+    <div className="flex-1 h-full flex flex-col items-center justify-between p-4 md:p-10 relative overflow-hidden transition-colors duration-500 bg-[var(--bg-main)]">
       {/* 1. FONDO DINÁMICO (Blur Profundo) */}
       <div className="absolute inset-0 -z-10 opacity-20 blur-[140px] scale-150 transition-all duration-1000">
         <img src={currentTrack.coverUrl} alt="" className="w-full h-full object-cover" />
@@ -180,44 +180,44 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
           </button>
         </div>
 
-        {/* 3. PORTADA GIGANTE (Efecto Glass) */}
-        <div className="relative group flex-1 flex items-center justify-center min-h-0 w-full px-4 my-2">
+        {/* 3. PORTADA GIGANTE (Efecto Glass - Responsivo) */}
+        <div className="relative group flex-1 flex items-center justify-center min-h-0 w-full px-[clamp(1rem,5vw,2rem)] my-[clamp(0.5rem,2vw,1rem)]">
           <div className="absolute inset-0 bg-blue-600/5 rounded-full blur-[100px]" />
           <img
             src={currentTrack.coverUrl}
             alt={currentTrack.title}
-            className="h-full max-h-[380px] md:max-h-[550px] aspect-square object-cover rounded-[48px] shadow-[0_40px_80px_rgba(0,0,0,0.4)] border border-[var(--glass-border)] transition-transform duration-700 hover:scale-[1.02]"
+            className="h-full max-h-[clamp(240px,60vh,550px)] aspect-square object-cover rounded-[clamp(24px,8vw,48px)] shadow-[0_40px_80px_rgba(0,0,0,0.4)] border border-[var(--glass-border)] transition-transform duration-700 hover:scale-[1.02]"
           />
         </div>
 
         {/* 4. INFO PISTA CENTRADA (Tipografía Fluida) */}
-        <div className="w-full flex items-center justify-center px-8 shrink-0 relative py-2">
+        <div className="w-full flex items-center justify-center px-[clamp(1rem,4vw,2rem)] shrink-0 relative py-[clamp(0.5rem,1.5vw,1rem)] gap-3">
           <button
-            className="absolute left-2 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-muted)] shadow-[var(--glass-shadow)] backdrop-blur-xl hover:text-[var(--text-main)] active:scale-95 transition-all shrink-0"
+            className="flex h-[clamp(2.5rem,8vw,2.5rem)] w-[clamp(2.5rem,8vw,2.5rem)] items-center justify-center rounded-full bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-muted)] shadow-[var(--glass-shadow)] backdrop-blur-xl hover:text-[var(--text-main)] active:scale-95 transition-all shrink-0"
             onClick={toggleTheme}
           >
             {isLightMode ? (
-              <Sun size={18} className="md:size-[20px] transition-colors" />
+              <Sun className="h-[clamp(1rem,3vw,1.25rem)] w-[clamp(1rem,3vw,1.25rem)] transition-colors" />
             ) : (
-              <Moon size={18} className="md:size-[20px] transition-colors" />
+              <Moon className="h-[clamp(1rem,3vw,1.25rem)] w-[clamp(1rem,3vw,1.25rem)] transition-colors" />
             )}
           </button>
-          <div className="flex flex-col items-center text-center max-w-[80%]">
-            <h2 className="text-[clamp(1.25rem,4.5vw,1.9rem)] font-black text-[var(--text-main)] tracking-tighter leading-tight truncate w-full">
+          <div className="flex flex-col items-center text-center flex-1 min-w-0">
+            <h2 className="text-[clamp(1.125rem,5vw,1.875rem)] font-black text-[var(--text-main)] tracking-tighter leading-tight truncate w-full">
               {currentTrack.title}
             </h2>
-            <p className="text-[clamp(0.75rem,1.5vw,0.9rem)] text-blue-500 font-bold tracking-[0.25em] uppercase mt-1 opacity-80">
+            <p className="text-[clamp(0.65rem,1.75vw,0.875rem)] text-blue-500 font-bold tracking-[0.2em] uppercase mt-[clamp(0.25rem,0.5vw,0.5rem)] opacity-80 line-clamp-1">
               {currentTrack.artist}
             </p>
           </div>
-          <button className="absolute right-2 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-muted)] shadow-[var(--glass-shadow)] backdrop-blur-xl hover:text-red-500 active:scale-95 transition-all shrink-0">
-            <Heart size={18} className="md:size-[20px] hover:fill-red-500 transition-colors" />
+          <button className="flex h-[clamp(2.5rem,8vw,2.5rem)] w-[clamp(2.5rem,8vw,2.5rem)] items-center justify-center rounded-full bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-muted)] shadow-[var(--glass-shadow)] backdrop-blur-xl hover:text-red-500 active:scale-95 transition-all shrink-0">
+            <Heart className="h-[clamp(1rem,3vw,1.25rem)] w-[clamp(1rem,3vw,1.25rem)] hover:fill-red-500 transition-colors" />
           </button>
         </div>
 
         {/* 5. VISUALIZER CON GRADIENTE VERTICAL */}
-        <div className="w-full px-8 shrink-0">
-          <div className="relative h-14 md:h-18 flex items-end justify-center gap-[3px] mb-3">
+        <div className="w-full px-[clamp(1rem,5vw,2rem)] shrink-0">
+          <div className="relative h-[clamp(2.5rem,12vw,4.5rem)] flex items-end justify-center gap-[clamp(2px,1vw,3px)] mb-[clamp(0.75rem,2vw,1rem)]">
             <input
               type="range"
               min="0"
@@ -244,9 +244,9 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
                 );
               })}
           </div>
-          <div className="flex justify-between items-center px-1 font-mono text-xs md:text-sm text-gray-500 font-bold tracking-tighter">
-            <span className="w-12">{formatTime(seek)}</span>
-            <div className="h-[1px] flex-1 mx-6 bg-gray-500/10 relative">
+          <div className="flex justify-between items-center px-1 font-mono text-[clamp(0.65rem,1.5vw,0.875rem)] text-gray-500 font-bold tracking-tighter gap-2">
+            <span className="w-[clamp(2rem,8vw,3rem)] shrink-0">{formatTime(seek)}</span>
+            <div className="h-[1px] flex-1 mx-[clamp(0.75rem,2vw,1.5rem)] bg-gray-500/10 relative">
               <div
                 className="absolute inset-y-0 left-0 bg-blue-500/30"
                 style={{ width: `${progressPercent}%` }}
@@ -256,45 +256,61 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
           </div>
         </div>
 
-        {/* 6. CONTROLES Y VOLUMEN SOBREAMPLIFICADO (Glass Style) */}
-        <div className="w-full max-w-sm flex flex-col gap-6 pb-6 shrink-0 mt-4">
-          <div className="flex items-center justify-between px-4">
-            <button className="text-gray-500 hover:text-blue-500">
-              <Shuffle size={20} />
+        {/* 6. CONTROLES Y VOLUMEN SOBREAMPLIFICADO (Glass Style - Responsivo) */}
+        <div className="w-full max-w-sm flex flex-col gap-[clamp(1rem,3vw,1.5rem)] pb-[clamp(1rem,2vw,1.5rem)] shrink-0 mt-[clamp(0.5rem,2vw,1rem)] px-[clamp(0.5rem,3vw,1rem)]">
+          <div className="flex items-center justify-between gap-[clamp(0.5rem,2vw,1rem)]">
+            <button className="text-gray-500 hover:text-blue-500 transition-colors">
+              <Shuffle className="h-[clamp(1.25rem,4vw,1.5rem)] w-[clamp(1.25rem,4vw,1.5rem)]" />
             </button>
-            <div className="flex items-center gap-8">
-              <button className="text-[var(--text-main)] opacity-60 hover:opacity-100 active:scale-90">
-                <SkipBack size={32} fill="currentColor" />
+            <div className="flex items-center gap-[clamp(1rem,4vw,2rem)] flex-1 justify-center">
+              <button className="text-[var(--text-main)] opacity-60 hover:opacity-100 active:scale-90 transition-colors">
+                <SkipBack
+                  className="h-[clamp(1.75rem,6vw,2rem)] w-[clamp(1.75rem,6vw,2rem)]"
+                  fill="currentColor"
+                />
               </button>
               <button
                 onClick={togglePlay}
-                className="w-16 h-16 flex items-center justify-center bg-[var(--text-main)] text-[var(--bg-main)] rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all"
+                className="flex items-center justify-center bg-[var(--text-main)] text-[var(--bg-main)] rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all h-[clamp(3rem,10vw,4rem)] w-[clamp(3rem,10vw,4rem)] shrink-0"
               >
                 {isPlaying ? (
-                  <Pause size={30} fill="currentColor" />
+                  <Pause
+                    className="h-[clamp(1.25rem,4vw,1.875rem)] w-[clamp(1.25rem,4vw,1.875rem)]"
+                    fill="currentColor"
+                  />
                 ) : (
-                  <Play size={30} fill="currentColor" className="ml-1" />
+                  <Play
+                    className="h-[clamp(1.25rem,4vw,1.875rem)] w-[clamp(1.25rem,4vw,1.875rem)] ml-0.5"
+                    fill="currentColor"
+                  />
                 )}
               </button>
-              <button className="text-[var(--text-main)] opacity-60 hover:opacity-100 active:scale-90">
-                <SkipForward size={32} fill="currentColor" />
+              <button className="text-[var(--text-main)] opacity-60 hover:opacity-100 active:scale-90 transition-colors">
+                <SkipForward
+                  className="h-[clamp(1.75rem,6vw,2rem)] w-[clamp(1.75rem,6vw,2rem)]"
+                  fill="currentColor"
+                />
               </button>
             </div>
-            <button className="text-gray-500 hover:text-blue-500">
-              <Repeat size={20} />
+            <button className="text-gray-500 hover:text-blue-500 transition-colors">
+              <Repeat className="h-[clamp(1.25rem,4vw,1.5rem)] w-[clamp(1.25rem,4vw,1.5rem)]" />
             </button>
           </div>
 
           {/* VOLUMEN TÁCTIL (0-200%) CON BOTÓN DE RESET 100% */}
-          <div className="flex items-center gap-4 px-4 group/vol">
+          <div className="flex items-center gap-[clamp(0.75rem,3vw,1rem)] px-[clamp(0.25rem,2vw,0.5rem)] group/vol">
             <button
               onClick={() => setVolume(volume === 0 ? 0.5 : 0)}
-              className="text-gray-500 hover:text-blue-500 shrink-0"
+              className="text-gray-500 hover:text-blue-500 shrink-0 transition-colors"
             >
-              {volume === 0 ? <VolumeX size={22} /> : <Volume1 size={22} />}
+              {volume === 0 ? (
+                <VolumeX className="h-[clamp(1.25rem,4vw,1.375rem)] w-[clamp(1.25rem,4vw,1.375rem)]" />
+              ) : (
+                <Volume1 className="h-[clamp(1.25rem,4vw,1.375rem)] w-[clamp(1.25rem,4vw,1.375rem)]" />
+              )}
             </button>
 
-            <div className="flex-1 relative h-10 flex items-center">
+            <div className="flex-1 relative h-[clamp(1.5rem,4vw,2.5rem)] flex items-center">
               <input
                 type="range"
                 min="0"
@@ -304,8 +320,9 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
                 onChange={(e) => setVolume(parseFloat(e.target.value))}
                 className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer"
               />
-              <div className="flex-1 h-2 bg-gray-500/10 rounded-full overflow-hidden relative border border-[var(--glass-border)]">
-                <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/20 z-10" />
+              <div className="flex-1 h-[clamp(0.375rem,0.5vw,0.5rem)] bg-gray-500/10 rounded-full overflow-hidden relative border border-[var(--glass-border)]">
+                <div className="absolute left-1/2 top-0 bottom-0 w-[clamp(1px,0.25vw,2px)] bg-white/20 z-10" />
+                \n{' '}
                 <div
                   className={`h-full transition-all ${
                     volume > 1
@@ -316,8 +333,8 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
                 />
               </div>
               <div
-                className={`absolute w-4 h-4 rounded-full shadow-xl pointer-events-none transition-transform ${volume > 1 ? 'bg-red-500' : 'bg-[var(--text-main)]'}`}
-                style={{ left: `calc(${(volume / 2) * 100}% - 8px)` }}
+                className={`absolute rounded-full shadow-xl pointer-events-none transition-transform h-[clamp(0.875rem,1.5vw,1rem)] w-[clamp(0.875rem,1.5vw,1rem)] ${volume > 1 ? 'bg-red-500' : 'bg-[var(--text-main)]'}`}
+                style={{ left: `calc(${(volume / 2) * 100}% - 5px)` }}
               />
             </div>
 
@@ -325,11 +342,11 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
               onClick={() => setVolume(1.0)}
               className="text-gray-500 hover:text-blue-500 shrink-0 transition-all active:scale-90"
             >
-              <Volume2 size={22} />
+              <Volume2 className="h-[clamp(1.25rem,4vw,1.375rem)] w-[clamp(1.25rem,4vw,1.375rem)]" />
             </button>
 
             <span
-              className={`text-xs font-mono w-12 text-right font-black transition-colors ${volume > 1 ? 'text-red-500' : 'text-gray-500'}`}
+              className={`text-[clamp(0.625rem,1.25vw,0.75rem)] font-mono w-[clamp(1.75rem,5vw,3rem)] text-right font-black transition-colors ${volume > 1 ? 'text-red-500' : 'text-gray-500'}`}
             >
               {Math.round(volume * 100)}%
             </span>
