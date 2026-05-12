@@ -41,7 +41,7 @@ function App() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="h-full overflow-y-auto custom-scrollbar pb-[calc(var(--mobile-tabs-height)+env(safe-area-inset-bottom)+15rem)] md:pb-0"
+                className="h-full overflow-y-auto custom-scrollbar pb-[calc(var(--mobile-tabs-height)+var(--mobile-playerbar-height)+env(safe-area-inset-bottom)+1rem)] md:pb-0"
               >
                 <Library />
               </motion.div>
@@ -59,7 +59,7 @@ function App() {
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
-              className="relative bg-[var(--glass-bg)] border-t border-[var(--glass-border)] pb-[calc(var(--mobile-tabs-height)+env(safe-area-inset-bottom)+0.2rem)] md:pb-0"
+              className="fixed md:relative left-0 right-0 bottom-[calc(var(--mobile-tabs-height)+env(safe-area-inset-bottom))] md:bottom-auto z-40 bg-[var(--glass-bg)] border-t border-[var(--glass-border)] md:pb-0"
             >
               <div className="max-w-7xl mx-auto px-0">
                 <PlayerBar />

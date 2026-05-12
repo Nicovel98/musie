@@ -163,7 +163,7 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
         <img src={currentTrack.coverUrl} alt="" className="w-full h-full object-cover" />
       </div>
 
-      <div className="max-w-4xl w-full h-full flex flex-col justify-between items-center gap-2 pb-6">
+      <div className="max-w-4xl w-full h-full flex flex-col justify-between items-center gap-2 pb-10">
         {/* 2. CABECERA (Transparente) */}
         <div className="w-full flex justify-between items-center shrink-0 px-2 py-2">
           <button
@@ -186,7 +186,7 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
           <img
             src={currentTrack.coverUrl}
             alt={currentTrack.title}
-            className="h-full max-h-[clamp(200px,50vh,550px)] aspect-square object-cover rounded-[clamp(24px,8vw,48px)] shadow-[0_40px_80px_rgba(0,0,0,0.4)] border border-[var(--glass-border)] transition-transform duration-700 hover:scale-[1.02]"
+            className="h-full max-h-[clamp(220px,52vh,560px)] md:max-h-[clamp(280px,64vh,720px)] aspect-square object-cover rounded-[clamp(24px,8vw,48px)] shadow-[0_40px_80px_rgba(0,0,0,0.4)] border border-[var(--glass-border)] transition-transform duration-700 hover:scale-[1.02]"
           />
         </div>
 

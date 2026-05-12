@@ -12,6 +12,7 @@
   --accent-primary: #7dd3fc;
   --accent-secondary: #a78bfa;
   --mobile-tabs-height: 3.5rem;
+  --mobile-playerbar-height: 5rem;
   --mobile-controls-gap: 12px;
 
   /* Evita el resaltado azul al tocar en móviles */
