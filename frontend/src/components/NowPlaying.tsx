@@ -68,7 +68,7 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
 
   if (!currentTrack) {
     return (
-      <div className="flex-1 h-full flex flex-col items-center justify-between p-4 md:p-10 pb-[calc(var(--mobile-tabs-height)+env(safe-area-inset-bottom)+2rem)] md:pb-0 relative overflow-hidden transition-colors duration-500 bg-[var(--bg-main)]">
+      <div className="flex-1 h-full flex flex-col items-center justify-between p-4 md:p-10 pb-6 md:pb-0 relative overflow-hidden transition-colors duration-500 bg-[var(--bg-main)]">
         <div className="absolute inset-0 -z-10 opacity-20 blur-[140px] scale-150 transition-all duration-1000">
           <img
             src={featuredTrack?.coverUrl || heroThumbnail}
@@ -157,13 +157,13 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
   }
 
   return (
-    <div className="flex-1 h-full flex flex-col items-center justify-between p-4 md:p-10 pb-[calc(var(--mobile-tabs-height)+env(safe-area-inset-bottom)+2rem)] md:pb-0 relative overflow-hidden transition-colors duration-500 bg-[var(--bg-main)]">
+    <div className="flex-1 h-full flex flex-col items-center justify-between p-4 md:p-10 pb-4 md:pb-0 relative overflow-hidden transition-colors duration-500 bg-[var(--bg-main)]">
       {/* 1. FONDO DINÁMICO (Blur Profundo) */}
       <div className="absolute inset-0 -z-10 opacity-20 blur-[140px] scale-150 transition-all duration-1000">
         <img src={currentTrack.coverUrl} alt="" className="w-full h-full object-cover" />
       </div>
 
-      <div className="max-w-4xl w-full h-full flex flex-col justify-between items-center gap-2">
+      <div className="max-w-4xl w-full h-full flex flex-col justify-between items-center gap-2 pb-6">
         {/* 2. CABECERA (Transparente) */}
         <div className="w-full flex justify-between items-center shrink-0 px-2 py-2">
           <button
@@ -186,7 +186,7 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
           <img
             src={currentTrack.coverUrl}
             alt={currentTrack.title}
-            className="h-full max-h-[clamp(240px,60vh,550px)] aspect-square object-cover rounded-[clamp(24px,8vw,48px)] shadow-[0_40px_80px_rgba(0,0,0,0.4)] border border-[var(--glass-border)] transition-transform duration-700 hover:scale-[1.02]"
+            className="h-full max-h-[clamp(200px,50vh,550px)] aspect-square object-cover rounded-[clamp(24px,8vw,48px)] shadow-[0_40px_80px_rgba(0,0,0,0.4)] border border-[var(--glass-border)] transition-transform duration-700 hover:scale-[1.02]"
           />
         </div>
 
@@ -217,7 +217,7 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
 
         {/* 5. VISUALIZER CON GRADIENTE VERTICAL */}
         <div className="w-full px-[clamp(1rem,5vw,2rem)] shrink-0">
-          <div className="relative h-[clamp(2.5rem,12vw,4.5rem)] flex items-end justify-center gap-[clamp(2px,1vw,3px)] mb-[clamp(0.75rem,2vw,1rem)]">
+          <div className="relative h-[clamp(2.3rem,12vw,4.5rem)] flex items-end justify-center gap-[clamp(2px,1vw,3px)] mb-[clamp(0.75rem,2vw,1rem)]">
             <input
               type="range"
               min="0"
@@ -322,7 +322,6 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
               />
               <div className="flex-1 h-[clamp(0.375rem,0.5vw,0.5rem)] bg-gray-500/10 rounded-full overflow-hidden relative border border-[var(--glass-border)]">
                 <div className="absolute left-1/2 top-0 bottom-0 w-[clamp(1px,0.25vw,2px)] bg-white/20 z-10" />
-                \n{' '}
                 <div
                   className={`h-full transition-all ${
                     volume > 1

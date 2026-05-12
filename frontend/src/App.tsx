@@ -15,8 +15,8 @@ function App() {
 
   return (
     <div className="flex flex-col h-screen w-full bg-[var(--bg-main)] text-[var(--text-main)] overflow-hidden font-sans transition-colors duration-500 relative">
-      {/* 1. CUERPO SUPERIOR (Sidebar + Contenido) - Reserva espacio para tabs en móvil */}
-      <div className="flex flex-1 overflow-hidden relative md:mb-0 mb-[calc(var(--mobile-tabs-height)+env(safe-area-inset-bottom))]">
+      {/* 1. CUERPO SUPERIOR (Sidebar + Contenido) */}
+      <div className="flex flex-1 overflow-hidden relative">
         {/* SIDEBAR: Solo visible en escritorio */}
         <div className="hidden md:flex h-full shrink-0 border-r border-[var(--glass-border)]">
           <Sidebar setView={setCurrentView} currentView={currentView} />
@@ -31,7 +31,7 @@ function App() {
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="absolute inset-0 z-50 bg-[var(--bg-main)]"
+                className="absolute inset-0 z-50 bg-[var(--bg-main)] pb-[calc(var(--mobile-tabs-height)+env(safe-area-inset-bottom))] md:pb-0"
               >
                 <NowPlaying setView={setCurrentView} />
               </motion.div>
@@ -41,7 +41,7 @@ function App() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="h-full overflow-y-auto custom-scrollbar pb-60 md:pb-0"
+                className="h-full overflow-y-auto custom-scrollbar pb-[calc(var(--mobile-tabs-height)+env(safe-area-inset-bottom)+15rem)] md:pb-0"
               >
                 <Library />
               </motion.div>
@@ -50,16 +50,16 @@ function App() {
         </main>
       </div>
 
-      {/* 2. ZONA DE CONTROLES INFERIOR */}
-      <div className="relative shrink-0 w-full hidden md:block">
-        {/* PLAYERBAR: Solo en desktop */}
+      {/* 2. ZONA DE CONTROLES INFERIOR (PlayerBar - Independiente) */}
+      <div className="relative shrink-0 w-full">
+        {/* PLAYERBAR: Desktop + Móvil */}
         <AnimatePresence>
           {currentView !== 'home' && (
             <motion.div
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
-              className="relative bg-[var(--glass-bg)] border-t border-[var(--glass-border)]"
+              className="relative bg-[var(--glass-bg)] border-t border-[var(--glass-border)] pb-[calc(var(--mobile-tabs-height)+env(safe-area-inset-bottom)+0.2rem)] md:pb-0"
             >
               <div className="max-w-7xl mx-auto px-0">
                 <PlayerBar />
