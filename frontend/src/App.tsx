@@ -60,13 +60,7 @@ function App() {
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
-              className={`
-                fixed left-0 right-0 px-3 z-40 pointer-events-auto
-                /* Móvil: Flota arriba de las tabs (h-16 = 4rem) + safe area + margen */
-                bottom-[calc(4rem+env(safe-area-inset-bottom)+12px)]
-                /* Desktop: Se integra al flujo normal al final de la pantalla */
-                md:relative md:bottom-0 md:px-0 md:bg-[var(--glass-bg)] md:border-t md:border-[var(--glass-border)]
-              `}
+              className="fixed left-0 right-0 px-3 z-40 pointer-events-auto mobile-tabs-offset md:relative md:bottom-0 md:px-0 md:bg-[var(--glass-bg)] md:border-t md:border-[var(--glass-border)]"
             >
               <div className="max-w-7xl mx-auto glass-effect md:shadow-none rounded-2xl md:rounded-none overflow-hidden border border-[var(--glass-border)] md:border-none">
                 <PlayerBar />
@@ -76,7 +70,7 @@ function App() {
         </AnimatePresence>
 
         {/* MOBILETABS: Siempre anclada al fondo en móvil */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 z-50 pb-[env(safe-area-inset-bottom)]">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 mobile-tabs-shell z-50">
           <MobileTabs currentView={currentView} setView={setCurrentView} />
         </div>
       </div>

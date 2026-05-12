@@ -68,7 +68,7 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
 
   if (!currentTrack) {
     return (
-      <div className="flex-1 h-full flex flex-col items-center justify-between p-4 pb-[calc(4rem+env(safe-area-inset-bottom)+1rem)] md:p-10 relative overflow-hidden transition-colors duration-500 bg-[var(--bg-main)]">
+      <div className="flex-1 h-full flex flex-col items-center justify-between p-4 pb-mobile-controls md:p-10 relative overflow-hidden transition-colors duration-500 bg-[var(--bg-main)]">
         <div className="absolute inset-0 -z-10 opacity-20 blur-[140px] scale-150 transition-all duration-1000">
           <img
             src={featuredTrack?.coverUrl || heroThumbnail}
@@ -157,7 +157,7 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
   }
 
   return (
-    <div className="flex-1 h-full flex flex-col items-center justify-between p-4 pb-[calc(4rem+env(safe-area-inset-bottom)+1rem)] md:p-10 relative overflow-hidden transition-colors duration-500 bg-[var(--bg-main)]">
+    <div className="flex-1 h-full flex flex-col items-center justify-between p-4 pb-mobile-controls md:p-10 relative overflow-hidden transition-colors duration-500 bg-[var(--bg-main)]">
       {/* 1. FONDO DINÁMICO (Blur Profundo) */}
       <div className="absolute inset-0 -z-10 opacity-20 blur-[140px] scale-150 transition-all duration-1000">
         <img src={currentTrack.coverUrl} alt="" className="w-full h-full object-cover" />

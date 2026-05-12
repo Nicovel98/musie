@@ -11,6 +11,8 @@
   --glass-shadow: 0 18px 60px rgba(0, 0, 0, 0.32);
   --accent-primary: #7dd3fc;
   --accent-secondary: #a78bfa;
+  --mobile-tabs-height: 3.5rem;
+  --mobile-controls-gap: 12px;
 
   /* Evita el resaltado azul al tocar en móviles */
   -webkit-tap-highlight-color: transparent;
@@ -76,9 +78,22 @@ body {
 
 /* 4. UTILIDADES DE ÁREA SEGURA (Critical para móviles) */
 
-/* Padding bottom que suma la altura de MobileTabs (64px) + el Notch + espacio extra */
-.pb-mobile-controls {
-  padding-bottom: calc(4rem + env(safe-area-inset-bottom) + 80px);
+@media (max-width: 767px) {
+
+  /* Padding bottom que suma la altura de MobileTabs + el Notch + espacio extra */
+  .pb-mobile-controls {
+    padding-bottom: calc(var(--mobile-tabs-height) + env(safe-area-inset-bottom) + 1rem);
+  }
+
+  /* Distancia para elementos flotantes encima de MobileTabs */
+  .mobile-tabs-offset {
+    bottom: calc(var(--mobile-tabs-height) + env(safe-area-inset-bottom) + var(--mobile-controls-gap));
+  }
+
+  /* Alto real reservado para la barra de tabs móvil */
+  .mobile-tabs-shell {
+    height: calc(var(--mobile-tabs-height) + env(safe-area-inset-bottom));
+  }
 }
 
 /* Asegura que el contenido se vea bajo el notch arriba si es necesario */
