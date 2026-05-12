@@ -1,9 +1,47 @@
-@import './styles/tokens.css';
-@import './styles/ui.css';
-@import './styles/app.css';
+@import "tailwindcss";
+/* O las directivas de Tailwind 4 que ya tienes */
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
+/* Optimizaciones para PWA y tipografía */
+:root {
+  /* Evita que el usuario pueda seleccionar texto accidentalmente al pulsar botones */
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-color: black;
+  color: white;
+  /* Usa la tipografía nativa del sistema para que parezca una app real */
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* Suavizado de fuente */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbars minimalistas para que no arruinen el diseño oscuro */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+
+/* Clase para ocultar el scrollbar pero mantener la funcionalidad */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
