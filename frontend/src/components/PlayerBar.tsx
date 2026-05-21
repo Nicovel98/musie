@@ -1,15 +1,6 @@
-import {
-  Play,
-  Pause,
-  SkipBack,
-  SkipForward,
-  Repeat,
-  Shuffle,
-  Volume2,
-  VolumeX,
-  Heart,
-} from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Repeat, Shuffle, Heart } from 'lucide-react';
 import { usePlayerStore } from '../store/usePlayerStore';
+import { VolumeControl } from './VolumeControl';
 
 export const PlayerBar = () => {
   const { currentTrack, isPlaying, togglePlay, seek, duration, setSeek, volume, setVolume } =
@@ -31,10 +22,10 @@ export const PlayerBar = () => {
        - En móvil: bg-black/80 con blur para que destaque sobre el contenido.
        - En desktop: transparente porque App.tsx ya le da el fondo sólido.
     */
-    <div className="glass-effect w-full h-[5rem] md:h-24 px-3 md:px-6 flex flex-col md:flex-row md:items-center md:justify-between transition-all duration-500 bg-[var(--glass-bg)] md:bg-transparent backdrop-blur-xl md:backdrop-blur-0">
+    <div className="glass-effect w-full h-[5.5rem] md:h-20 px-3 md:px-5 pb-3 md:pb-0 flex flex-col md:flex-row md:items-center md:justify-between transition-all duration-500 bg-[var(--glass-bg)] md:bg-transparent backdrop-blur-xl md:backdrop-blur-0">
       {/* MÓVIL: INFORMACIÓN + CONTROLES */}
-      <div className="md:hidden w-full flex flex-col gap-0.6 pt-0">
-        <div className="flex items-center gap-1 min-w-0">
+      <div className="md:hidden w-full flex flex-col gap-1 pt-0">
+        <div className="flex items-center gap-3 min-w-0">
           <img
             src={currentTrack.coverUrl}
             alt={currentTrack.title}
@@ -53,17 +44,21 @@ export const PlayerBar = () => {
           </button>
         </div>
 
-        <div className="flex items-center justify-between gap-0.1 px-0">
+        <div className="flex items-center justify-between gap-1 px-0">
           <button className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--text-muted)] active:text-[var(--text-main)] transition-colors">
             <Shuffle size={14} />
           </button>
 
-          <button className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-muted)] active:text-[var(--text-main)] transition-colors">
+          <button
+            aria-label="Previous track"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-muted)] active:text-[var(--text-main)] transition-colors"
+          >
             <SkipBack size={16} />
           </button>
 
           <button
             onClick={togglePlay}
+            aria-label={isPlaying ? 'Pause' : 'Play'}
             className="w-9 h-9 flex items-center justify-center bg-[var(--text-main)] text-[var(--bg-main)] rounded-full shadow-xl active:scale-95 transition-all"
           >
             {isPlaying ? (
@@ -73,7 +68,10 @@ export const PlayerBar = () => {
             )}
           </button>
 
-          <button className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-muted)] active:text-[var(--text-main)] transition-colors">
+          <button
+            aria-label="Next track"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-muted)] active:text-[var(--text-main)] transition-colors"
+          >
             <SkipForward size={16} />
           </button>
 
@@ -84,12 +82,12 @@ export const PlayerBar = () => {
       </div>
 
       {/* 1. INFO CANCIÓN */}
-      <div className="hidden md:flex items-center gap-3 md:gap-3 w-[60%] md:w-[28%] min-w-0">
+      <div className="hidden md:flex items-center gap-2 md:gap-2 w-[60%] md:w-[28%] min-w-0">
         <div className="relative shrink-0 group">
           <img
             src={currentTrack.coverUrl}
             alt={currentTrack.title}
-            className="w-10 h-10 md:w-12 md:h-12 rounded-lg object-cover shadow-lg border border-[var(--glass-border)]"
+            className="w-9 h-9 md:w-14 md:h-14 rounded-lg object-cover shadow-lg border border-[var(--glass-border)]"
           />
         </div>
         <div className="flex flex-col truncate">
@@ -106,18 +104,22 @@ export const PlayerBar = () => {
       </div>
 
       {/* 2. CONTROLES (Móvil: Solo Play/Pause | Desktop: Full) */}
-      <div className="hidden md:flex flex-col items-center flex-1 max-w-[44%] gap-1">
-        <div className="flex items-center gap-3 md:gap-6">
+      <div className="hidden md:flex flex-col items-center flex-1 max-w-[44%] gap-0.5">
+        <div className="flex items-center gap-2 md:gap-4">
           <button className="text-[var(--text-muted)] hover:text-[var(--accent-primary)] transition-colors hidden md:block">
             <Shuffle size={16} />
           </button>
 
-          <button className="text-[var(--text-main)] opacity-70 hover:opacity-100 transition-all active:scale-90 hidden md:block">
+          <button
+            aria-label="Previous track"
+            className="text-[var(--text-main)] opacity-70 hover:opacity-100 transition-all active:scale-90 hidden md:block"
+          >
             <SkipBack size={24} fill="currentColor" />
           </button>
 
           <button
             onClick={togglePlay}
+            aria-label={isPlaying ? 'Pause' : 'Play'}
             className="w-10 h-10 md:w-11 md:h-11 flex items-center justify-center bg-[var(--text-main)] text-[var(--bg-main)] rounded-full hover:scale-105 transition-all shadow-xl active:scale-95"
           >
             {isPlaying ? (
@@ -127,7 +129,10 @@ export const PlayerBar = () => {
             )}
           </button>
 
-          <button className="text-[var(--text-main)] opacity-70 hover:opacity-100 transition-all active:scale-90 hidden md:block">
+          <button
+            aria-label="Next track"
+            className="text-[var(--text-main)] opacity-70 hover:opacity-100 transition-all active:scale-90 hidden md:block"
+          >
             <SkipForward size={24} fill="currentColor" />
           </button>
 
@@ -137,11 +142,11 @@ export const PlayerBar = () => {
         </div>
 
         {/* BARRA DE PROGRESO DESKTOP */}
-        <div className="w-full hidden md:flex items-center gap-3 group/progress">
+        <div className="w-full hidden md:flex items-center gap-2 group/progress mb-1">
           <span className="text-[10px] font-mono text-[var(--text-muted)] w-10 text-right tabular-nums">
             {formatTime(seek)}
           </span>
-          <div className="flex-1 h-1.5 bg-[var(--bg-elevated)] rounded-full relative overflow-hidden group-hover/progress:h-2 transition-all">
+          <div className="flex-1 h-1 bg-[var(--bg-elevated)] rounded-full relative overflow-hidden group-hover/progress:h-1.5 transition-all">
             <input
               type="range"
               min="0"
@@ -163,39 +168,10 @@ export const PlayerBar = () => {
       </div>
 
       {/* 3. VOLUMEN (SOLO DESKTOP) */}
-      <div className="hidden md:flex items-center justify-end gap-1.5 w-[28%] group/vol">
-        <button
-          onClick={() => setVolume(volume === 0 ? 0.8 : 0)}
-          className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] active:scale-90 transition-all shrink-0"
-        >
-          {volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
-        </button>
-        <div className="relative w-16 h-1 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
-          <input
-            type="range"
-            min="0"
-            max="2"
-            step="0.01"
-            value={volume}
-            onChange={(e) => setVolume(parseFloat(e.target.value))}
-            className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer"
-          />
-          <div
-            className={`h-full transition-colors ${volume > 1 ? 'bg-gradient-to-r from-[var(--accent-primary)] via-[var(--accent-secondary)] to-red-500' : 'bg-[var(--text-main)] group-hover/vol:bg-[var(--accent-primary)]'}`}
-            style={{ width: `${(volume / 2) * 100}%` }}
-          />
+      <div className="hidden md:flex items-center justify-end w-[28%]">
+        <div className="w-full max-w-[280px] lg:max-w-[320px] xl:max-w-[340px]">
+          <VolumeControl volume={volume} onVolumeChange={setVolume} showLabel={true} />
         </div>
-        <button
-          onClick={() => setVolume(1)}
-          className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] active:scale-90 transition-all shrink-0"
-        >
-          <Volume2 size={16} />
-        </button>
-        <span
-          className={`text-[9px] font-mono w-10 text-right font-black tabular-nums transition-colors ${volume > 1 ? 'text-red-500' : 'text-[var(--text-muted)]'}`}
-        >
-          {Math.round(volume * 100)}%
-        </span>
       </div>
 
       {/* BARRA DE PROGRESO MINI (Móvil - Al borde inferior del bar) */}

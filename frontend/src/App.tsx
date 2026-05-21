@@ -31,7 +31,7 @@ function App() {
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="absolute inset-0 z-50 bg-[var(--bg-main)] pb-[calc(var(--mobile-tabs-height)+env(safe-area-inset-bottom))] md:pb-0"
+                className="absolute inset-0 z-50 bg-[var(--bg-main)] pb-[calc(var(--mobile-tabs-height)+env(safe-area-inset-bottom))] md:pb-2"
               >
                 <NowPlaying setView={setCurrentView} />
               </motion.div>
@@ -41,7 +41,7 @@ function App() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="h-full overflow-y-auto custom-scrollbar pb-[calc(var(--mobile-tabs-height)+var(--mobile-playerbar-height)+env(safe-area-inset-bottom)+1rem)] md:pb-0"
+                className="h-full overflow-y-auto custom-scrollbar pb-[calc(var(--mobile-tabs-height)+var(--mobile-playerbar-height)+env(safe-area-inset-bottom)+1rem)] md:pb-1"
               >
                 <Library />
               </motion.div>
@@ -51,7 +51,7 @@ function App() {
       </div>
 
       {/* 2. ZONA DE CONTROLES INFERIOR (PlayerBar - Independiente) */}
-      <div className="relative shrink-0 w-full">
+      <div className="relative shrink-0 w-full pb-1">
         {/* PLAYERBAR: Desktop + Móvil */}
         <AnimatePresence>
           {currentView !== 'home' && (
@@ -61,7 +61,7 @@ function App() {
               exit={{ y: 100, opacity: 0 }}
               className="fixed md:relative left-0 right-0 bottom-[calc(var(--mobile-tabs-height)+env(safe-area-inset-bottom))] md:bottom-auto z-40 bg-[var(--glass-bg)] border-t border-[var(--glass-border)] md:pb-0"
             >
-              <div className="max-w-7xl mx-auto px-0">
+              <div className="w-full px-1">
                 <PlayerBar />
               </div>
             </motion.div>

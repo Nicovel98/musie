@@ -30,12 +30,15 @@ interface PlayerState {
   duration: number;
   howl: Howl | null;
   analyzer: AnalyserNode | null;
+  gainNode: GainNode | null;
+  compressor: DynamicsCompressorNode | null;
   addSongs: (files: File[]) => void;
   clearSongs: () => void;
   setTrack: (track: Track) => void;
   togglePlay: () => void;
   setVolume: (val: number) => void;
   setSeek: (val: number) => void;
+  fastSeek: (val: number) => void;
   updateProgress: () => void;
 }
 
@@ -51,6 +54,8 @@ export const usePlayerStore = create<PlayerState>()(
       duration: 0,
       howl: null,
       analyzer: null,
+      gainNode: null,
+      compressor: null,
 
       addSongs: (files) => {
         const newTracks = files.map((file) => ({
@@ -86,31 +91,50 @@ export const usePlayerStore = create<PlayerState>()(
         const file = track.fileData as File;
         const extension = file.name?.split('.').pop()?.toLowerCase() || 'mp3';
         const activeUrl = URL.createObjectURL(file);
-        const playbackVolume = Math.min(get().volume, 1);
 
+        // Creamos Howl con volumen a 1. El control de ganancia real lo haremos
+        // mediante un GainNode conectado al contexto de Howler.
         const newHowl = new Howl({
           src: [activeUrl],
           format: [extension],
           html5: true,
-          volume: playbackVolume,
+          volume: 1,
           onplay: () => {
             set({ isPlaying: true, duration: newHowl.duration() });
 
-            // Conexión del Analizador
+            // Conexión del Analizador + GainNode + Compressor para amplificación segura
             const node = (newHowl as unknown as HowlInternal)._sounds?.[0]?._node;
             if (node) {
               try {
-                let analyzer = get().analyzer;
-                if (!analyzer) {
-                  const source = Howler.ctx.createMediaElementSource(node);
-                  analyzer = Howler.ctx.createAnalyser();
-                  analyzer.fftSize = 256;
-                  source.connect(analyzer);
-                  analyzer.connect(Howler.ctx.destination);
-                  set({ analyzer });
-                }
-              } catch {
-                console.debug('Audio node already connected');
+                const ctx = Howler.ctx;
+
+                // Crear fuente desde el elemento de audio
+                const source = ctx.createMediaElementSource(node);
+
+                // Gain para amplificación (valor en state.volume, puede ser >1)
+                const gainNode = ctx.createGain();
+                gainNode.gain.value = get().volume ?? 0.5;
+
+                // Compressor para proteger contra clipping/distorsión
+                const compressor = ctx.createDynamicsCompressor();
+                compressor.threshold.setValueAtTime(-6, ctx.currentTime);
+                compressor.knee.setValueAtTime(30, ctx.currentTime);
+                compressor.ratio.setValueAtTime(12, ctx.currentTime);
+                compressor.attack.setValueAtTime(0.003, ctx.currentTime);
+                compressor.release.setValueAtTime(0.25, ctx.currentTime);
+
+                const analyzer = Howler.ctx.createAnalyser();
+                analyzer.fftSize = 256;
+
+                // Cadena: source -> gain -> compressor -> analyzer -> destination
+                source.connect(gainNode);
+                gainNode.connect(compressor);
+                compressor.connect(analyzer);
+                analyzer.connect(Howler.ctx.destination);
+
+                set({ analyzer, gainNode, compressor });
+              } catch (err) {
+                console.debug('Audio node already connected or connection failed', err);
               }
             }
           },
@@ -138,8 +162,20 @@ export const usePlayerStore = create<PlayerState>()(
       },
 
       setVolume: (val) => {
-        const { howl } = get();
-        if (howl) howl.volume(Math.min(val, 1));
+        const { howl, gainNode } = get();
+
+        // Si tenemos un GainNode en el WebAudio, usarlo para permitir >1
+        if (gainNode) {
+          try {
+            gainNode.gain.value = val;
+          } catch {
+            /* empty */
+          }
+        } else if (howl) {
+          // Fallback: limitar al rango que Howl soporta
+          howl.volume(Math.min(val, 1));
+        }
+
         set({ volume: val });
       },
 
@@ -148,6 +184,35 @@ export const usePlayerStore = create<PlayerState>()(
         if (howl) {
           howl.seek(val);
           set({ seek: val });
+        }
+      },
+
+      fastSeek: (val) => {
+        const { howl } = get();
+        if (!howl) return;
+
+        try {
+          const node = (howl as unknown as HowlInternal)._sounds?.[0]?._node;
+          if (node && typeof (node as unknown as HTMLMediaElement).fastSeek === 'function') {
+            try {
+              // Some browsers (Chromium) support fastSeek on HTMLMediaElement
+              (node as unknown as HTMLMediaElement).fastSeek(val);
+              set({ seek: val });
+              return;
+            } catch (err) {
+              console.debug('fastSeek failed, falling back to howl.seek()', err);
+            }
+          }
+        } catch (err) {
+          console.debug('error accessing audio node for fastSeek', err);
+        }
+
+        // Fallback
+        try {
+          howl.seek(val);
+          set({ seek: val });
+        } catch (err) {
+          console.debug('howl.seek failed in fastSeek', err);
         }
       },
 
