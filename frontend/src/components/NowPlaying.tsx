@@ -15,6 +15,7 @@ import {
 import heroThumbnail from '../assets/hero.png';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { useVisualizer } from '../hooks/useVisualizer';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { VolumeControl } from './VolumeControl';
 
 interface NowPlayingProps {
@@ -24,6 +25,9 @@ interface NowPlayingProps {
 export const NowPlaying = ({ setView }: NowPlayingProps) => {
   const [isLightMode, setIsLightMode] = useState(
     document.documentElement.classList.contains('light')
+  );
+  const isCompactLandscape = useMediaQuery(
+    '(orientation: landscape) and (max-height: 640px) and (max-width: 1024px)'
   );
   const [barCount, setBarCount] = useState<number>(
     typeof window !== 'undefined' && window.innerWidth < 640 ? 36 : 50
@@ -75,6 +79,159 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
     document.documentElement.classList.toggle('light');
     window.dispatchEvent(new Event('themechange'));
   };
+
+  if (currentTrack && isCompactLandscape) {
+    return (
+      <div className="flex-1 h-full relative overflow-hidden transition-colors duration-500 bg-[var(--bg-main)] px-3 pt-2 pb-[calc(var(--mobile-tabs-height)+env(safe-area-inset-bottom)+0.5rem)] md:px-4">
+        <div className="absolute inset-0 -z-10 opacity-18 blur-[120px] scale-150 transition-all duration-1000">
+          <img src={currentTrack.coverUrl} alt="" className="w-full h-full object-cover" />
+        </div>
+
+        <div className="flex h-full w-full min-h-0 flex-col rounded-[30px] border border-[var(--glass-border)] bg-[var(--glass-bg)] p-2 shadow-[var(--glass-shadow)] backdrop-blur-xl">
+          <div className="flex items-center justify-between shrink-0 px-1 py-1">
+            <button
+              onClick={() => setView('library')}
+              className="p-2 -ml-2 text-[var(--text-main)] opacity-40 hover:opacity-100 transition-all active:scale-90"
+            >
+              <ChevronDown size={28} strokeWidth={2.5} />
+            </button>
+            <span className="text-[9px] uppercase tracking-[0.5em] text-[var(--text-main)] opacity-30 font-black">
+              Now Playing
+            </span>
+            <button className="text-[var(--text-main)] opacity-40 hover:opacity-100 transition-colors">
+              <MoreHorizontal size={22} />
+            </button>
+          </div>
+
+          <div className="grid flex-1 min-h-0 grid-cols-[minmax(0,0.42fr)_minmax(0,0.58fr)] gap-2">
+            <section className="flex min-h-0 flex-col gap-2 p-1">
+              <div className="relative flex-1 min-h-0 overflow-hidden rounded-[20px] border border-[var(--glass-border)]">
+                <img
+                  src={currentTrack.coverUrl}
+                  alt={currentTrack.title}
+                  className="h-full w-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/10 to-transparent" />
+              </div>
+
+              <div className="flex items-center justify-between gap-2 shrink-0 px-1 pt-1">
+                <button className="text-[var(--text-muted)] hover:text-[var(--accent-primary)] transition-colors">
+                  <Shuffle size={18} />
+                </button>
+                <button
+                  aria-label="Previous track"
+                  className="text-[var(--text-main)] opacity-70 hover:opacity-100 transition-all active:scale-90"
+                >
+                  <SkipBack size={24} fill="currentColor" />
+                </button>
+                <button
+                  onClick={togglePlay}
+                  aria-label={isPlaying ? 'Pause' : 'Play'}
+                  className="w-11 h-11 flex items-center justify-center bg-[var(--text-main)] text-[var(--bg-main)] rounded-full hover:scale-105 transition-all shadow-xl active:scale-95"
+                >
+                  {isPlaying ? (
+                    <Pause size={20} fill="currentColor" />
+                  ) : (
+                    <Play size={20} fill="currentColor" className="ml-0.5" />
+                  )}
+                </button>
+                <button
+                  aria-label="Next track"
+                  className="text-[var(--text-main)] opacity-70 hover:opacity-100 transition-all active:scale-90"
+                >
+                  <SkipForward size={24} fill="currentColor" />
+                </button>
+                <button className="text-[var(--text-muted)] hover:text-[var(--accent-primary)] transition-colors">
+                  <Repeat size={18} />
+                </button>
+              </div>
+            </section>
+
+            <section className="flex min-h-0 flex-col gap-3 p-1">
+              <div className="flex items-start justify-between gap-4 shrink-0">
+                <div className="min-w-0 flex-1 space-y-1 pr-1">
+                  <div className="flex items-start gap-2 min-w-0">
+                    <h2 className="min-w-0 text-[clamp(1.15rem,3.8vw,1.85rem)] font-black text-[var(--text-main)] tracking-tighter leading-tight break-words">
+                      {currentTrack.title}
+                    </h2>
+                    <button
+                      onClick={toggleTheme}
+                      className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-muted)] shadow-[var(--glass-shadow)] backdrop-blur-xl hover:text-[var(--text-main)] active:scale-95 transition-all shrink-0"
+                      aria-label="Toggle theme"
+                    >
+                      {isLightMode ? (
+                        <Sun className="h-4 w-4 transition-colors" />
+                      ) : (
+                        <Moon className="h-4 w-4 transition-colors" />
+                      )}
+                    </button>
+                  </div>
+                  <p className="max-w-full text-[11px] uppercase tracking-[0.28em] text-blue-400 font-bold break-words">
+                    {currentTrack.artist}
+                  </p>
+                </div>
+
+                <button
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-muted)] shadow-[var(--glass-shadow)] backdrop-blur-xl hover:text-red-500 active:scale-95 transition-all shrink-0"
+                  aria-label="Like track"
+                >
+                  <Heart className="h-4 w-4 hover:fill-red-500 transition-colors" />
+                </button>
+              </div>
+
+              <div className="flex-1 min-h-0 flex items-center rounded-[18px] border border-dashed border-[var(--glass-border)] bg-black/5 px-3 py-3">
+                <div className="w-full h-full flex flex-col justify-between gap-2">
+                  <div className="relative flex-1 min-h-0 flex items-end justify-center gap-[clamp(2px,0.9vw,4px)]">
+                    <input
+                      type="range"
+                      min="0"
+                      max={duration || 0}
+                      step="0.1"
+                      value={seek}
+                      onChange={(e) => setSeek(parseFloat(e.target.value))}
+                      aria-label="Seek"
+                      className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer"
+                    />
+                    {Array.from(audioData)
+                      .slice(0, barCount)
+                      .map((v, i) => {
+                        const isPlayed = (i / barCount) * 100 < progressPercent;
+                        return (
+                          <div
+                            key={i}
+                            className={`flex-1 rounded-full transition-all duration-75 ${
+                              isPlayed
+                                ? 'bg-gradient-to-t from-blue-600 to-purple-500 shadow-[0_0_15px_rgba(37,99,235,0.2)]'
+                                : 'bg-gray-500/20 opacity-30'
+                            }`}
+                            style={{ height: `${Math.max(18, (v / 255) * 100)}%` }}
+                          />
+                        );
+                      })}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 font-mono text-[10px] text-[var(--text-muted)] tabular-nums">
+                    <span>{formatTime(seek)}</span>
+                    <div className="h-px flex-1 bg-[var(--glass-border)] mx-2 relative overflow-hidden rounded-full">
+                      <div
+                        className="absolute inset-y-0 left-0 bg-[var(--accent-primary)]"
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+                    <span>{formatTime(duration)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="shrink-0 space-y-2">
+                <VolumeControl volume={volume} onVolumeChange={setVolume} showLabel={true} />
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentTrack) {
     return (

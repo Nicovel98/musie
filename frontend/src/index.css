@@ -79,7 +79,7 @@ body {
 
 /* 4. UTILIDADES DE ÁREA SEGURA (Critical para móviles) */
 
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
 
   /* Padding bottom que suma la altura de MobileTabs + el Notch + espacio extra */
   .pb-mobile-controls {
@@ -94,6 +94,27 @@ body {
   /* Alto real reservado para la barra de tabs móvil */
   .mobile-tabs-shell {
     height: calc(var(--mobile-tabs-height) + env(safe-area-inset-bottom));
+  }
+
+
+  /* Ensure mobile-tabs-shell has a stable height even on large viewports
+   (useful when MobileTabs are forced visible via JS on lg+) */
+  .mobile-tabs-shell {
+    height: calc(var(--mobile-tabs-height) + env(safe-area-inset-bottom));
+    width: 100%;
+  }
+
+  /* Asegura que el nav interno mantenga una altura estable y no colapse */
+  .mobile-tabs-shell>nav {
+    height: var(--mobile-tabs-height);
+    min-height: var(--mobile-tabs-height);
+    max-height: var(--mobile-tabs-height);
+    box-sizing: border-box;
+    padding-bottom: env(safe-area-inset-bottom);
+    width: 100%;
+    padding-left: 1.5rem;
+    /* match px-6 (1.5rem) used by Tailwind */
+    padding-right: 1.5rem;
   }
 }
 
@@ -131,3 +152,15 @@ body {
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
 }
+
+/*
+  USO - Media queries landscape personalizados
+  - `landscape-compact:` aplica cuando la orientación es landscape y la altura <= 640px, ancho <= 1024px
+  - `landscape-h-md:` aplica cuando la orientación es landscape y la altura <= md (767px)
+  - `landscape-w-lg:` aplica cuando la orientación es landscape y el ancho <= lg (1023px)
+
+  Ejemplo: en JSX/HTML con Tailwind
+    <div className="flex flex-col landscape-compact:flex-row landscape-compact:items-center">...</div>
+
+  Estas pantallas se definen en `frontend/tailwind.config.js`.
+*/

@@ -14,7 +14,16 @@ export const MobileTabs = ({ currentView, setView }: MobileTabsProps) => {
   ] as const;
 
   return (
-    <nav className="glass-effect w-full h-full bg-[var(--glass-bg)] px-6 flex items-center justify-between pb-safe">
+    <nav
+      className="glass-effect w-full bg-[var(--glass-bg)] px-6 flex items-center justify-between pb-safe"
+      style={{
+        height: 'var(--mobile-tabs-height)',
+        minHeight: 'var(--mobile-tabs-height)',
+        maxHeight: 'var(--mobile-tabs-height)',
+        boxSizing: 'border-box',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
+    >
       {tabs.map((tab) => {
         const isActive = currentView === tab.id;
 

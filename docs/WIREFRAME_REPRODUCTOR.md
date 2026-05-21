@@ -67,23 +67,26 @@ El reproductor debe permitir escuchar, controlar y explorar una biblioteca local
 +------------------------------------------------------------------+
 ```
 
-### Vista Landscape Minimalista
+### Vista Landscape Minimalista (max height 640 y max width 1024)
 
 ```text
 +--------------------------------------------------------------------------------+
-| Musie                                                [More]                   |
-|                                                                                |
-|   +-----------------------------+    Título de la canción                     |
-|   |                             |    Artista / Álbum                         |
-|   |         PORTADA            |                                            |
-|   |                             |    [Favorite]                              |
-|   +-----------------------------+                                            |
-|                                                                                |
-|   00:42  --------------------●--------------------  03:18                    |
-|                                                                                |
-|   [Shuffle]   [Prev]   [Play/Pause]   [Next]   [Repeat]   Volumen [----●---]  |
-|                                                                                |
-|   Estado / Calidad                                                              |
+|                                                                            |
+|  | [Minimizar]       Now Playing                       [More]  |               |
+|  | +-----------------------------+    Título de la canción     |                |
+|  | |                             |    Artista / Álbum          |               |
+|  | |         PORTADA            |                              |              |
+|  | |                             |    [Favorite]               |               |
+|  | |                             |                             |               |
+|  | |                             |                              |                 |
+|  | +----------------------------+ 00:42  ---●-------  03:18   |               |
+|  |                                                             |                 |
+|  |              [Shuffle] [Prev] [Play/Pause] [Next] [Repeat]  |               |
+|  |                   Volumen [---●-]   Calidad / Estado        |             |
+|  +-------------------------------------------------------------+               |
+|                                                                               |
+|--------------------------------------------------------------------------------|
+|           MobileTabs                                                          |
 +--------------------------------------------------------------------------------+
 ```
 
