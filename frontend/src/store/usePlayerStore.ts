@@ -42,6 +42,12 @@ interface PlayerState {
   updateProgress: () => void;
 }
 
+const clampSeekValue = (val: number, duration: number) => {
+  if (!Number.isFinite(val)) return 0;
+  if (!Number.isFinite(duration) || duration <= 0) return Math.max(0, val);
+  return Math.min(Math.max(0, val), duration);
+};
+
 export const usePlayerStore = create<PlayerState>()(
   persist(
     (set, get) => ({
@@ -180,24 +186,27 @@ export const usePlayerStore = create<PlayerState>()(
       },
 
       setSeek: (val) => {
-        const { howl } = get();
+        const { howl, duration } = get();
         if (howl) {
-          howl.seek(val);
-          set({ seek: val });
+          const nextSeek = clampSeekValue(val, duration);
+          howl.seek(nextSeek);
+          set({ seek: nextSeek });
         }
       },
 
       fastSeek: (val) => {
-        const { howl } = get();
+        const { howl, duration } = get();
         if (!howl) return;
+
+        const nextSeek = clampSeekValue(val, duration);
 
         try {
           const node = (howl as unknown as HowlInternal)._sounds?.[0]?._node;
           if (node && typeof (node as unknown as HTMLMediaElement).fastSeek === 'function') {
             try {
               // Some browsers (Chromium) support fastSeek on HTMLMediaElement
-              (node as unknown as HTMLMediaElement).fastSeek(val);
-              set({ seek: val });
+              (node as unknown as HTMLMediaElement).fastSeek(nextSeek);
+              set({ seek: nextSeek });
               return;
             } catch (err) {
               console.debug('fastSeek failed, falling back to howl.seek()', err);
@@ -209,8 +218,8 @@ export const usePlayerStore = create<PlayerState>()(
 
         // Fallback
         try {
-          howl.seek(val);
-          set({ seek: val });
+          howl.seek(nextSeek);
+          set({ seek: nextSeek });
         } catch (err) {
           console.debug('howl.seek failed in fastSeek', err);
         }

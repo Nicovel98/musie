@@ -12,11 +12,8 @@ registerSW({
   immediate: true,
   onNeedRefresh() {
     // Opcional: Aquí podrías mostrar un aviso de "Nueva versión disponible"
-    console.log('Nueva versión de Musie disponible');
   },
-  onOfflineReady() {
-    console.log('Musie está lista para usarse sin internet');
-  },
+  onOfflineReady() {},
 });
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

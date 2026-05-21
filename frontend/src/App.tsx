@@ -21,11 +21,6 @@ function App() {
   const shouldShowMobileTabs = isSmallHeight || !isLargeWidth || isCompactLandscape;
   const showSidebar = !isSmallHeight && !isCompactLandscape;
 
-  // Dev debug: log media query states
-  if (import.meta.env.DEV) {
-    console.log('media:', { isSmallHeight, isLargeWidth, shouldShowMobileTabs });
-  }
-
   return (
     <div className="flex flex-col h-screen w-full bg-[var(--bg-main)] text-[var(--text-main)] overflow-hidden font-sans transition-colors duration-500 relative">
       {/* 1. CUERPO SUPERIOR (Sidebar + Contenido) */}

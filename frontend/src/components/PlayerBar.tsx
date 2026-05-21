@@ -1,10 +1,15 @@
 import { Play, Pause, SkipBack, SkipForward, Repeat, Shuffle, Heart } from 'lucide-react';
+import { useRef } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { VolumeControl } from './VolumeControl';
 
 export const PlayerBar = () => {
-  const { currentTrack, isPlaying, togglePlay, seek, duration, setSeek, volume, setVolume } =
+  const { currentTrack, isPlaying, togglePlay, seek, duration, fastSeek, volume, setVolume } =
     usePlayerStore();
+  const scrubResumeRef = useRef(false);
+  const scrubActiveRef = useRef(false);
+  const seekRafRef = useRef<number | null>(null);
+  const pendingSeekRef = useRef<number | null>(null);
 
   if (!currentTrack) return null;
 
@@ -15,6 +20,56 @@ export const PlayerBar = () => {
   };
 
   const progressPercent = (seek / duration) * 100 || 0;
+
+  const handleSeekChange = (value: string) => {
+    const nextSeek = Number(value);
+    if (!Number.isFinite(nextSeek)) return;
+
+    pendingSeekRef.current = nextSeek;
+
+    if (seekRafRef.current !== null) return;
+
+    seekRafRef.current = requestAnimationFrame(() => {
+      seekRafRef.current = null;
+      const seekValue = pendingSeekRef.current;
+      if (seekValue !== null) fastSeek(seekValue);
+    });
+  };
+
+  const handleScrubStart = () => {
+    if (scrubActiveRef.current) return;
+
+    scrubActiveRef.current = true;
+    scrubResumeRef.current = isPlaying;
+
+    if (isPlaying) {
+      togglePlay();
+    }
+  };
+
+  const handleScrubEnd = () => {
+    if (!scrubActiveRef.current) return;
+
+    scrubActiveRef.current = false;
+
+    if (seekRafRef.current !== null) {
+      cancelAnimationFrame(seekRafRef.current);
+      seekRafRef.current = null;
+    }
+
+    const seekValue = pendingSeekRef.current;
+    pendingSeekRef.current = null;
+
+    if (seekValue !== null) {
+      fastSeek(seekValue);
+    }
+
+    if (scrubResumeRef.current) {
+      togglePlay();
+    }
+
+    scrubResumeRef.current = false;
+  };
 
   return (
     /*
@@ -153,7 +208,10 @@ export const PlayerBar = () => {
               max={duration || 0}
               step="0.1"
               value={seek}
-              onChange={(e) => setSeek(parseFloat(e.target.value))}
+              onPointerDown={handleScrubStart}
+              onPointerUp={handleScrubEnd}
+              onPointerCancel={handleScrubEnd}
+              onChange={(e) => handleSeekChange(e.target.value)}
               className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer"
             />
             <div
