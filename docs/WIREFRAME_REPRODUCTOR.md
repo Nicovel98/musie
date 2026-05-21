@@ -67,6 +67,26 @@ El reproductor debe permitir escuchar, controlar y explorar una biblioteca local
 +------------------------------------------------------------------+
 ```
 
+### Vista Landscape Minimalista
+
+```text
++--------------------------------------------------------------------------------+
+| Musie                                                [More]                   |
+|                                                                                |
+|   +-----------------------------+    Título de la canción                     |
+|   |                             |    Artista / Álbum                         |
+|   |         PORTADA            |                                            |
+|   |                             |    [Favorite]                              |
+|   +-----------------------------+                                            |
+|                                                                                |
+|   00:42  --------------------●--------------------  03:18                    |
+|                                                                                |
+|   [Shuffle]   [Prev]   [Play/Pause]   [Next]   [Repeat]   Volumen [----●---]  |
+|                                                                                |
+|   Estado / Calidad                                                              |
++--------------------------------------------------------------------------------+
+```
+
 ## Distribución por zonas
 
 ### 1. Cabecera
@@ -108,6 +128,7 @@ El reproductor debe permitir escuchar, controlar y explorar una biblioteca local
 - En móvil, esta navegación puede pasar a tabs inferiores.
 
 ## Estados que debe contemplar
+
 - Thumbnails
 - Sin reproducción activa.
 - Reproduciendo pista local.
