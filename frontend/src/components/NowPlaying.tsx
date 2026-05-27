@@ -17,6 +17,7 @@ import { usePlayerStore } from '../store/usePlayerStore';
 import { useVisualizer } from '../hooks/useVisualizer';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { VisualizerBars } from './VisualizerBars';
+import { PlayerBar } from './PlayerBar';
 import { VolumeControl } from './VolumeControl';
 
 interface NowPlayingProps {
@@ -31,6 +32,7 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
     '(orientation: landscape) and (max-height: 640px) and (max-width: 1024px)'
   );
   const isShortHeight = useMediaQuery('(max-height: 500px)');
+  const isVeryShort = useMediaQuery('(max-height: 350px)');
   const [barCount, setBarCount] = useState<number>(() => {
     if (typeof window === 'undefined') return 40;
 
@@ -160,6 +162,11 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
     scrubResumeRef.current = false;
   };
 
+  if (isVeryShort) {
+    // For extremely short screens, replace NowPlaying with the compact PlayerBar
+    return <PlayerBar />;
+  }
+
   if (currentTrack && isCompactLandscape) {
     return (
       <div className="flex-1 h-full relative overflow-hidden transition-colors duration-500 bg-[var(--bg-main)] px-3 pt-1 pb-[calc(var(--mobile-tabs-height)+env(safe-area-inset-bottom)+0.5rem)] md:px-4">
@@ -167,7 +174,7 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
           <img src={currentTrack.coverUrl} alt="" className="w-full h-full object-cover" />
         </div>
 
-        <div className="flex h-full w-full min-h-0 flex-col rounded-[30px] border border-[var(--glass-border)] bg-[var(--glass-bg)] p-2 shadow-[var(--glass-shadow)] backdrop-blur-xl">
+        <div className="flex relative h-full w-full min-h-0 flex-col rounded-[30px] border border-[var(--glass-border)] bg-[var(--glass-bg)] p-2 shadow-[var(--glass-shadow)] backdrop-blur-xl">
           <div className="flex items-center justify-between shrink-0 px-1 py-1">
             <button
               onClick={() => setView('library')}
@@ -314,7 +321,7 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
             />
           </div>
 
-          <div className="flex h-full w-full min-h-0 flex-col rounded-[30px] border border-[var(--glass-border)] bg-[var(--glass-bg)] p-2 shadow-[var(--glass-shadow)] backdrop-blur-xl">
+          <div className="flex relative h-full w-full min-h-0 flex-col rounded-[30px] border border-[var(--glass-border)] bg-[var(--glass-bg)] p-2 shadow-[var(--glass-shadow)] backdrop-blur-xl">
             <div className="flex items-center justify-between shrink-0 px-1 py-1">
               <button
                 onClick={() => setView('library')}
