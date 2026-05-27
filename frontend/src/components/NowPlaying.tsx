@@ -17,12 +17,23 @@ import { usePlayerStore } from '../store/usePlayerStore';
 import { useVisualizer } from '../hooks/useVisualizer';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { VisualizerBars } from './VisualizerBars';
+import { VisualizerPresetSelector } from './VisualizerPresetSelector';
 import { PlayerBar } from './PlayerBar';
 import { VolumeControl } from './VolumeControl';
 
 interface NowPlayingProps {
   setView: (view: 'home' | 'library') => void;
 }
+
+const getAdaptiveBarCount = (width: number, height: number) => {
+  const shortSide = Math.min(width, height);
+
+  if (shortSide < 420) return 16;
+  if (shortSide < 520) return 20;
+  if (shortSide < 640) return 24;
+  if (shortSide < 760) return 28;
+  return 32;
+};
 
 export const NowPlaying = ({ setView }: NowPlayingProps) => {
   const [isLightMode, setIsLightMode] = useState(
@@ -34,14 +45,19 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
   const isShortHeight = useMediaQuery('(max-height: 500px)');
   const isVeryShort = useMediaQuery('(max-height: 350px)');
   const [barCount, setBarCount] = useState<number>(() => {
-    if (typeof window === 'undefined') return 40;
+    if (typeof window === 'undefined') return 32;
 
-    const width = window.innerWidth;
-    if (width < 480) return 18;
-    if (width < 640) return 24;
-    if (width < 1024) return 32;
-    if (width < 1440) return 44;
-    return 56;
+    return getAdaptiveBarCount(window.innerWidth, window.innerHeight);
+  });
+  const [vizPreset, setVizPreset] = useState<'soft' | 'mid' | 'vivid'>(() => {
+    try {
+      const stored =
+        typeof window !== 'undefined' ? localStorage.getItem('visualizerPreset') : null;
+      if (stored === 'soft' || stored === 'mid' || stored === 'vivid') return stored;
+    } catch {
+      // ignore
+    }
+    return 'mid';
   });
   const {
     songs,
@@ -57,7 +73,8 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
     setTrack,
   } = usePlayerStore();
 
-  const audioData = useVisualizer(barCount);
+  // Pass the selected preset into the visualizer hook so it changes behaviour
+  const audioData = useVisualizer(barCount, vizPreset);
   const scrubResumeRef = useRef(false);
   const scrubActiveRef = useRef(false);
   const seekRafRef = useRef<number | null>(null);
@@ -72,10 +89,15 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
   const sectionPadding = isShortHeight ? 'p-0.5' : 'p-1';
   const visualizerWrapperClassName = isCompactLandscape
     ? 'flex min-h-0 flex-1 flex-col gap-2 rounded-[18px] border border-dashed border-[var(--glass-border)] bg-black/5 px-3 py-3'
-    : 'flex min-h-0 flex-[0.32] flex-col gap-2 rounded-[18px] border border-dashed border-[var(--glass-border)] bg-black/5 px-3 py-2';
+    : 'flex min-h-0 flex-[0.34] flex-col gap-2 rounded-[18px] border border-dashed border-[var(--glass-border)] bg-black/5 px-3 py-3';
   const visualizerBarsRowClassName = isCompactLandscape
     ? 'relative flex-1 min-h-[clamp(5.5rem,24vh,10rem)] w-full flex items-end justify-center gap-[clamp(2px,0.9vw,4px)]'
-    : 'relative flex-1 min-h-[clamp(2.5rem,6.5vh,4.4rem)] w-full flex items-end justify-center gap-[clamp(2px,1vw,3px)]';
+    : 'relative flex-1 min-h-[clamp(4rem,10vw,6rem)] w-full flex items-end justify-center gap-[clamp(2px,0.9vw,4px)]';
+  const visualizerPlayedBarClassName =
+    'bg-gradient-to-t from-blue-600 to-purple-500 shadow-[0_0_15px_rgba(37,99,235,0.2)]';
+  const visualizerInactiveBarClassName = isLightMode
+    ? 'bg-slate-400/75 shadow-[0_0_10px_rgba(15,23,42,0.05)]'
+    : 'bg-[var(--text-main)] opacity-35 shadow-[0_0_10px_rgba(255,255,255,0.06)]';
 
   useEffect(() => {
     const syncTheme = () => {
@@ -83,19 +105,7 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
     };
     window.addEventListener('themechange', syncTheme);
     const handleResize = () => {
-      const width = window.innerWidth;
-
-      if (isCompactLandscape) {
-        if (width < 720) setBarCount(16);
-        else setBarCount(22);
-        return;
-      }
-
-      if (width < 480) setBarCount(18);
-      else if (width < 640) setBarCount(24);
-      else if (width < 1024) setBarCount(32);
-      else if (width < 1440) setBarCount(44);
-      else setBarCount(56);
+      setBarCount(getAdaptiveBarCount(window.innerWidth, window.innerHeight));
     };
 
     handleResize();
@@ -267,31 +277,42 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
               </div>
 
               {!isShortHeight ? (
-                <VisualizerBars
-                  audioData={audioData}
-                  barCount={barCount}
-                  seek={seek}
-                  duration={duration}
-                  progressPercent={progressPercent}
-                  minBarHeight={18}
-                  onSeekChange={handleSeekChange}
-                  onScrubStart={handleScrubStart}
-                  onScrubEnd={handleScrubEnd}
-                  wrapperClassName={visualizerWrapperClassName}
-                  barsRowClassName={visualizerBarsRowClassName}
-                  barTransitionClassName="transition-[height,opacity,transform] duration-90 ease-out"
-                  playedBarClassName="bg-gradient-to-t from-blue-600 to-purple-500 shadow-[0_0_15px_rgba(37,99,235,0.2)]"
-                  inactiveBarClassName={
-                    isLightMode
-                      ? 'bg-slate-400/75 shadow-[0_0_10px_rgba(15,23,42,0.05)]'
-                      : 'bg-[var(--text-main)] opacity-35 shadow-[0_0_10px_rgba(255,255,255,0.06)]'
-                  }
-                  inputClassName="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer"
-                  progressRowClassName="flex items-center justify-between gap-2 mt-0.5 font-mono text-[10px] text-[var(--text-muted)] tabular-nums"
-                  progressTrackClassName="h-px flex-1 bg-[var(--glass-border)] mx-2 relative overflow-hidden rounded-full"
-                  progressFillClassName="absolute inset-y-0 left-0 bg-[var(--accent-primary)]"
-                  timeClassName="shrink-0"
-                />
+                <>
+                  <VisualizerPresetSelector
+                    className="w-full flex justify-center mb-3"
+                    preset={vizPreset}
+                    onChange={(p) => {
+                      setVizPreset(p);
+                      try {
+                        localStorage.setItem('visualizerPreset', p);
+                      } catch {
+                        /* ignore */
+                      }
+                    }}
+                  />
+
+                  <VisualizerBars
+                    audioData={audioData}
+                    barCount={barCount}
+                    seek={seek}
+                    duration={duration}
+                    progressPercent={progressPercent}
+                    minBarHeight={18}
+                    onSeekChange={handleSeekChange}
+                    onScrubStart={handleScrubStart}
+                    onScrubEnd={handleScrubEnd}
+                    wrapperClassName={visualizerWrapperClassName}
+                    barsRowClassName={visualizerBarsRowClassName}
+                    barTransitionClassName="transition-[height,opacity,transform] duration-90 ease-out"
+                    playedBarClassName={visualizerPlayedBarClassName}
+                    inactiveBarClassName={visualizerInactiveBarClassName}
+                    inputClassName="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer"
+                    progressRowClassName="flex items-center justify-between gap-2 mt-0.5 font-mono text-[10px] text-[var(--text-muted)] tabular-nums"
+                    progressTrackClassName="h-px flex-1 bg-[var(--glass-border)] mx-2 relative overflow-hidden rounded-full"
+                    progressFillClassName="absolute inset-y-0 left-0 bg-[var(--accent-primary)]"
+                    timeClassName="shrink-0"
+                  />
+                </>
               ) : null}
 
               <div className="shrink-0 space-y-2">
@@ -574,27 +595,41 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
 
         {/* 5. VISUALIZER CON GRADIENTE VERTICAL */}
         {!isShortHeight ? (
-          <VisualizerBars
-            audioData={audioData}
-            barCount={barCount}
-            seek={seek}
-            duration={duration}
-            progressPercent={progressPercent}
-            minBarHeight={20}
-            onSeekChange={handleSeekChange}
-            onScrubStart={handleScrubStart}
-            onScrubEnd={handleScrubEnd}
-            wrapperClassName="flex w-full flex-[1.1] min-h-0 flex-col px-[clamp(1rem,5vw,2rem)]"
-            barsRowClassName="relative flex-1 min-h-[clamp(4rem,11vw,6rem)] flex items-end justify-center gap-[clamp(2px,1vw,3px)]"
-            barTransitionClassName="transition-all duration-75"
-            playedBarClassName="bg-gradient-to-t from-blue-600 to-purple-500 shadow-[0_0_15px_rgba(37,99,235,0.2)]"
-            inactiveBarClassName="bg-gray-500/20 opacity-30"
-            inputClassName="absolute inset-0 w-full h-full opacity-0 z-30 cursor-pointer"
-            progressRowClassName="flex justify-between items-center px-1 font-mono text-[clamp(0.65rem,1.5vw,0.875rem)] text-gray-500 font-bold tracking-tighter gap-2"
-            progressTrackClassName="h-[1px] flex-1 mx-[clamp(0.75rem,2vw,1.5rem)] bg-gray-500/10 relative"
-            progressFillClassName="absolute inset-y-0 left-0 bg-blue-500/30"
-            timeClassName="shrink-0"
-          />
+          <>
+            <VisualizerPresetSelector
+              preset={vizPreset}
+              onChange={(p) => {
+                setVizPreset(p);
+                try {
+                  localStorage.setItem('visualizerPreset', p);
+                } catch {
+                  /* ignore */
+                }
+              }}
+            />
+
+            <VisualizerBars
+              audioData={audioData}
+              barCount={barCount}
+              seek={seek}
+              duration={duration}
+              progressPercent={progressPercent}
+              minBarHeight={18}
+              onSeekChange={handleSeekChange}
+              onScrubStart={handleScrubStart}
+              onScrubEnd={handleScrubEnd}
+              wrapperClassName="flex w-full flex-[1.1] min-h-[clamp(5rem,12vh,9rem)] flex-col px-[clamp(1rem,5vw,2rem)]"
+              barsRowClassName="relative flex-1 min-h-[clamp(4rem,10vw,6rem)] flex items-end justify-center gap-[clamp(2px,0.9vw,4px)]"
+              barTransitionClassName="transition-[height,opacity,transform] duration-90 ease-out"
+              playedBarClassName={visualizerPlayedBarClassName}
+              inactiveBarClassName={visualizerInactiveBarClassName}
+              inputClassName="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer"
+              progressRowClassName="flex items-center justify-between gap-2 mt-0.5 font-mono text-[10px] text-[var(--text-muted)] tabular-nums"
+              progressTrackClassName="h-px flex-1 bg-[var(--glass-border)] mx-2 relative overflow-hidden rounded-full"
+              progressFillClassName="absolute inset-y-0 left-0 bg-[var(--accent-primary)]"
+              timeClassName="shrink-0"
+            />
+          </>
         ) : null}
 
         {/* 6. CONTROLES Y VOLUMEN SOBREAMPLIFICADO (Glass Style - Responsivo) */}

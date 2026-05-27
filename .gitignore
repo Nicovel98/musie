@@ -67,3 +67,6 @@ ios/Pods/
 ios/build/
 
 # Keep generated docs/images tracked unless explicitly ignored
+
+# Media: música privada/descargas
+/music/

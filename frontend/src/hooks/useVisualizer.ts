@@ -44,7 +44,9 @@ const averageRange = (source: Uint8Array, startRatio: number, endRatio: number) 
   return samples > 0 ? total / samples : 0;
 };
 
-export const useVisualizer = (targetBars = 48) => {
+type VizPreset = 'soft' | 'mid' | 'vivid';
+
+export const useVisualizer = (targetBars = 32, preset: VizPreset = 'mid') => {
   // Obtenemos el analizador y el estado de reproducción del Store de Zustand
   const { analyzer, isPlaying } = usePlayerStore();
 
@@ -60,10 +62,34 @@ export const useVisualizer = (targetBars = 48) => {
 
     const bufferLength = analyzer.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
-    const attackFactor = 0.68;
-    const releaseFactor = 0.48;
-    const pulseAttack = 0.46;
-    const pulseRelease = 0.64;
+    const barDensity = Math.min(1, targetBars / 32);
+
+    // Preset-driven tuning
+    let attackFactor = 0.6;
+    let releaseFactor = 0.34;
+    let pulseAttack = 0.34;
+    let pulseRelease = 0.52;
+    let pulseMultiplier = 10 + barDensity * 4;
+    let tonalMultiplier = 7 + barDensity * 3;
+    let peakCap = 180 + Math.round(barDensity * 10);
+
+    if (preset === 'soft') {
+      attackFactor = 0.45;
+      releaseFactor = 0.5;
+      pulseAttack = 0.22;
+      pulseRelease = 0.62;
+      pulseMultiplier = 6 + barDensity * 3;
+      tonalMultiplier = 4 + barDensity * 2;
+      peakCap = 140 + Math.round(barDensity * 8);
+    } else if (preset === 'vivid') {
+      attackFactor = 0.78;
+      releaseFactor = 0.26;
+      pulseAttack = 0.5;
+      pulseRelease = 0.36;
+      pulseMultiplier = 14 + barDensity * 6;
+      tonalMultiplier = 10 + barDensity * 4;
+      peakCap = 220 + Math.round(barDensity * 18);
+    }
     let isActive = true;
     let animationFrameId = 0;
 
@@ -103,8 +129,8 @@ export const useVisualizer = (targetBars = 48) => {
 
       if (previousFrame.length === nextFrame.length && previousFrame.length > 0) {
         const blendedFrame = new Uint8Array(nextFrame.length);
-        const pulseBoost = pulseRef.current * 20;
-        const tonalBoost = tonalEnergy * 14;
+        const pulseBoost = pulseRef.current * pulseMultiplier;
+        const tonalBoost = tonalEnergy * tonalMultiplier;
 
         for (let index = 0; index < nextFrame.length; index += 1) {
           const position = index / Math.max(1, nextFrame.length - 1);
@@ -112,7 +138,7 @@ export const useVisualizer = (targetBars = 48) => {
           const bassWeight = position < 0.28 ? 1 + (0.28 - position) * 1.2 : 1;
           const trebleWeight = position > 0.72 ? 1 + (position - 0.72) * 1.2 : 1;
           const shapedTarget = Math.min(
-            220,
+            peakCap,
             clampByte(
               nextFrame[index] * edgeWeight * bassWeight * trebleWeight +
                 pulseBoost * edgeWeight +
@@ -143,7 +169,7 @@ export const useVisualizer = (targetBars = 48) => {
       isActive = false;
       cancelAnimationFrame(animationFrameId);
     };
-  }, [analyzer, isPlaying, targetBars]);
+  }, [analyzer, isPlaying, targetBars, preset]);
 
   return audioData;
 };

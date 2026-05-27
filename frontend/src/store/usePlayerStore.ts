@@ -30,8 +30,12 @@ interface PlayerState {
   duration: number;
   howl: Howl | null;
   analyzer: AnalyserNode | null;
+  mediaSource: MediaElementAudioSourceNode | null;
   gainNode: GainNode | null;
   compressor: DynamicsCompressorNode | null;
+  objectUrl: string | null;
+  audioCleanup?: (() => void) | null;
+  audioWatchdogId?: number | null;
   addSongs: (files: File[]) => void;
   clearSongs: () => void;
   setTrack: (track: Track) => void;
@@ -60,8 +64,12 @@ export const usePlayerStore = create<PlayerState>()(
       duration: 0,
       howl: null,
       analyzer: null,
+      mediaSource: null,
       gainNode: null,
       compressor: null,
+      objectUrl: null,
+      audioCleanup: null,
+      audioWatchdogId: null,
 
       addSongs: (files) => {
         const newTracks = files.map((file) => ({
@@ -78,6 +86,41 @@ export const usePlayerStore = create<PlayerState>()(
       clearSongs: () => {
         const { howl } = get();
         if (howl) howl.unload();
+
+        // Cleanup any audio nodes and object URL
+        try {
+          const { mediaSource, gainNode, compressor, analyzer, objectUrl, audioCleanup } = get();
+          if (audioCleanup)
+            try {
+              audioCleanup();
+            } catch {}
+          if (mediaSource)
+            try {
+              mediaSource.disconnect();
+            } catch {}
+          if (gainNode)
+            try {
+              gainNode.disconnect();
+            } catch {}
+          if (compressor)
+            try {
+              compressor.disconnect();
+            } catch {}
+          if (analyzer)
+            try {
+              analyzer.disconnect();
+            } catch {}
+          if (objectUrl)
+            try {
+              URL.revokeObjectURL(objectUrl);
+            } catch {}
+          if (audioWatchdogId)
+            try {
+              clearInterval(audioWatchdogId);
+            } catch {}
+        } catch (e) {
+          /* ignore cleanup errors */
+        }
         set({
           songs: [],
           currentTrack: null,
@@ -89,8 +132,45 @@ export const usePlayerStore = create<PlayerState>()(
       },
 
       setTrack: (track) => {
-        const { howl: oldHowl } = get();
+        // Cleanup existing Howl and audio graph before creating a new one
+        const { howl: oldHowl, mediaSource, gainNode, compressor, analyzer, objectUrl } = get();
         if (oldHowl) oldHowl.unload();
+
+        try {
+          const { audioCleanup } = get();
+          if (audioCleanup)
+            try {
+              audioCleanup();
+            } catch {}
+        } catch {}
+
+        try {
+          if (mediaSource) mediaSource.disconnect();
+        } catch {}
+        try {
+          if (gainNode) gainNode.disconnect();
+        } catch {}
+        try {
+          if (compressor) compressor.disconnect();
+        } catch {}
+        try {
+          if (analyzer) analyzer.disconnect();
+        } catch {}
+        try {
+          if (objectUrl) URL.revokeObjectURL(objectUrl);
+        } catch {}
+
+        // Clear references
+        set({
+          analyzer: null,
+          mediaSource: null,
+          gainNode: null,
+          compressor: null,
+          objectUrl: null,
+          audioCleanup: null,
+          audioWatchdogId: null,
+        });
+
         if (!track.fileData) return;
 
         // Solución al error de TS: Forzamos a File para acceder a .name
@@ -117,6 +197,45 @@ export const usePlayerStore = create<PlayerState>()(
                 // Crear fuente desde el elemento de audio
                 const source = ctx.createMediaElementSource(node);
 
+                // Attach lightweight listeners to help diagnose unexpected pauses
+                const onPause = () =>
+                  console.debug('[audio-event] pause', { currentTime: node.currentTime });
+                const onEnded = () =>
+                  console.debug('[audio-event] ended', { currentTime: node.currentTime });
+                const onStalled = () =>
+                  console.debug('[audio-event] stalled', { currentTime: node.currentTime });
+                const onSuspend = () =>
+                  console.debug('[audio-event] suspend', { currentTime: node.currentTime });
+                const onError = (ev: Event) => console.debug('[audio-event] error', ev);
+
+                try {
+                  node.addEventListener('pause', onPause);
+                  node.addEventListener('ended', onEnded);
+                  node.addEventListener('stalled', onStalled);
+                  node.addEventListener('suspend', onSuspend);
+                  node.addEventListener('error', onError as EventListener);
+                } catch (e) {
+                  /* ignore */
+                }
+
+                const cleanupListeners = () => {
+                  try {
+                    node.removeEventListener('pause', onPause);
+                  } catch {}
+                  try {
+                    node.removeEventListener('ended', onEnded);
+                  } catch {}
+                  try {
+                    node.removeEventListener('stalled', onStalled);
+                  } catch {}
+                  try {
+                    node.removeEventListener('suspend', onSuspend);
+                  } catch {}
+                  try {
+                    node.removeEventListener('error', onError as EventListener);
+                  } catch {}
+                };
+
                 // Gain para amplificación (valor en state.volume, puede ser >1)
                 const gainNode = ctx.createGain();
                 gainNode.gain.value = get().volume ?? 0.5;
@@ -138,7 +257,55 @@ export const usePlayerStore = create<PlayerState>()(
                 compressor.connect(analyzer);
                 analyzer.connect(Howler.ctx.destination);
 
-                set({ analyzer, gainNode, compressor });
+                // persist references so we can disconnect later
+                set({
+                  analyzer,
+                  gainNode,
+                  compressor,
+                  mediaSource: source,
+                  objectUrl: activeUrl,
+                  audioCleanup: cleanupListeners,
+                });
+
+                // Expose lightweight debug references for test instrumentation
+                try {
+                  // @ts-ignore
+                  window.__musie_debug = window.__musie_debug || {};
+                  // @ts-ignore
+                  window.__musie_debug.analyzer = analyzer;
+                  // @ts-ignore
+                  window.__musie_debug.mediaNode = node;
+                  // @ts-ignore
+                  window.__musie_debug.source = source;
+                  try {
+                    console.debug('[audio-event] onplay - debug refs exposed', {
+                      currentTime: node?.currentTime,
+                      src: activeUrl,
+                    });
+                  } catch (e) {}
+                } catch (e) {
+                  /* ignore */
+                }
+
+                // Start a small watchdog that tries to resume the audio context if it becomes suspended
+                try {
+                  const watchdogId = setInterval(() => {
+                    try {
+                      if (Howler.ctx && Howler.ctx.state === 'suspended') {
+                        Howler.ctx.resume().catch(() => {});
+                        console.debug('[audio-watchdog] attempted resume');
+                      }
+                    } catch (e) {
+                      /* ignore */
+                    }
+                  }, 3000);
+
+                  // store watchdog id
+                  // @ts-ignore - browser setInterval returns number
+                  set({ audioWatchdogId: Number(watchdogId) });
+                } catch (e) {
+                  /* ignore watchdog errors */
+                }
               } catch (err) {
                 console.debug('Audio node already connected or connection failed', err);
               }

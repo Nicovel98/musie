@@ -9,7 +9,10 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:playback": "node ./tools/playback-test.js",
+    "test:playback:compare": "node ./tools/playback-compare.js",
+    "test:playback:app-compare": "node ./tools/playback-app-compare.js"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.3.0",
@@ -35,6 +38,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
+    "playwright": "^1.60.0",
     "postcss": "^8.5.14",
     "prettier": "^3.8.3",
     "tailwindcss": "^4.3.0",

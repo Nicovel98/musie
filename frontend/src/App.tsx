@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sidebar } from './components/Sidebar';
 import { NowPlaying } from './components/NowPlaying';
@@ -7,11 +7,14 @@ import { PlayerBar } from './components/PlayerBar';
 import { MobileTabs } from './components/MobileTabs';
 import { useProgress } from './hooks/useProgress';
 import { useMediaQuery } from './hooks/useMediaQuery';
+import { usePlayerStore } from './store/usePlayerStore';
 
 type View = 'home' | 'library';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('home');
+  const autoLoadedRef = useRef(false);
+  const setTrack = usePlayerStore((state) => state.setTrack);
   useProgress();
   const isSmallHeight = useMediaQuery('(max-height: 639px)');
   const isCompactLandscape = useMediaQuery(
@@ -20,6 +23,43 @@ function App() {
   const isLargeWidth = useMediaQuery('(min-width: 1024px)');
   const shouldShowMobileTabs = isSmallHeight || !isLargeWidth || isCompactLandscape;
   const showSidebar = !isSmallHeight && !isCompactLandscape;
+
+  useEffect(() => {
+    if (autoLoadedRef.current) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const audioUrl = params.get('audioUrl');
+    if (!audioUrl) return;
+
+    autoLoadedRef.current = true;
+
+    const loadExternalTrack = async () => {
+      try {
+        const decodedUrl = decodeURIComponent(audioUrl);
+        const response = await fetch(decodedUrl);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const blob = await response.blob();
+        const pathname = new URL(decodedUrl).pathname;
+        const filename = pathname.split('/').filter(Boolean).pop() || 'audio.mp3';
+        const title = filename.replace(/\.[^/.]+$/, '');
+
+        const file = new File([blob], filename, { type: blob.type || 'audio/mpeg' });
+        setTrack({
+          id: `external-${filename}-${Date.now()}`,
+          title,
+          artist: 'Audio externo',
+          coverUrl: 'https://unsplash.com',
+          audioUrl: decodedUrl,
+          fileData: file,
+        });
+      } catch (error) {
+        console.debug('[audio-event] external audio load failed', error);
+      }
+    };
+
+    loadExternalTrack();
+  }, [setTrack]);
 
   return (
     <div className="flex flex-col h-screen w-full bg-[var(--bg-main)] text-[var(--text-main)] overflow-hidden font-sans transition-colors duration-500 relative">

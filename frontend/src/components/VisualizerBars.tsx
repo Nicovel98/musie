@@ -46,6 +46,11 @@ export const VisualizerBars = ({
   progressFillClassName,
   timeClassName,
 }: VisualizerBarsProps) => {
+  const playedBars = Math.min(
+    audioData.length,
+    Math.ceil((progressPercent / 100) * audioData.length)
+  );
+
   return (
     <div className={wrapperClassName}>
       <div className={barsRowClassName}>
@@ -63,7 +68,10 @@ export const VisualizerBars = ({
           className={inputClassName}
         />
         {Array.from(audioData).map((v, i) => {
-          const isPlayed = (i / Math.max(1, barCount)) * 100 < progressPercent;
+          const isPlayed = i < playedBars;
+          const normalized = Math.max(0, Math.min(1, v / 255));
+          const shaped = Math.pow(normalized, 1.35);
+          const barHeight = minBarHeight + shaped * (100 - minBarHeight);
 
           return (
             <div
@@ -71,7 +79,7 @@ export const VisualizerBars = ({
               className={`flex-1 rounded-full ${barTransitionClassName} ${
                 isPlayed ? playedBarClassName : inactiveBarClassName
               }`}
-              style={{ height: `${Math.max(minBarHeight, (v / 255) * 100)}%` }}
+              style={{ height: `${barHeight}%` }}
             />
           );
         })}
