@@ -3,7 +3,11 @@ import { useRef } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { VolumeControl } from './VolumeControl';
 
-export const PlayerBar = () => {
+interface PlayerBarProps {
+  useThemeAudioColors?: boolean;
+}
+
+export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
   const { currentTrack, isPlaying, togglePlay, seek, duration, fastSeek, volume, setVolume } =
     usePlayerStore();
   const scrubResumeRef = useRef(false);
@@ -20,6 +24,16 @@ export const PlayerBar = () => {
   };
 
   const progressPercent = (seek / duration) * 100 || 0;
+  const progressFillClassName = useThemeAudioColors
+    ? 'absolute inset-y-0 left-0 bg-[var(--accent-primary)] shadow-[0_0_10px_rgba(0,143,214,0.30)]'
+    : 'absolute inset-y-0 left-0 bg-blue-500 shadow-[0_0_10px_rgba(37,99,235,0.30)]';
+  const miniProgressFillClassName = useThemeAudioColors
+    ? 'h-full bg-[var(--accent-primary)] transition-all duration-300'
+    : 'h-full bg-blue-500 transition-all duration-300';
+  const controlAccentClass = useThemeAudioColors ? 'text-[var(--accent-primary)]' : 'text-blue-500';
+  const controlAccentSecondaryClass = useThemeAudioColors
+    ? 'text-[var(--accent-secondary)]'
+    : 'text-blue-400';
 
   const handleSeekChange = (value: string) => {
     const nextSeek = Number(value);
@@ -77,7 +91,7 @@ export const PlayerBar = () => {
        - En móvil: bg-black/80 con blur para que destaque sobre el contenido.
        - En desktop: transparente porque App.tsx ya le da el fondo sólido.
     */
-    <div className="glass-effect w-full h-[5.5rem] md:h-20 px-3 md:px-5 pb-3 md:pb-0 flex flex-col md:flex-row md:items-center md:justify-between transition-all duration-500 bg-[var(--glass-bg)] md:bg-transparent backdrop-blur-xl md:backdrop-blur-0">
+    <div className="glass-effect w-full h-[5.5rem] md:h-20 px-3 md:px-5 pb-3 md:pb-0 flex flex-col md:flex-row md:items-center md:justify-between transition-all duration-500 bg-[var(--playerbar-bg)] border-t border-[var(--playerbar-border)] shadow-[var(--playerbar-shadow)] md:bg-transparent md:border-0 md:shadow-none backdrop-blur-xl md:backdrop-blur-0">
       {/* MÓVIL: INFORMACIÓN + CONTROLES */}
       <div className="md:hidden w-full flex flex-col gap-1 pt-0">
         <div className="flex items-center gap-3 min-w-0">
@@ -94,19 +108,21 @@ export const PlayerBar = () => {
               {currentTrack.artist}
             </p>
           </div>
-          <button className="mr-2 text-[var(--text-muted)] hover:text-red-500 transition-colors shrink-0">
+          <button className="mr-2 text-[var(--text-muted)] opacity-80 hover:text-red-500 hover:opacity-100 transition-colors shrink-0">
             <Heart size={14} />
           </button>
         </div>
 
         <div className="flex items-center justify-between gap-1 px-0">
-          <button className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--text-muted)] active:text-[var(--text-main)] transition-colors">
+          <button
+            className={`flex h-7 w-7 items-center justify-center rounded-full text-[var(--text-muted)] opacity-80 active:opacity-100 transition-colors active:${controlAccentClass}`}
+          >
             <Shuffle size={14} />
           </button>
 
           <button
             aria-label="Previous track"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-muted)] active:text-[var(--text-main)] transition-colors"
+            className={`flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-muted)] opacity-80 active:opacity-100 transition-colors active:${controlAccentSecondaryClass}`}
           >
             <SkipBack size={16} />
           </button>
@@ -125,12 +141,14 @@ export const PlayerBar = () => {
 
           <button
             aria-label="Next track"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-muted)] active:text-[var(--text-main)] transition-colors"
+            className={`flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-muted)] opacity-80 active:opacity-100 transition-colors active:${controlAccentSecondaryClass}`}
           >
             <SkipForward size={16} />
           </button>
 
-          <button className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--text-muted)] active:text-[var(--text-main)] transition-colors">
+          <button
+            className={`flex h-7 w-7 items-center justify-center rounded-full text-[var(--text-muted)] opacity-80 active:opacity-100 transition-colors active:${controlAccentClass}`}
+          >
             <Repeat size={14} />
           </button>
         </div>
@@ -161,13 +179,15 @@ export const PlayerBar = () => {
       {/* 2. CONTROLES (Móvil: Solo Play/Pause | Desktop: Full) */}
       <div className="hidden md:flex flex-col items-center flex-1 max-w-[44%] gap-0.5">
         <div className="flex items-center gap-2 md:gap-4">
-          <button className="text-[var(--text-muted)] hover:text-[var(--accent-primary)] transition-colors hidden md:block">
+          <button
+            className={`text-[var(--text-muted)] opacity-80 hover:opacity-100 transition-colors hidden md:block hover:${controlAccentClass}`}
+          >
             <Shuffle size={16} />
           </button>
 
           <button
             aria-label="Previous track"
-            className="text-[var(--text-main)] opacity-70 hover:opacity-100 transition-all active:scale-90 hidden md:block"
+            className={`text-[var(--text-main)] opacity-70 hover:opacity-100 transition-all active:scale-90 hidden md:block hover:${controlAccentSecondaryClass}`}
           >
             <SkipBack size={24} fill="currentColor" />
           </button>
@@ -186,12 +206,14 @@ export const PlayerBar = () => {
 
           <button
             aria-label="Next track"
-            className="text-[var(--text-main)] opacity-70 hover:opacity-100 transition-all active:scale-90 hidden md:block"
+            className={`text-[var(--text-main)] opacity-70 hover:opacity-100 transition-all active:scale-90 hidden md:block hover:${controlAccentSecondaryClass}`}
           >
             <SkipForward size={24} fill="currentColor" />
           </button>
 
-          <button className="text-[var(--text-muted)] hover:text-[var(--accent-primary)] transition-colors hidden md:block">
+          <button
+            className={`text-[var(--text-muted)] opacity-80 hover:opacity-100 transition-colors hidden md:block hover:${controlAccentClass}`}
+          >
             <Repeat size={16} />
           </button>
         </div>
@@ -214,10 +236,7 @@ export const PlayerBar = () => {
               onChange={(e) => handleSeekChange(e.target.value)}
               className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer"
             />
-            <div
-              className="absolute inset-y-0 left-0 bg-[var(--accent-primary)] shadow-[0_0_10px_rgba(59,130,246,0.35)]"
-              style={{ width: `${progressPercent}%` }}
-            />
+            <div className={progressFillClassName} style={{ width: `${progressPercent}%` }} />
           </div>
           <span className="text-[10px] font-mono text-[var(--text-muted)] w-10 tabular-nums">
             {formatTime(duration)}
@@ -228,16 +247,18 @@ export const PlayerBar = () => {
       {/* 3. VOLUMEN (SOLO DESKTOP) */}
       <div className="hidden md:flex items-center justify-end w-[28%]">
         <div className="w-full max-w-[280px] lg:max-w-[320px] xl:max-w-[340px]">
-          <VolumeControl volume={volume} onVolumeChange={setVolume} showLabel={true} />
+          <VolumeControl
+            volume={volume}
+            onVolumeChange={setVolume}
+            showLabel={true}
+            useThemeAudioColors={useThemeAudioColors}
+          />
         </div>
       </div>
 
       {/* BARRA DE PROGRESO MINI (Móvil - Al borde inferior del bar) */}
       <div className="md:hidden absolute bottom-0 left-0 right-0 h-[2px] bg-[var(--bg-elevated)]">
-        <div
-          className="h-full bg-[var(--accent-primary)] transition-all duration-300"
-          style={{ width: `${progressPercent}%` }}
-        />
+        <div className={miniProgressFillClassName} style={{ width: `${progressPercent}%` }} />
       </div>
     </div>
   );

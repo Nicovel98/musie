@@ -1,15 +1,15 @@
 import { Home, Library, SlidersHorizontal, Settings } from 'lucide-react';
 
 interface MobileTabsProps {
-  currentView: 'home' | 'library';
-  setView: (view: 'home' | 'library') => void;
+  currentView: 'home' | 'library' | 'settings';
+  setView: (view: 'home' | 'library' | 'settings') => void;
 }
 
 export const MobileTabs = ({ currentView, setView }: MobileTabsProps) => {
   const tabs = [
     { id: 'home', icon: Home, label: 'Home' },
     { id: 'library', icon: Library, label: 'Library' },
-    { id: 'equalizer', icon: SlidersHorizontal, label: 'EQ' }, // <--- Nuevo Tab
+    { id: 'equalizer', icon: SlidersHorizontal, label: 'EQ' },
     { id: 'settings', icon: Settings, label: 'Settings' },
   ] as const;
 
@@ -30,10 +30,14 @@ export const MobileTabs = ({ currentView, setView }: MobileTabsProps) => {
         return (
           <button
             key={tab.id}
-            onClick={() => (tab.id === 'home' || tab.id === 'library') && setView(tab.id)}
+            onClick={() => {
+              if (tab.id === 'home' || tab.id === 'library' || tab.id === 'settings') {
+                setView(tab.id);
+              }
+            }}
             className={`flex flex-col items-center justify-center gap-0.5 transition-all duration-300 relative ${
               isActive
-                ? 'text-[var(--accent-primary)]'
+                ? 'text-[var(--tab-active-text)]'
                 : 'text-[var(--text-muted)] active:text-[var(--text-main)]'
             }`}
           >

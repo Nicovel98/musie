@@ -57,6 +57,49 @@ function formatSeconds(totalSeconds) {
   return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
 }
 
+async function terminateProcessTree(childProcess) {
+  if (!childProcess || childProcess.pid == null) return;
+
+  await new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+
+    const forceKillTimer = setTimeout(() => {
+      try {
+        if (process.platform === 'win32') {
+          childProcess.kill('SIGKILL');
+        } else {
+          process.kill(-childProcess.pid, 'SIGKILL');
+        }
+      } catch {}
+      finish();
+    }, 2000);
+
+    childProcess.once('close', () => {
+      clearTimeout(forceKillTimer);
+      finish();
+    });
+
+    try {
+      if (process.platform === 'win32') {
+        childProcess.kill('SIGTERM');
+      } else {
+        process.kill(-childProcess.pid, 'SIGTERM');
+      }
+    } catch {
+      try {
+        childProcess.kill('SIGTERM');
+      } catch {}
+      clearTimeout(forceKillTimer);
+      finish();
+    }
+  });
+}
+
 // Simple static audio server with range support
 function startAudioServer(audioPath, port = 8001) {
   const server = http.createServer((req, res) => {
@@ -259,6 +302,34 @@ async function runScenarioOnApp({ browser, appUrl, durationSeconds }) {
 
     // small delay to let play start
     await page.waitForTimeout(300);
+
+    // Install a simple 'ended' detector in the page so we can reliably
+    // detect when playback finishes for --until-end runs (works with
+    // native audio elements and tries to hook Howler if present).
+    try {
+      await page.evaluate(() => {
+        try {
+          // @ts-ignore
+          window.__playback_done = false;
+          try {
+            const audio = document.querySelector('audio');
+            if (audio) audio.addEventListener('ended', () => { window.__playback_done = true; });
+          } catch (e) {}
+          try {
+            // @ts-ignore
+            if (window.Howler && window.Howler._howls && window.Howler._howls.length) {
+              try {
+                // @ts-ignore
+                const hw = window.Howler._howls[0];
+                if (hw && typeof hw.on === 'function') {
+                  try { hw.on('end', () => { window.__playback_done = true; }); } catch (e) {}
+                }
+              } catch (e) {}
+            }
+          } catch (e) {}
+        } catch (e) {}
+      });
+    } catch (e) {}
   } catch (e) {
     // ignore
   }
@@ -277,8 +348,8 @@ async function runScenarioOnApp({ browser, appUrl, durationSeconds }) {
             return {
               currentTime,
               duration,
-              paused: Boolean(hw._paused),
-              ended: Boolean(hw._ended),
+                    paused: node ? Boolean(node.paused) : Boolean(hw._paused),
+                    ended: node ? Boolean(node.ended) : Boolean(hw._ended),
             };
           }
         }
@@ -483,8 +554,13 @@ async function runScenarioOnApp({ browser, appUrl, durationSeconds }) {
       while (performance.now() < endAt) {
         const state = readState();
         samples.push({ t: performance.now(), currentTime: state.currentTime, paused: state.paused, ended: state.ended, duration: state.duration });
-        if (observeUntilEnd && state.ended) break;
-        if (observeUntilEnd && state.duration > 0 && state.currentTime >= state.duration - 0.25) break;
+        // Break when either the page signalled playback finished, or when the
+        // duration is known and currentTime reached the end.
+        if (
+          observeUntilEnd &&
+          (typeof window.__playback_done !== 'undefined' && window.__playback_done === true || (state.duration > 0 && state.currentTime >= state.duration - 0.1))
+        )
+          break;
         await new Promise((r) => setTimeout(r, sampleMs));
       }
 
@@ -528,6 +604,7 @@ async function main() {
   console.log('Audio server running on http://localhost:8001/test-audio');
   const base = providedAppUrl ? providedAppUrl.replace(/\/$/, '') : 'http://localhost:5173';
   let dev = null;
+  let logStream = null;
 
   if (!providedAppUrl) {
     console.log('Starting dev server (prefer local vite binary if available)...');
@@ -550,7 +627,12 @@ async function main() {
     };
 
     if (fs.existsSync(localVite)) {
-      dev = spawn(localVite, [], { cwd: frontendDir, shell: false, stdio: ['ignore', 'pipe', 'pipe'] });
+      dev = spawn(localVite, [], {
+        cwd: frontendDir,
+        shell: false,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        detached: process.platform !== 'win32',
+      });
     } else {
       const candidates = process.platform === 'win32' ? ['npm.cmd', 'npx.cmd', 'pnpm.cmd', 'yarn.cmd'] : ['npm', 'npx', 'pnpm', 'yarn'];
       let found = null;
@@ -568,7 +650,12 @@ async function main() {
         process.exit(4);
       }
 
-      dev = spawn(found, ['run', 'dev'], { cwd: frontendDir, shell: false, stdio: ['ignore', 'pipe', 'pipe'] });
+      dev = spawn(found, ['run', 'dev'], {
+        cwd: frontendDir,
+        shell: false,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        detached: process.platform !== 'win32',
+      });
     }
 
     // create logs dir and file
@@ -579,7 +666,7 @@ async function main() {
       // ignore
     }
     const logFile = path.join(logsDir, 'vite.log');
-    const logStream = fs.createWriteStream(logFile, { flags: 'a' });
+    logStream = fs.createWriteStream(logFile, { flags: 'a' });
 
     dev.stdout.on('data', (d) => {
       process.stdout.write(`[vite] ${d}`);
@@ -594,7 +681,10 @@ async function main() {
       await waitForUrl('http://localhost:5173');
     } catch (err) {
       console.error('Dev server did not start in time');
-      if (dev) dev.kill();
+      if (dev) await terminateProcessTree(dev);
+      try {
+        if (logStream) logStream.end();
+      } catch {}
       audioServer.close();
       process.exit(3);
     }
@@ -670,7 +760,10 @@ async function main() {
   }
 
   // cleanup
-  if (dev) dev.kill();
+  if (dev) await terminateProcessTree(dev);
+  try {
+    if (logStream) logStream.end();
+  } catch {}
   await browser.close();
   audioServer.close();
 

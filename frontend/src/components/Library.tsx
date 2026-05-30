@@ -1,9 +1,28 @@
 import { Plus, Clock3, Play, Pause, Heart, Trash2 } from 'lucide-react';
 import { usePlayerStore } from '../store/usePlayerStore';
 
-export const Library = () => {
+interface LibraryProps {
+  useThemeAudioColors?: boolean;
+}
+
+export const Library = ({ useThemeAudioColors = true }: LibraryProps) => {
   const { songs, addSongs, clearSongs, setTrack, currentTrack, isPlaying, togglePlay } =
     usePlayerStore();
+  const addMusicButtonClass = useThemeAudioColors
+    ? 'bg-[var(--accent-primary)] text-[var(--bg-main)] hover:bg-[var(--accent-secondary)]'
+    : 'bg-[var(--text-main)] text-[var(--bg-main)]';
+  const clearListButtonClass = useThemeAudioColors
+    ? 'text-[var(--accent-secondary)] bg-[var(--accent-secondary)]/12 hover:bg-[var(--accent-secondary)]/22 border border-[var(--accent-secondary)]/24'
+    : 'text-red-500 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20';
+  const selectedRowClass = useThemeAudioColors
+    ? 'bg-[color-mix(in_srgb,var(--accent-primary)_12%,transparent)] border-[var(--glass-border)]'
+    : 'bg-blue-600/10 border-[var(--glass-border)]';
+  const selectedAccentClass = useThemeAudioColors
+    ? 'text-[var(--accent-primary)]'
+    : 'text-blue-500';
+  const selectedHeartClass = useThemeAudioColors
+    ? 'text-[var(--accent-secondary)]'
+    : 'text-blue-500';
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -26,8 +45,10 @@ export const Library = () => {
         </div>
 
         <div className="flex w-full md:w-auto gap-3">
-          <label className="flex-1 md:flex-none flex items-center justify-center gap-3 px-8 py-4 bg-[var(--text-main)] text-[var(--bg-main)] rounded-full font-black cursor-pointer hover:scale-105 transition-all shadow-xl active:scale-95">
-            <Plus size={20} strokeWidth={3} />
+          <label
+            className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-full text-sm font-black cursor-pointer hover:scale-105 transition-all shadow-xl active:scale-95 ${addMusicButtonClass}`}
+          >
+            <Plus size={18} strokeWidth={3} />
             <span>ADD MUSIC</span>
             <input
               type="file"
@@ -41,9 +62,9 @@ export const Library = () => {
           {songs.length > 0 && (
             <button
               onClick={clearSongs}
-              className="p-4 text-red-500 bg-red-500/10 rounded-full hover:bg-red-500/20 border border-red-500/20 transition-all"
+              className={`p-3 rounded-full transition-all ${clearListButtonClass}`}
             >
-              <Trash2 size={20} />
+              <Trash2 size={18} />
             </button>
           )}
         </div>
@@ -78,22 +99,36 @@ export const Library = () => {
                   key={track.id}
                   onClick={() => (isSelected ? togglePlay() : setTrack(track))}
                   className={`group grid grid-cols-[40px_1fr_40px] md:grid-cols-[50px_1fr_120px_50px] items-center gap-4 px-4 py-3 rounded-2xl transition-all border border-transparent cursor-pointer ${
-                    isSelected
-                      ? 'bg-blue-600/10 border-[var(--glass-border)]'
-                      : 'hover:bg-[var(--glass-bg)]'
+                    isSelected ? selectedRowClass : 'hover:bg-[var(--glass-bg)]'
                   }`}
                 >
                   {/* Número / Indicador */}
                   <div className="flex justify-center items-center relative w-6 h-6 mx-auto">
                     {isSelected && isPlaying ? (
                       <div className="flex gap-0.5 items-end h-3 group-hover:opacity-0 transition-opacity">
-                        <div className="w-1 bg-blue-500 animate-bounce [animation-duration:0.6s]" />
-                        <div className="w-1 bg-blue-500 animate-bounce [animation-duration:0.9s]" />
-                        <div className="w-1 bg-blue-500 animate-bounce [animation-duration:0.7s]" />
+                        <div
+                          className={`w-1 animate-bounce [animation-duration:0.6s] ${
+                            useThemeAudioColors ? 'bg-[var(--accent-primary)]' : 'bg-blue-500'
+                          }`}
+                        />
+                        <div
+                          className={`w-1 animate-bounce [animation-duration:0.9s] ${
+                            useThemeAudioColors ? 'bg-[var(--accent-primary)]' : 'bg-blue-500'
+                          }`}
+                        />
+                        <div
+                          className={`w-1 animate-bounce [animation-duration:0.7s] ${
+                            useThemeAudioColors ? 'bg-[var(--accent-primary)]' : 'bg-blue-500'
+                          }`}
+                        />
                       </div>
                     ) : (
                       <span
-                        className={`text-xs font-mono transition-opacity ${isSelected ? 'text-blue-500' : 'text-[var(--text-muted)] group-hover:opacity-0'}`}
+                        className={`text-xs font-mono transition-opacity ${
+                          isSelected
+                            ? selectedAccentClass
+                            : 'text-[var(--text-muted)] group-hover:opacity-0'
+                        }`}
                       >
                         {index + 1}
                       </span>
@@ -118,7 +153,9 @@ export const Library = () => {
                     />
                     <div className="truncate">
                       <p
-                        className={`text-sm md:text-base font-bold truncate ${isSelected ? 'text-blue-500' : 'text-[var(--text-main)]'}`}
+                        className={`text-sm md:text-base font-bold truncate ${
+                          isSelected ? selectedAccentClass : 'text-[var(--text-main)]'
+                        }`}
                       >
                         {track.title}
                       </p>
@@ -135,7 +172,11 @@ export const Library = () => {
 
                   {/* Favorito */}
                   <button
-                    className={`flex justify-end transition-all ${isSelected ? 'text-blue-500' : 'text-[var(--text-muted)] opacity-0 group-hover:opacity-100 hover:text-red-500'}`}
+                    className={`flex justify-end transition-all ${
+                      isSelected
+                        ? selectedHeartClass
+                        : 'text-[var(--text-muted)] opacity-0 group-hover:opacity-100 hover:text-red-500'
+                    }`}
                   >
                     <Heart size={18} fill={isSelected ? 'currentColor' : 'none'} />
                   </button>

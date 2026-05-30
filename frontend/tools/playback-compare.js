@@ -2,7 +2,7 @@
 /*
 Compare playback fluency with and without a simulated visualizer.
 Usage:
-  node ./frontend/tools/playback-compare.js <path-to-audio> [durationSeconds]
+  node ./frontend/tools/playback-compare.js <path-to-audio> [durationSeconds|--until-end]
 
 This script runs two tests (no viz, with viz) using Playwright headless Chromium and
 reports stalls for each run, plus a short comparison summary.
@@ -11,6 +11,38 @@ reports stalls for each run, plus a short comparison summary.
 import { chromium } from 'playwright';
 import path from 'path';
 import fs from 'fs';
+
+function parseArgs(argv) {
+  const positionals = [];
+  let untilEnd = false;
+
+  for (const arg of argv) {
+    if (arg === '--until-end') {
+      untilEnd = true;
+      continue;
+    }
+
+    positionals.push(arg);
+  }
+
+  const audioRel = positionals[0] || null;
+  const secondArg = positionals[1] || null;
+  let durationSeconds = 30;
+
+  if (secondArg && /^\d+(\.\d+)?$/.test(secondArg)) {
+    durationSeconds = parseFloat(secondArg);
+  }
+
+  if (untilEnd) {
+    durationSeconds = 0;
+  }
+
+  return {
+    audioRel,
+    durationSeconds: Number.isFinite(durationSeconds) ? durationSeconds : 30,
+    untilEnd,
+  };
+}
 
 async function runScenario({ fileUrl, durationSeconds, simulateViz }) {
   const browser = await chromium.launch({
@@ -60,10 +92,13 @@ async function runScenario({ fileUrl, durationSeconds, simulateViz }) {
 
         const samples = [];
         const start = performance.now();
-        const endAt = start + durationSeconds * 1000;
+        const observeUntilEnd = durationSeconds <= 0;
+        const endAt = start + (observeUntilEnd ? 60 * 60 * 1000 : durationSeconds * 1000);
         while (performance.now() < endAt) {
           const now = performance.now();
           samples.push({ t: now, currentTime: audio.currentTime, paused: audio.paused });
+          if (observeUntilEnd && audio.ended) break;
+          if (observeUntilEnd && Number.isFinite(audio.duration) && audio.currentTime >= audio.duration - 0.25) break;
           await new Promise((r) => setTimeout(r, sampleMs));
         }
 
@@ -92,14 +127,14 @@ async function runScenario({ fileUrl, durationSeconds, simulateViz }) {
     await browser.close();
     return result;
   } catch (err) {
-    await browser.close();
     throw err;
+  } finally {
+    await browser.close();
   }
 }
 
 async function main() {
-  let audioRel = process.argv[2];
-  const durationSeconds = parseInt(process.argv[3] || '30', 10);
+  const { audioRel, durationSeconds, untilEnd } = parseArgs(process.argv.slice(2));
 
   if (!audioRel) {
     const readline = await import('readline');
@@ -120,7 +155,11 @@ async function main() {
 
   const fileUrl = 'file://' + audioPath;
 
-  console.log('Running playback compare for', fileUrl, 'duration', durationSeconds, 's');
+  console.log(
+    'Running playback compare for',
+    fileUrl,
+    untilEnd ? 'until end of track' : `duration ${durationSeconds} s`
+  );
 
   console.log('\n1) Running WITHOUT simulated visualizer...');
   const noViz = await runScenario({ fileUrl, durationSeconds, simulateViz: false });

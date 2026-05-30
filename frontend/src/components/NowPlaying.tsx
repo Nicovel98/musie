@@ -22,7 +22,10 @@ import { PlayerBar } from './PlayerBar';
 import { VolumeControl } from './VolumeControl';
 
 interface NowPlayingProps {
-  setView: (view: 'home' | 'library') => void;
+  setView: (view: 'home' | 'library' | 'settings') => void;
+  themeMode: 'dark' | 'light';
+  cycleThemeMode: () => void;
+  useThemeAudioColors: boolean;
 }
 
 const getAdaptiveBarCount = (width: number, height: number) => {
@@ -35,10 +38,13 @@ const getAdaptiveBarCount = (width: number, height: number) => {
   return 32;
 };
 
-export const NowPlaying = ({ setView }: NowPlayingProps) => {
-  const [isLightMode, setIsLightMode] = useState(
-    document.documentElement.classList.contains('light')
-  );
+export const NowPlaying = ({
+  setView,
+  themeMode,
+  cycleThemeMode,
+  useThemeAudioColors,
+}: NowPlayingProps) => {
+  const isLightMode = themeMode === 'light';
   const isCompactLandscape = useMediaQuery(
     '(orientation: landscape) and (max-height: 640px) and (max-width: 1024px)'
   );
@@ -93,17 +99,23 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
   const visualizerBarsRowClassName = isCompactLandscape
     ? 'relative flex-1 min-h-[clamp(5.5rem,24vh,10rem)] w-full flex items-end justify-center gap-[clamp(2px,0.9vw,4px)]'
     : 'relative flex-1 min-h-[clamp(4rem,10vw,6rem)] w-full flex items-end justify-center gap-[clamp(2px,0.9vw,4px)]';
-  const visualizerPlayedBarClassName =
-    'bg-gradient-to-t from-blue-600 to-purple-500 shadow-[0_0_15px_rgba(37,99,235,0.2)]';
+  const visualizerPlayedBarClassName = useThemeAudioColors
+    ? 'bg-[var(--accent-primary)] shadow-[0_0_15px_rgba(0,194,168,0.25)]'
+    : 'bg-gradient-to-t from-blue-600 to-purple-500 shadow-[0_0_15px_rgba(37,99,235,0.2)]';
+  const visualizerProgressFillClassName = useThemeAudioColors
+    ? 'absolute inset-y-0 left-0 bg-[var(--accent-primary)]'
+    : 'absolute inset-y-0 left-0 bg-blue-500';
   const visualizerInactiveBarClassName = isLightMode
     ? 'bg-slate-400/75 shadow-[0_0_10px_rgba(15,23,42,0.05)]'
     : 'bg-[var(--text-main)] opacity-35 shadow-[0_0_10px_rgba(255,255,255,0.06)]';
+  const controlHoverAccentClass = useThemeAudioColors
+    ? 'hover:text-[var(--accent-primary)]'
+    : 'hover:text-blue-500';
+  const controlHoverSecondaryAccentClass = useThemeAudioColors
+    ? 'hover:text-[var(--accent-secondary)]'
+    : 'hover:text-blue-400';
 
   useEffect(() => {
-    const syncTheme = () => {
-      setIsLightMode(document.documentElement.classList.contains('light'));
-    };
-    window.addEventListener('themechange', syncTheme);
     const handleResize = () => {
       setBarCount(getAdaptiveBarCount(window.innerWidth, window.innerHeight));
     };
@@ -112,15 +124,9 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
     window.addEventListener('resize', handleResize);
 
     return () => {
-      window.removeEventListener('themechange', syncTheme);
       window.removeEventListener('resize', handleResize);
     };
   }, [isCompactLandscape]);
-
-  const toggleTheme = () => {
-    document.documentElement.classList.toggle('light');
-    window.dispatchEvent(new Event('themechange'));
-  };
 
   const handleSeekChange = (value: string) => {
     const nextSeek = Number(value);
@@ -174,7 +180,7 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
 
   if (isVeryShort) {
     // For extremely short screens, replace NowPlaying with the compact PlayerBar
-    return <PlayerBar />;
+    return <PlayerBar useThemeAudioColors={useThemeAudioColors} />;
   }
 
   if (currentTrack && isCompactLandscape) {
@@ -212,12 +218,14 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
               </div>
 
               <div className="flex items-center justify-between gap-2 shrink-0 px-1 pt-1">
-                <button className="text-[var(--text-muted)] hover:text-[var(--accent-primary)] transition-colors">
+                <button
+                  className={`text-[var(--text-muted)] transition-colors ${controlHoverAccentClass}`}
+                >
                   <Shuffle size={controlIconSmall} />
                 </button>
                 <button
                   aria-label="Previous track"
-                  className="text-[var(--text-main)] opacity-70 hover:opacity-100 transition-all active:scale-90"
+                  className={`text-[var(--text-main)] opacity-70 hover:opacity-100 transition-all active:scale-90 ${controlHoverSecondaryAccentClass}`}
                 >
                   <SkipBack size={controlIconMedium} fill="currentColor" />
                 </button>
@@ -234,11 +242,13 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
                 </button>
                 <button
                   aria-label="Next track"
-                  className="text-[var(--text-main)] opacity-70 hover:opacity-100 transition-all active:scale-90"
+                  className={`text-[var(--text-main)] opacity-70 hover:opacity-100 transition-all active:scale-90 ${controlHoverSecondaryAccentClass}`}
                 >
                   <SkipForward size={controlIconMedium} fill="currentColor" />
                 </button>
-                <button className="text-[var(--text-muted)] hover:text-[var(--accent-primary)] transition-colors">
+                <button
+                  className={`text-[var(--text-muted)] transition-colors ${controlHoverAccentClass}`}
+                >
                   <Repeat size={controlIconSmall} />
                 </button>
               </div>
@@ -252,7 +262,7 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
                       {currentTrack.title}
                     </h2>
                     <button
-                      onClick={toggleTheme}
+                      onClick={cycleThemeMode}
                       className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-muted)] shadow-[var(--glass-shadow)] backdrop-blur-xl hover:text-[var(--text-main)] active:scale-95 transition-all shrink-0"
                       aria-label="Toggle theme"
                     >
@@ -281,6 +291,7 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
                   <VisualizerPresetSelector
                     className="w-full flex justify-center mb-3"
                     preset={vizPreset}
+                    useThemeAudioColors={useThemeAudioColors}
                     onChange={(p) => {
                       setVizPreset(p);
                       try {
@@ -308,7 +319,7 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
                     inputClassName="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer"
                     progressRowClassName="flex items-center justify-between gap-2 mt-0.5 font-mono text-[10px] text-[var(--text-muted)] tabular-nums"
                     progressTrackClassName="h-px flex-1 bg-[var(--glass-border)] mx-2 relative overflow-hidden rounded-full"
-                    progressFillClassName="absolute inset-y-0 left-0 bg-[var(--accent-primary)]"
+                    progressFillClassName={visualizerProgressFillClassName}
                     timeClassName="shrink-0"
                   />
                 </>
@@ -320,6 +331,7 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
                   onVolumeChange={setVolume}
                   size={isShortHeight ? 'sm' : 'md'}
                   showLabel={!isShortHeight}
+                  useThemeAudioColors={useThemeAudioColors}
                 />
               </div>
             </section>
@@ -567,7 +579,7 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
         <div className="w-full flex items-center justify-center px-[clamp(0.75rem,3vw,1.5rem)] shrink-0 relative py-[clamp(0.15rem,0.45vw,0.3rem)] gap-2">
           <button
             className="flex h-[clamp(2.15rem,6vw,2.5rem)] w-[clamp(2.15rem,6vw,2.5rem)] items-center justify-center rounded-full bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-muted)] shadow-[var(--glass-shadow)] backdrop-blur-xl hover:text-[var(--text-main)] active:scale-95 transition-all shrink-0"
-            onClick={toggleTheme}
+            onClick={cycleThemeMode}
             aria-label="Toggle theme"
           >
             {isLightMode ? (
@@ -597,6 +609,7 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
           <>
             <VisualizerPresetSelector
               preset={vizPreset}
+              useThemeAudioColors={useThemeAudioColors}
               onChange={(p) => {
                 setVizPreset(p);
                 try {
@@ -624,7 +637,7 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
               inputClassName="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer"
               progressRowClassName="flex items-center justify-between gap-2 mt-0.5 font-mono text-[10px] text-[var(--text-muted)] tabular-nums"
               progressTrackClassName="h-px flex-1 bg-[var(--glass-border)] mx-2 relative overflow-hidden rounded-full"
-              progressFillClassName="absolute inset-y-0 left-0 bg-[var(--accent-primary)]"
+              progressFillClassName={visualizerProgressFillClassName}
               timeClassName="shrink-0"
             />
           </>
@@ -633,13 +646,21 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
         {/* 6. CONTROLES Y VOLUMEN SOBREAMPLIFICADO (Glass Style - Responsivo) */}
         <div className="w-full md:max-w-sm lg:max-w-md flex flex-col gap-[clamp(0.6rem,1.6vw,0.9rem)] pb-[clamp(0.6rem,1.2vw,0.9rem)] shrink-0 mt-[clamp(0.2rem,0.8vw,0.4rem)] px-[clamp(0.5rem,3vw,1rem)]">
           <div className="flex items-center justify-between gap-[clamp(0.5rem,2vw,1rem)]">
-            <button className="text-gray-500 hover:text-blue-500 transition-colors">
+            <button
+              className={`text-gray-500 transition-colors ${
+                useThemeAudioColors ? 'hover:text-[var(--accent-primary)]' : 'hover:text-blue-500'
+              }`}
+            >
               <Shuffle className="h-[clamp(1.25rem,4vw,1.5rem)] w-[clamp(1.25rem,4vw,1.5rem)]" />
             </button>
             <div className="flex items-center gap-[clamp(1rem,4vw,2rem)] flex-1 justify-center">
               <button
                 aria-label="Previous track"
-                className="text-[var(--text-main)] opacity-60 hover:opacity-100 active:scale-90 transition-colors"
+                className={`text-[var(--text-main)] opacity-60 hover:opacity-100 active:scale-90 transition-colors ${
+                  useThemeAudioColors
+                    ? 'hover:text-[var(--accent-secondary)]'
+                    : 'hover:text-blue-400'
+                }`}
               >
                 <SkipBack
                   className="h-[clamp(1.75rem,6vw,2rem)] w-[clamp(1.75rem,6vw,2rem)]"
@@ -665,7 +686,11 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
               </button>
               <button
                 aria-label="Next track"
-                className="text-[var(--text-main)] opacity-60 hover:opacity-100 active:scale-90 transition-colors"
+                className={`text-[var(--text-main)] opacity-60 hover:opacity-100 active:scale-90 transition-colors ${
+                  useThemeAudioColors
+                    ? 'hover:text-[var(--accent-secondary)]'
+                    : 'hover:text-blue-400'
+                }`}
               >
                 <SkipForward
                   className="h-[clamp(1.75rem,6vw,2rem)] w-[clamp(1.75rem,6vw,2rem)]"
@@ -673,7 +698,11 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
                 />
               </button>
             </div>
-            <button className="text-gray-500 hover:text-blue-500 transition-colors">
+            <button
+              className={`text-gray-500 transition-colors ${
+                useThemeAudioColors ? 'hover:text-[var(--accent-primary)]' : 'hover:text-blue-500'
+              }`}
+            >
               <Repeat className="h-[clamp(1.25rem,4vw,1.5rem)] w-[clamp(1.25rem,4vw,1.5rem)]" />
             </button>
           </div>
@@ -685,6 +714,7 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
               onVolumeChange={setVolume}
               size={isShortHeight ? 'sm' : 'md'}
               showLabel={!isShortHeight}
+              useThemeAudioColors={useThemeAudioColors}
             />
           </div>
         </div>

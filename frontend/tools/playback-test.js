@@ -3,13 +3,13 @@
 Automated playback fluency test using Playwright.
 Usage:
   npx playwright install chromium
-  node ./frontend/tools/playback-test.js <path-to-audio-file> [durationSeconds]
+  node ./frontend/tools/playback-test.js <path-to-audio-file> [durationSeconds|--until-end]
 Example:
   node ./frontend/tools/playback-test.js ../../music/large.mp3 30
 
 The script launches a headless Chromium allowing autoplay, plays the provided audio muted,
 and samples audio.currentTime periodically to detect stalls or pauses.
-It prints a summary and exits with code 0 (ok) or 2 (stalls detected).
+It prints a summary and exits with code 0 (ok), 2 (stalls detected), or 3 (test error).
 */
 
 import { chromium } from 'playwright';
@@ -20,9 +20,9 @@ async function run() {
   let audioRel = process.argv[2];
   const durationArg = process.argv[3] || '30';
   const durationSeconds = durationArg === '--until-end' ? 0 : parseInt(durationArg, 10);
+  let exitCode = 0;
 
   if (!audioRel) {
-    // ask interactively
     const readline = await import('readline');
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     audioRel = await new Promise((resolve) => {
@@ -36,20 +36,19 @@ async function run() {
   const audioPath = path.resolve(audioRel);
   if (!fs.existsSync(audioPath)) {
     console.error('Audio file not found:', audioPath);
-    process.exit(1);
+    return 1;
   }
 
   const fileUrl = 'file://' + audioPath;
-
   const browser = await chromium.launch({
     headless: true,
     args: ['--autoplay-policy=no-user-gesture-required'],
   });
 
-  const context = await browser.newContext();
-  const page = await context.newPage();
-
   try {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
     const result = await page.evaluate(
       async ({ fileUrl, durationSeconds }) => {
         const sampleMs = 200;
@@ -61,27 +60,64 @@ async function run() {
         audio.preload = 'auto';
         audio.autoplay = true;
 
-        // try to play (some environments still may reject)
         try {
           await audio.play();
-        } catch (err) {
+        } catch {
           // ignore; we'll still monitor currentTime
         }
 
+        // Mark finished when the native audio element fires 'ended'. Also try to
+        // attach to Howler if the app uses it so we can reliably detect song end
+        // for --until-end runs.
+        try {
+          // @ts-ignore
+          window.__playback_done = false;
+          if (audio) {
+            audio.addEventListener('ended', () => {
+              try {
+                // @ts-ignore
+                window.__playback_done = true;
+              } catch (e) {}
+            });
+          }
+          try {
+            // @ts-ignore
+            if (window.Howler && window.Howler._howls && window.Howler._howls.length) {
+              try {
+                // @ts-ignore
+                const hw = window.Howler._howls[0];
+                if (hw && typeof hw.on === 'function') {
+                  try { hw.on('end', () => { window.__playback_done = true; }); } catch (e) {}
+                }
+              } catch (e) {}
+            }
+          } catch (e) {}
+        } catch (e) {}
+
         const samples = [];
         const start = performance.now();
-
         const observeUntilEnd = durationSeconds <= 0;
         const endAt = start + (observeUntilEnd ? 60 * 60 * 1000 : durationSeconds * 1000);
+
         while (performance.now() < endAt) {
           const now = performance.now();
-          samples.push({ t: now, currentTime: audio.currentTime, paused: audio.paused, ended: audio.ended, duration: Number.isFinite(audio.duration) ? audio.duration : 0 });
-          if (observeUntilEnd && audio.ended) break;
-          if (observeUntilEnd && Number.isFinite(audio.duration) && audio.currentTime >= audio.duration - 0.25) break;
+          samples.push({
+            t: now,
+            currentTime: audio.currentTime,
+            paused: audio.paused,
+            ended: audio.ended,
+            duration: Number.isFinite(audio.duration) ? audio.duration : 0,
+          });
+          // If running until end, break when either the native 'ended' fired
+          // or when duration is known and currentTime is at the end.
+          if (
+            observeUntilEnd &&
+            (typeof window.__playback_done !== 'undefined' && window.__playback_done === true || (Number.isFinite(audio.duration) && audio.currentTime >= audio.duration - 0.25))
+          )
+            break;
           await new Promise((r) => setTimeout(r, sampleMs));
         }
 
-        // compute deltas
         const deltas = [];
         for (let i = 1; i < samples.length; i++) {
           const dtTime = samples[i].currentTime - samples[i - 1].currentTime;
@@ -110,17 +146,19 @@ async function run() {
     console.log('  stalls detected:', result.stalls);
     if (result.stalls > 0) {
       console.log('  example stalls:', result.details);
-      await browser.close();
-      process.exit(2);
+      exitCode = 2;
+      return exitCode;
     }
 
-    await browser.close();
-    process.exit(0);
+    exitCode = 0;
+    return exitCode;
   } catch (err) {
     console.error('Error during test:', err);
+    exitCode = 3;
+    return exitCode;
+  } finally {
     await browser.close();
-    process.exit(3);
   }
 }
 
-run();
+run().then((code) => process.exit(code)).catch(() => process.exit(3));

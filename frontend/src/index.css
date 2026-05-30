@@ -2,15 +2,24 @@
 
 /* 1. CONFIGURACIÓN DE VARIABLES (Temas dinámicos) */
 :root {
-  --bg-main: #15173D;
-  --bg-elevated: rgba(255, 255, 255, 0.03);
-  --text-main: #f5f7fb;
-  --text-muted: #8892a6;
-  --glass-bg: rgba(255, 255, 255, 0.045);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-shadow: 0 18px 60px rgba(0, 0, 0, 0.32);
-  --accent-primary: #7dd3fc;
-  --accent-secondary: #a78bfa;
+  --bg-main: #041f2a;
+  --bg-elevated: rgba(230, 255, 251, 0.06);
+  --text-main: #e6fffb;
+  --text-muted: #a5d7d1;
+  --glass-bg: rgba(4, 31, 42, 0.56);
+  --glass-border: rgba(0, 194, 168, 0.16);
+  --glass-shadow: 0 18px 60px rgba(1, 14, 19, 0.42);
+  --sidebar-bg: rgba(3, 25, 33, 0.92);
+  --sidebar-border: rgba(0, 194, 168, 0.08);
+  --sidebar-shadow: 20px 0 50px rgba(0, 0, 0, 0.42);
+  --playerbar-bg: rgba(2, 16, 24, 0.95);
+  --playerbar-border: rgba(0, 229, 255, 0.14);
+  --playerbar-shadow: 0 -18px 50px rgba(0, 0, 0, 0.46);
+  --accent-primary: #00c2a8;
+  --accent-secondary: #00e5ff;
+  --accent-tertiary: #3a506b;
+  --accent-light: #e6fffb;
+  --tab-active-text: var(--accent-secondary);
   --mobile-tabs-height: 3.5rem;
   --mobile-playerbar-height: 5rem;
   --mobile-controls-gap: 12px;
@@ -20,15 +29,118 @@
 }
 
 :root.light {
-  --bg-main: #f6f8fc;
-  --bg-elevated: rgba(15, 23, 42, 0.035);
-  --text-main: #0f172a;
-  --text-muted: #64748b;
-  --glass-bg: rgba(255, 255, 255, 0.68);
-  --glass-border: rgba(15, 23, 42, 0.08);
-  --glass-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
-  --accent-primary: #0284c7;
-  --accent-secondary: #6366f1;
+  --bg-main: #eef2f8;
+  --bg-elevated: rgba(21, 23, 61, 0.10);
+  --text-main: #0f1530;
+  --text-muted: #4f596d;
+  --glass-bg: rgba(244, 246, 251, 0.98);
+  --glass-border: rgba(21, 23, 61, 0.14);
+  --glass-shadow: 0 18px 36px rgba(21, 23, 61, 0.12);
+  --sidebar-bg: linear-gradient(180deg, rgba(248, 249, 252, 0.96) 0%, rgba(240, 243, 249, 0.95) 46%, rgba(232, 237, 245, 0.98) 100%);
+  --sidebar-border: rgba(125, 211, 252, 0.12);
+  --sidebar-shadow: 28px 0 64px rgba(21, 23, 61, 0.12);
+  --playerbar-bg: linear-gradient(180deg, rgba(240, 243, 249, 0.96) 0%, rgba(233, 238, 246, 0.95) 52%, rgba(224, 231, 242, 0.98) 100%);
+  --playerbar-border: rgba(167, 139, 250, 0.14);
+  --playerbar-shadow: 0 -18px 36px rgba(21, 23, 61, 0.10);
+  --accent-primary: #7dd3fc;
+  --accent-secondary: #a78bfa;
+  --accent-tertiary: #06b6d4;
+  --accent-light: #f5f7fb;
+  --tab-active-text: #4a2f9b;
+}
+
+:root.light[data-theme="light-quantum"] {
+  --bg-main: #dceeed;
+  --bg-elevated: rgba(4, 31, 42, 0.14);
+  --text-main: #051b22;
+  --text-muted: #204a51;
+  --glass-bg: rgba(224, 242, 240, 0.98);
+  --glass-border: rgba(0, 194, 168, 0.22);
+  --glass-shadow: 0 18px 36px rgba(4, 31, 42, 0.16);
+  --sidebar-bg: linear-gradient(180deg, rgba(228, 244, 241, 0.98) 0%, rgba(210, 235, 231, 0.96) 46%, rgba(191, 221, 218, 0.98) 100%);
+  --sidebar-border: rgba(0, 194, 168, 0.24);
+  --sidebar-shadow: 28px 0 64px rgba(3, 25, 33, 0.18);
+  --playerbar-bg: linear-gradient(180deg, rgba(219, 239, 236, 0.98) 0%, rgba(201, 228, 225, 0.96) 52%, rgba(184, 214, 210, 0.98) 100%);
+  --playerbar-border: rgba(0, 229, 255, 0.24);
+  --playerbar-shadow: 0 -18px 36px rgba(3, 25, 33, 0.16);
+  --accent-primary: #00c2a8;
+  --accent-secondary: #00e5ff;
+  --accent-tertiary: #3a506b;
+  --accent-light: #e6fffb;
+  --tab-active-text: #0b4e5d;
+}
+
+/* Classic dark theme alias, kept ready for future settings options. */
+:root[data-theme="classic"] {
+  --bg-main: #15173D;
+  --bg-elevated: rgba(255, 255, 255, 0.03);
+  --text-main: #f5f7fb;
+  --text-muted: #8892a6;
+  --glass-bg: rgba(255, 255, 255, 0.045);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 18px 60px rgba(0, 0, 0, 0.32);
+  --sidebar-bg: rgba(5, 7, 23, 0.92);
+  --sidebar-border: rgba(125, 211, 252, 0.09);
+  --sidebar-shadow: 20px 0 50px rgba(0, 0, 0, 0.44);
+  --playerbar-bg: rgba(8, 10, 34, 0.95);
+  --playerbar-border: rgba(167, 139, 250, 0.14);
+  --playerbar-shadow: 0 -18px 50px rgba(0, 0, 0, 0.42);
+  --accent-primary: #7dd3fc;
+  --accent-secondary: #a78bfa;
+  --accent-tertiary: #06b6d4;
+  --accent-light: #f5f3ff;
+}
+
+:root[data-theme="quantum"] {
+  --sidebar-bg: linear-gradient(180deg, rgba(2, 18, 26, 0.99) 0%, rgba(3, 24, 32, 0.96) 45%, rgba(1, 12, 18, 0.99) 100%);
+  --sidebar-border: rgba(0, 229, 255, 0.16);
+  --sidebar-shadow: 20px 0 50px rgba(0, 194, 168, 0.18);
+  --playerbar-bg: linear-gradient(180deg, rgba(2, 16, 24, 0.98) 0%, rgba(5, 22, 36, 0.96) 48%, rgba(2, 12, 20, 0.99) 100%);
+  --playerbar-border: rgba(0, 194, 168, 0.16);
+  --playerbar-shadow: 0 -18px 50px rgba(0, 194, 168, 0.12);
+}
+
+/* Keep portada/cover elements untouched by this global body gradient by
+   scoping it to body only; specific portada selectors (if present) can
+   override their own background. */
+:root.light body {
+  background-image:
+    radial-gradient(circle at 10% 12%, rgba(125, 211, 252, 0.12) 0%, rgba(125, 211, 252, 0.04) 24%, transparent 42%),
+    radial-gradient(circle at 84% 16%, rgba(167, 139, 250, 0.10) 0%, rgba(167, 139, 250, 0.03) 22%, transparent 40%),
+    radial-gradient(circle at 22% 82%, rgba(6, 182, 212, 0.04) 0%, rgba(6, 182, 212, 0.01) 16%, transparent 34%),
+    linear-gradient(180deg, rgba(245, 247, 251, 1) 0%, rgba(235, 238, 245, 0.98) 54%, rgba(226, 231, 241, 1) 100%);
+  background-color: var(--bg-main);
+  color: var(--text-main);
+}
+
+:root.light[data-theme="light-quantum"] body {
+  background-image:
+    radial-gradient(circle at 12% 10%, rgba(0, 194, 168, 0.18) 0%, rgba(0, 194, 168, 0.07) 22%, transparent 40%),
+    radial-gradient(circle at 84% 14%, rgba(0, 229, 255, 0.16) 0%, rgba(0, 229, 255, 0.06) 20%, transparent 38%),
+    radial-gradient(circle at 26% 82%, rgba(58, 80, 107, 0.14) 0%, rgba(58, 80, 107, 0.05) 18%, transparent 34%),
+    linear-gradient(180deg, rgba(225, 243, 240, 1) 0%, rgba(209, 232, 228, 0.98) 54%, rgba(191, 218, 214, 1) 100%);
+  background-color: var(--bg-main);
+  color: var(--text-main);
+}
+
+:root[data-theme="classic"] body {
+  background-image:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--accent-primary) 14%, transparent), transparent 34%),
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent-secondary) 10%, transparent), transparent 28%),
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-main) 96%, white 4%), var(--bg-main));
+  background-color: var(--bg-main);
+  color: var(--text-main);
+}
+
+:root:not(.light):not([data-theme="classic"]) body {
+  background-image:
+    radial-gradient(circle at 12% 10%, rgba(0, 194, 168, 0.24) 0%, rgba(0, 194, 168, 0.10) 18%, transparent 34%),
+    radial-gradient(circle at 86% 16%, rgba(0, 229, 255, 0.24) 0%, rgba(0, 229, 255, 0.09) 20%, transparent 36%),
+    radial-gradient(circle at 72% 82%, rgba(58, 80, 107, 0.38) 0%, rgba(58, 80, 107, 0.12) 20%, transparent 38%),
+    radial-gradient(circle at 48% 48%, rgba(230, 255, 251, 0.06) 0%, transparent 24%),
+    linear-gradient(180deg, #041f2a 0%, #052a35 46%, #03151f 100%);
+  background-color: var(--bg-main);
+  color: var(--text-main);
 }
 
 /* 2. ESTILOS BASE */
@@ -36,9 +148,11 @@ body {
   margin: 0;
   background-color: var(--bg-main);
   background-image:
-    radial-gradient(circle at top left, color-mix(in srgb, var(--accent-primary) 14%, transparent), transparent 34%),
-    radial-gradient(circle at top right, color-mix(in srgb, var(--accent-secondary) 10%, transparent), transparent 28%),
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-main) 96%, white 4%), var(--bg-main));
+    radial-gradient(circle at 12% 10%, rgba(0, 194, 168, 0.24) 0%, rgba(0, 194, 168, 0.10) 18%, transparent 34%),
+    radial-gradient(circle at 86% 16%, rgba(0, 229, 255, 0.24) 0%, rgba(0, 229, 255, 0.09) 20%, transparent 36%),
+    radial-gradient(circle at 72% 82%, rgba(58, 80, 107, 0.38) 0%, rgba(58, 80, 107, 0.12) 20%, transparent 38%),
+    radial-gradient(circle at 48% 48%, rgba(230, 255, 251, 0.06) 0%, transparent 24%),
+    linear-gradient(180deg, #041f2a 0%, #052a35 46%, #03151f 100%);
   color: var(--text-main);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;

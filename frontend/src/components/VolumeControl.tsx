@@ -8,6 +8,7 @@ interface VolumeControlProps {
   size?: 'sm' | 'md' | 'lg';
   showLabel?: boolean;
   className?: string;
+  useThemeAudioColors?: boolean;
 }
 
 const sizeMap = {
@@ -22,6 +23,7 @@ export const VolumeControl: React.FC<VolumeControlProps> = ({
   size = 'md',
   showLabel = true,
   className = '',
+  useThemeAudioColors = true,
 }) => {
   const { mute } = useMute(volume, onVolumeChange);
   const safeVolume = Math.max(0, Math.min(2, volume));
@@ -29,10 +31,13 @@ export const VolumeControl: React.FC<VolumeControlProps> = ({
   const normalizedFill = `${(safeVolume / 2) * 100}%`;
   const isMuted = safeVolume === 0;
   const iconSize = sizeMap[size];
-  const mobileFillClass =
-    safeVolume > 1
-      ? 'bg-gradient-to-r from-blue-600 via-purple-600 to-red-500'
-      : 'bg-gradient-to-r from-blue-700 to-blue-400';
+  const volumeFillStyle = {
+    backgroundImage: useThemeAudioColors
+      ? 'linear-gradient(90deg, var(--accent-primary), var(--accent-secondary))'
+      : safeVolume > 1
+        ? 'linear-gradient(90deg, #2563eb, #7c3aed, #ef4444)'
+        : 'linear-gradient(90deg, #1d4ed8, #60a5fa)',
+  };
 
   return (
     <div className={`flex items-center gap-1 group/vol w-full ${className}`.trim()}>
@@ -69,8 +74,8 @@ export const VolumeControl: React.FC<VolumeControlProps> = ({
         <div className="flex-1 -translate-y-px h-2 bg-gray-500/10 rounded-full overflow-hidden relative border border-[var(--glass-border)]">
           <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/20 z-10" />
           <div
-            className={`h-full transition-[width,background-color] duration-120 ease-out will-change-[width] ${mobileFillClass}`}
-            style={{ width: normalizedFill }}
+            className="h-full transition-[width,background-color] duration-120 ease-out will-change-[width]"
+            style={{ width: normalizedFill, ...volumeFillStyle }}
             data-testid="volume-fill"
           />
         </div>
@@ -88,7 +93,11 @@ export const VolumeControl: React.FC<VolumeControlProps> = ({
       {showLabel && (
         <span
           className={`translate-y-px text-xs font-mono w-[4ch] shrink-0 text-right font-black tabular-nums transition-colors duration-200 ease-in-out will-change-[color] ${
-            safeVolume > 1 ? 'text-red-500' : 'text-[var(--text-muted)]'
+            safeVolume > 1
+              ? useThemeAudioColors
+                ? 'text-[var(--tab-active-text)]'
+                : 'text-red-500'
+              : 'text-[var(--text-muted)]'
           }`}
         >
           {percentage}%
