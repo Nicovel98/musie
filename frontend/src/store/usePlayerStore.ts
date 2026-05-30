@@ -89,7 +89,15 @@ export const usePlayerStore = create<PlayerState>()(
 
         // Cleanup any audio nodes and object URL
         try {
-          const { mediaSource, gainNode, compressor, analyzer, objectUrl, audioCleanup } = get();
+          const {
+            mediaSource,
+            gainNode,
+            compressor,
+            analyzer,
+            objectUrl,
+            audioCleanup,
+            audioWatchdogId,
+          } = get();
           if (audioCleanup)
             try {
               audioCleanup();

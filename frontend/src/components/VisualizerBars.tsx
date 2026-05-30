@@ -1,6 +1,5 @@
 interface VisualizerBarsProps {
   audioData: Uint8Array;
-  barCount: number;
   seek: number;
   duration: number;
   progressPercent: number;
@@ -27,7 +26,6 @@ const formatTime = (seconds: number) =>
 
 export const VisualizerBars = ({
   audioData,
-  barCount,
   seek,
   duration,
   progressPercent,

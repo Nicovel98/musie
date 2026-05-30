@@ -1,5 +1,3 @@
-import React from 'react';
-
 type VizPreset = 'soft' | 'mid' | 'vivid';
 
 interface Props {

@@ -293,7 +293,6 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
 
                   <VisualizerBars
                     audioData={audioData}
-                    barCount={barCount}
                     seek={seek}
                     duration={duration}
                     progressPercent={progressPercent}
@@ -610,7 +609,6 @@ export const NowPlaying = ({ setView }: NowPlayingProps) => {
 
             <VisualizerBars
               audioData={audioData}
-              barCount={barCount}
               seek={seek}
               duration={duration}
               progressPercent={progressPercent}
