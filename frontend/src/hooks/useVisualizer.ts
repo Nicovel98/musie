@@ -55,6 +55,7 @@ export const useVisualizer = (targetBars = 32, preset: VizPreset = 'mid') => {
   const previousFrameRef = useRef<Uint8Array>(new Uint8Array(0));
   const previousSourceRef = useRef<Uint8Array>(new Uint8Array(0));
   const pulseRef = useRef(0);
+  const lastPaintRef = useRef(0);
 
   useEffect(() => {
     // Si no hay música sonando o no hay analizador, no hacemos nada
@@ -96,6 +97,18 @@ export const useVisualizer = (targetBars = 32, preset: VizPreset = 'mid') => {
     const update = () => {
       if (!isActive) return;
 
+      // Keep visual work bounded on hidden tabs and cap updates to ~30fps.
+      const now = performance.now();
+      if (typeof document !== 'undefined' && document.hidden) {
+        animationFrameId = requestAnimationFrame(update);
+        return;
+      }
+      if (now - lastPaintRef.current < 33) {
+        animationFrameId = requestAnimationFrame(update);
+        return;
+      }
+      lastPaintRef.current = now;
+
       // 1. Obtenemos los datos actuales de la frecuencia
       analyzer.getByteFrequencyData(dataArray);
 
@@ -109,7 +122,11 @@ export const useVisualizer = (targetBars = 32, preset: VizPreset = 'mid') => {
         }
       }
 
-      previousSourceRef.current = new Uint8Array(dataArray);
+      if (previousSource.length === dataArray.length) {
+        previousSource.set(dataArray);
+      } else {
+        previousSourceRef.current = new Uint8Array(dataArray);
+      }
 
       const lowEnergy = averageRange(dataArray, 0, 0.28);
       const highEnergy = averageRange(dataArray, 0.72, 1);

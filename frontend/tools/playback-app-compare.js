@@ -3,7 +3,12 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { spawn, spawnSync } from 'child_process';
+import { fileURLToPath } from 'url';
 import { chromium } from 'playwright';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const frontendDir = path.resolve(__dirname, '..');
 
 function parseArgs(argv) {
   const positionals = [];
@@ -602,15 +607,25 @@ async function main() {
   // start audio server
   const audioServer = await startAudioServer(audioPath, 8001);
   console.log('Audio server running on http://localhost:8001/test-audio');
-  const base = providedAppUrl ? providedAppUrl.replace(/\/$/, '') : 'http://localhost:5173';
+  let base = providedAppUrl ? providedAppUrl.replace(/\/$/, '') : 'http://localhost:5173';
   let dev = null;
   let logStream = null;
+  let shouldStartDev = !providedAppUrl;
 
   if (!providedAppUrl) {
+    try {
+      await waitForUrl(base, 1200);
+      shouldStartDev = false;
+      console.log(`Detected existing app on ${base}, skipping dev server start.`);
+    } catch {
+      // No existing app on 5173; we'll start Vite below.
+    }
+  }
+
+  if (shouldStartDev) {
     console.log('Starting dev server (prefer local vite binary if available)...');
 
     // Prefer local vite binary (node_modules/.bin/vite or vite.cmd)
-    const frontendDir = path.resolve('.', 'frontend');
     const localBin = process.platform === 'win32' ? 'vite.cmd' : 'vite';
     const localVite = path.join(frontendDir, 'node_modules', '.bin', localBin);
 
@@ -634,6 +649,14 @@ async function main() {
         detached: process.platform !== 'win32',
       });
     } else {
+      if (process.env.npm_execpath) {
+        dev = spawn(process.execPath, [process.env.npm_execpath, 'run', 'dev'], {
+          cwd: frontendDir,
+          shell: false,
+          stdio: ['ignore', 'pipe', 'pipe'],
+          detached: process.platform !== 'win32',
+        });
+      } else {
       const candidates = process.platform === 'win32' ? ['npm.cmd', 'npx.cmd', 'pnpm.cmd', 'yarn.cmd'] : ['npm', 'npx', 'pnpm', 'yarn'];
       let found = null;
       for (const c of candidates) {
@@ -656,6 +679,7 @@ async function main() {
         stdio: ['ignore', 'pipe', 'pipe'],
         detached: process.platform !== 'win32',
       });
+      }
     }
 
     // create logs dir and file
@@ -689,7 +713,9 @@ async function main() {
       process.exit(3);
     }
   } else {
-    console.log(`Using provided app URL, skipping dev server start: ${base}`);
+    if (providedAppUrl) {
+      console.log(`Using provided app URL, skipping dev server start: ${base}`);
+    }
   }
   const audioUrl = encodeURIComponent('http://localhost:8001/test-audio');
 
@@ -723,9 +749,9 @@ async function main() {
   console.log('  stalls w/o viz:', noViz.result.stalls, 'w/ viz:', withViz.result.stalls);
   console.log('  maxGap w/o viz:', noViz.result.maxGap.toFixed(3), 'w/ viz:', withViz.result.maxGap.toFixed(3));
 
-  // Persist logs to frontend/logs/playback-<timestamp>-(noviz|viz).json
+  // Persist logs to logs/playback-<timestamp>-(noviz|viz).json
   try {
-    const logsDir = path.join(process.cwd(), 'frontend', 'logs');
+    const logsDir = path.join(process.cwd(), 'logs');
     if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
     const ts = new Date().toISOString().replace(/[:.]/g, '-');
     const meta = { audioPath: audioPath, appUrl: base, timestamp: ts };

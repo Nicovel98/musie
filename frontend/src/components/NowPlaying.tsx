@@ -1,17 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import {
-  Heart,
-  MoreHorizontal,
-  Play,
-  Pause,
-  SkipBack,
-  SkipForward,
-  Repeat,
-  Shuffle,
-  ChevronDown,
-  Moon,
-  Sun,
-} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Heart, MoreHorizontal, ChevronDown, Moon, Sun, Play } from 'lucide-react';
 import heroThumbnail from '../assets/hero.png';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { useVisualizer } from '../hooks/useVisualizer';
@@ -20,6 +8,8 @@ import { VisualizerBars } from './VisualizerBars';
 import { VisualizerPresetSelector } from './VisualizerPresetSelector';
 import { PlayerBar } from './PlayerBar';
 import { VolumeControl } from './VolumeControl';
+import { PlaybackControls } from './PlaybackControls';
+import { useScrubSeeking } from '../hooks/useScrubSeeking';
 
 interface NowPlayingProps {
   setView: (view: 'home' | 'library' | 'settings') => void;
@@ -79,19 +69,34 @@ export const NowPlaying = ({
     setTrack,
   } = usePlayerStore();
 
-  // Pass the selected preset into the visualizer hook so it changes behaviour
+  const goPrev = () => {
+    if (!currentTrack || songs.length === 0) return;
+    const idx = songs.findIndex((s) => s.id === currentTrack.id);
+    if (idx === -1) return;
+    const nextIdx = (idx - 1 + songs.length) % songs.length;
+    setTrack(songs[nextIdx]);
+  };
+
+  const goNext = () => {
+    if (!currentTrack || songs.length === 0) return;
+    const idx = songs.findIndex((s) => s.id === currentTrack.id);
+    if (idx === -1) return;
+    const nextIdx = (idx + 1) % songs.length;
+    setTrack(songs[nextIdx]);
+  };
+
   const audioData = useVisualizer(barCount, vizPreset);
-  const scrubResumeRef = useRef(false);
-  const scrubActiveRef = useRef(false);
-  const seekRafRef = useRef<number | null>(null);
-  const pendingSeekRef = useRef<number | null>(null);
+  const { handleSeekChange, handleScrubStart, handleScrubEnd } = useScrubSeeking({
+    isPlaying,
+    togglePlay,
+    fastSeek,
+  });
 
   const featuredTrack = currentTrack ?? lastTrack ?? songs[songs.length - 1] ?? songs[0] ?? null;
 
   const progressPercent = (seek / duration) * 100 || 0;
   const controlBtnSizeClass = isShortHeight ? 'w-9 h-9' : 'w-11 h-11';
   const controlIconSmall = isShortHeight ? 16 : 18;
-  const controlIconMedium = isShortHeight ? 18 : 24;
   const sectionPadding = isShortHeight ? 'p-0.5' : 'p-1';
   const visualizerWrapperClassName = isCompactLandscape
     ? 'flex min-h-0 flex-1 flex-col gap-2 rounded-[18px] border border-dashed border-[var(--glass-border)] bg-black/5 px-3 py-3'
@@ -115,6 +120,18 @@ export const NowPlaying = ({
     ? 'hover:text-[var(--accent-secondary)]'
     : 'hover:text-blue-400';
 
+  const playOverlayClass = useThemeAudioColors
+    ? 'absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--accent-primary)_18%,transparent)] bg-[var(--accent-primary)] text-[var(--bg-main)] shadow-[0_18px_40px_rgba(0,0,0,0.3)] backdrop-blur-sm transition-transform group-hover:scale-105'
+    : isLightMode
+      ? 'absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-slate-300/70 bg-white/90 text-slate-900 shadow-[0_18px_40px_rgba(15,23,42,0.16)] backdrop-blur-sm transition-transform group-hover:scale-105'
+      : 'absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/18 bg-white/12 text-[var(--text-main)] shadow-[0_18px_40px_rgba(0,0,0,0.3)] backdrop-blur-sm transition-transform group-hover:scale-105';
+
+  const smallPlayOverlayClass = useThemeAudioColors
+    ? 'flex h-12 w-12 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--accent-primary)_18%,transparent)] bg-[var(--accent-primary)] text-[var(--bg-main)] shadow-2xl transition-transform group-hover:scale-105'
+    : isLightMode
+      ? 'flex h-12 w-12 items-center justify-center rounded-full border border-slate-300/70 bg-white/95 text-slate-900 shadow-2xl transition-transform group-hover:scale-105'
+      : 'flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-white/12 text-[var(--text-main)] shadow-2xl transition-transform group-hover:scale-105';
+
   useEffect(() => {
     const handleResize = () => {
       setBarCount(getAdaptiveBarCount(window.innerWidth, window.innerHeight));
@@ -127,56 +144,6 @@ export const NowPlaying = ({
       window.removeEventListener('resize', handleResize);
     };
   }, [isCompactLandscape]);
-
-  const handleSeekChange = (value: string) => {
-    const nextSeek = Number(value);
-    if (!Number.isFinite(nextSeek)) return;
-
-    pendingSeekRef.current = nextSeek;
-
-    if (seekRafRef.current !== null) return;
-
-    seekRafRef.current = requestAnimationFrame(() => {
-      seekRafRef.current = null;
-      const seekValue = pendingSeekRef.current;
-      if (seekValue !== null) fastSeek(seekValue);
-    });
-  };
-
-  const handleScrubStart = () => {
-    if (scrubActiveRef.current) return;
-
-    scrubActiveRef.current = true;
-    scrubResumeRef.current = isPlaying;
-
-    if (isPlaying) {
-      togglePlay();
-    }
-  };
-
-  const handleScrubEnd = () => {
-    if (!scrubActiveRef.current) return;
-
-    scrubActiveRef.current = false;
-
-    if (seekRafRef.current !== null) {
-      cancelAnimationFrame(seekRafRef.current);
-      seekRafRef.current = null;
-    }
-
-    const seekValue = pendingSeekRef.current;
-    pendingSeekRef.current = null;
-
-    if (seekValue !== null) {
-      fastSeek(seekValue);
-    }
-
-    if (scrubResumeRef.current) {
-      togglePlay();
-    }
-
-    scrubResumeRef.current = false;
-  };
 
   if (isVeryShort) {
     // For extremely short screens, replace NowPlaying with the compact PlayerBar
@@ -217,41 +184,21 @@ export const NowPlaying = ({
                 <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/10 to-transparent" />
               </div>
 
-              <div className="flex items-center justify-between gap-2 shrink-0 px-1 pt-1">
-                <button
-                  className={`text-[var(--text-muted)] transition-colors ${controlHoverAccentClass}`}
-                >
-                  <Shuffle size={controlIconSmall} />
-                </button>
-                <button
-                  aria-label="Previous track"
-                  className={`text-[var(--text-main)] opacity-70 hover:opacity-100 transition-all active:scale-90 ${controlHoverSecondaryAccentClass}`}
-                >
-                  <SkipBack size={controlIconMedium} fill="currentColor" />
-                </button>
-                <button
-                  onClick={togglePlay}
-                  aria-label={isPlaying ? 'Pause' : 'Play'}
-                  className={`${controlBtnSizeClass} flex items-center justify-center bg-[var(--text-main)] text-[var(--bg-main)] rounded-full hover:scale-105 transition-all shadow-xl active:scale-95`}
-                >
-                  {isPlaying ? (
-                    <Pause size={isShortHeight ? 18 : 20} fill="currentColor" />
-                  ) : (
-                    <Play size={isShortHeight ? 18 : 20} fill="currentColor" className="ml-0.5" />
-                  )}
-                </button>
-                <button
-                  aria-label="Next track"
-                  className={`text-[var(--text-main)] opacity-70 hover:opacity-100 transition-all active:scale-90 ${controlHoverSecondaryAccentClass}`}
-                >
-                  <SkipForward size={controlIconMedium} fill="currentColor" />
-                </button>
-                <button
-                  className={`text-[var(--text-muted)] transition-colors ${controlHoverAccentClass}`}
-                >
-                  <Repeat size={controlIconSmall} />
-                </button>
-              </div>
+              <PlaybackControls
+                isPlaying={isPlaying}
+                onTogglePlay={togglePlay}
+                onPrev={goPrev}
+                onNext={goNext}
+                useThemeAudioColors={useThemeAudioColors}
+                buttonSizeClass="h-9 w-9"
+                playButtonSizeClass={controlBtnSizeClass}
+                iconSize={controlIconSmall}
+                playIconSize={isShortHeight ? 18 : 20}
+                iconClassName={`text-[var(--text-muted)] transition-colors ${controlHoverAccentClass}`}
+                secondaryIconClassName={`text-[var(--text-main)] opacity-70 hover:opacity-100 transition-all active:scale-90 ${controlHoverSecondaryAccentClass}`}
+                playButtonClassName={`${controlBtnSizeClass} flex items-center justify-center bg-[var(--text-main)] text-[var(--bg-main)] rounded-full hover:scale-105 transition-all shadow-xl active:scale-95`}
+                className="justify-between gap-2 shrink-0 px-1 pt-1"
+              />
             </section>
 
             <section className="flex min-h-0 flex-col gap-3 p-1">
@@ -389,7 +336,7 @@ export const NowPlaying = ({
                     Preview
                   </div>
                   {featuredTrack ? (
-                    <div className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/18 bg-white/92 text-black shadow-[0_18px_40px_rgba(0,0,0,0.3)] backdrop-blur-sm transition-transform group-hover:scale-105">
+                    <div className={playOverlayClass}>
                       <Play size={18} fill="currentColor" className="ml-0.5" />
                     </div>
                   ) : null}
@@ -502,7 +449,7 @@ export const NowPlaying = ({
                     : 'Carga una canción desde Library y convierte este thumbnail en tu acceso directo al reproductor.'}
                 </p>
                 {featuredTrack ? (
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-white/95 text-black shadow-2xl shadow-black/30 transition-transform group-hover:scale-105">
+                  <div className={smallPlayOverlayClass}>
                     <Play size={20} fill="currentColor" className="ml-0.5" />
                   </div>
                 ) : null}
@@ -645,66 +592,19 @@ export const NowPlaying = ({
 
         {/* 6. CONTROLES Y VOLUMEN SOBREAMPLIFICADO (Glass Style - Responsivo) */}
         <div className="w-full md:max-w-sm lg:max-w-md flex flex-col gap-[clamp(0.6rem,1.6vw,0.9rem)] pb-[clamp(0.6rem,1.2vw,0.9rem)] shrink-0 mt-[clamp(0.2rem,0.8vw,0.4rem)] px-[clamp(0.5rem,3vw,1rem)]">
-          <div className="flex items-center justify-between gap-[clamp(0.5rem,2vw,1rem)]">
-            <button
-              className={`text-gray-500 transition-colors ${
-                useThemeAudioColors ? 'hover:text-[var(--accent-primary)]' : 'hover:text-blue-500'
-              }`}
-            >
-              <Shuffle className="h-[clamp(1.25rem,4vw,1.5rem)] w-[clamp(1.25rem,4vw,1.5rem)]" />
-            </button>
-            <div className="flex items-center gap-[clamp(1rem,4vw,2rem)] flex-1 justify-center">
-              <button
-                aria-label="Previous track"
-                className={`text-[var(--text-main)] opacity-60 hover:opacity-100 active:scale-90 transition-colors ${
-                  useThemeAudioColors
-                    ? 'hover:text-[var(--accent-secondary)]'
-                    : 'hover:text-blue-400'
-                }`}
-              >
-                <SkipBack
-                  className="h-[clamp(1.75rem,6vw,2rem)] w-[clamp(1.75rem,6vw,2rem)]"
-                  fill="currentColor"
-                />
-              </button>
-              <button
-                onClick={togglePlay}
-                aria-label={isPlaying ? 'Pause' : 'Play'}
-                className="flex items-center justify-center bg-[var(--text-main)] text-[var(--bg-main)] rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all h-[clamp(3rem,10vw,4rem)] w-[clamp(3rem,10vw,4rem)] shrink-0"
-              >
-                {isPlaying ? (
-                  <Pause
-                    className="h-[clamp(1.25rem,4vw,1.875rem)] w-[clamp(1.25rem,4vw,1.875rem)]"
-                    fill="currentColor"
-                  />
-                ) : (
-                  <Play
-                    className="h-[clamp(1.25rem,4vw,1.875rem)] w-[clamp(1.25rem,4vw,1.875rem)] ml-0.5"
-                    fill="currentColor"
-                  />
-                )}
-              </button>
-              <button
-                aria-label="Next track"
-                className={`text-[var(--text-main)] opacity-60 hover:opacity-100 active:scale-90 transition-colors ${
-                  useThemeAudioColors
-                    ? 'hover:text-[var(--accent-secondary)]'
-                    : 'hover:text-blue-400'
-                }`}
-              >
-                <SkipForward
-                  className="h-[clamp(1.75rem,6vw,2rem)] w-[clamp(1.75rem,6vw,2rem)]"
-                  fill="currentColor"
-                />
-              </button>
-            </div>
-            <button
-              className={`text-gray-500 transition-colors ${
-                useThemeAudioColors ? 'hover:text-[var(--accent-primary)]' : 'hover:text-blue-500'
-              }`}
-            >
-              <Repeat className="h-[clamp(1.25rem,4vw,1.5rem)] w-[clamp(1.25rem,4vw,1.5rem)]" />
-            </button>
+          <div className="flex items-center justify-center">
+            <PlaybackControls
+              isPlaying={isPlaying}
+              onTogglePlay={togglePlay}
+              onPrev={goPrev}
+              onNext={goNext}
+              useThemeAudioColors={useThemeAudioColors}
+              buttonSizeClass="h-[clamp(1.25rem,4vw,1.5rem)] w-[clamp(1.25rem,4vw,1.5rem)]"
+              playButtonSizeClass="h-[clamp(3rem,10vw,4rem)] w-[clamp(3rem,10vw,4rem)]"
+              iconSize={isShortHeight ? 16 : 18}
+              playIconSize={isShortHeight ? 20 : 28}
+              className="justify-center gap-[clamp(1rem,4vw,2rem)]"
+            />
           </div>
 
           {/* VOLUMEN TÁCTIL (0-200%) CON BOTÓN DE RESET 100% */}

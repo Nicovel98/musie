@@ -101,33 +101,47 @@ export const usePlayerStore = create<PlayerState>()(
           if (audioCleanup)
             try {
               audioCleanup();
-            } catch {}
+            } catch (e) {
+              void e;
+            }
           if (mediaSource)
             try {
               mediaSource.disconnect();
-            } catch {}
+            } catch (e) {
+              void e;
+            }
           if (gainNode)
             try {
               gainNode.disconnect();
-            } catch {}
+            } catch (e) {
+              void e;
+            }
           if (compressor)
             try {
               compressor.disconnect();
-            } catch {}
+            } catch (e) {
+              void e;
+            }
           if (analyzer)
             try {
               analyzer.disconnect();
-            } catch {}
+            } catch (e) {
+              void e;
+            }
           if (objectUrl)
             try {
               URL.revokeObjectURL(objectUrl);
-            } catch {}
+            } catch (e) {
+              void e;
+            }
           if (audioWatchdogId)
             try {
               clearInterval(audioWatchdogId);
-            } catch {}
+            } catch (e) {
+              void e;
+            }
         } catch (e) {
-          /* ignore cleanup errors */
+          void e;
         }
         set({
           songs: [],
@@ -141,7 +155,15 @@ export const usePlayerStore = create<PlayerState>()(
 
       setTrack: (track) => {
         // Cleanup existing Howl and audio graph before creating a new one
-        const { howl: oldHowl, mediaSource, gainNode, compressor, analyzer, objectUrl } = get();
+        const {
+          howl: oldHowl,
+          mediaSource,
+          gainNode,
+          compressor,
+          analyzer,
+          objectUrl,
+          audioWatchdogId,
+        } = get();
         if (oldHowl) oldHowl.unload();
 
         try {
@@ -149,24 +171,43 @@ export const usePlayerStore = create<PlayerState>()(
           if (audioCleanup)
             try {
               audioCleanup();
-            } catch {}
-        } catch {}
+            } catch (e) {
+              void e;
+            }
+        } catch (e) {
+          void e;
+        }
 
         try {
           if (mediaSource) mediaSource.disconnect();
-        } catch {}
+        } catch (e) {
+          void e;
+        }
         try {
           if (gainNode) gainNode.disconnect();
-        } catch {}
+        } catch (e) {
+          void e;
+        }
         try {
           if (compressor) compressor.disconnect();
-        } catch {}
+        } catch (e) {
+          void e;
+        }
         try {
           if (analyzer) analyzer.disconnect();
-        } catch {}
+        } catch (e) {
+          void e;
+        }
         try {
           if (objectUrl) URL.revokeObjectURL(objectUrl);
-        } catch {}
+        } catch (e) {
+          void e;
+        }
+        try {
+          if (audioWatchdogId) clearInterval(audioWatchdogId);
+        } catch (e) {
+          void e;
+        }
 
         // Clear references
         set({
@@ -196,6 +237,14 @@ export const usePlayerStore = create<PlayerState>()(
           onplay: () => {
             set({ isPlaying: true, duration: newHowl.duration() });
 
+            // Ensure we never accumulate watchdog intervals across resumes/tracks.
+            try {
+              const { audioWatchdogId: existingWatchdogId } = get();
+              if (existingWatchdogId) clearInterval(existingWatchdogId);
+            } catch (e) {
+              void e;
+            }
+
             // Conexión del Analizador + GainNode + Compressor para amplificación segura
             const node = (newHowl as unknown as HowlInternal)._sounds?.[0]?._node;
             if (node) {
@@ -223,25 +272,35 @@ export const usePlayerStore = create<PlayerState>()(
                   node.addEventListener('suspend', onSuspend);
                   node.addEventListener('error', onError as EventListener);
                 } catch (e) {
-                  /* ignore */
+                  void e;
                 }
 
                 const cleanupListeners = () => {
                   try {
                     node.removeEventListener('pause', onPause);
-                  } catch {}
+                  } catch (e) {
+                    void e;
+                  }
                   try {
                     node.removeEventListener('ended', onEnded);
-                  } catch {}
+                  } catch (e) {
+                    void e;
+                  }
                   try {
                     node.removeEventListener('stalled', onStalled);
-                  } catch {}
+                  } catch (e) {
+                    void e;
+                  }
                   try {
                     node.removeEventListener('suspend', onSuspend);
-                  } catch {}
+                  } catch (e) {
+                    void e;
+                  }
                   try {
                     node.removeEventListener('error', onError as EventListener);
-                  } catch {}
+                  } catch (e) {
+                    void e;
+                  }
                 };
 
                 // Gain para amplificación (valor en state.volume, puede ser >1)
@@ -277,22 +336,24 @@ export const usePlayerStore = create<PlayerState>()(
 
                 // Expose lightweight debug references for test instrumentation
                 try {
-                  // @ts-ignore
+                  // @ts-expect-error - adding debug refs to window
                   window.__musie_debug = window.__musie_debug || {};
-                  // @ts-ignore
+                  // @ts-expect-error adding non-standard debug prop to window
                   window.__musie_debug.analyzer = analyzer;
-                  // @ts-ignore
+                  // @ts-expect-error adding non-standard debug prop to window
                   window.__musie_debug.mediaNode = node;
-                  // @ts-ignore
+                  // @ts-expect-error adding non-standard debug prop to window
                   window.__musie_debug.source = source;
                   try {
                     console.debug('[audio-event] onplay - debug refs exposed', {
                       currentTime: node?.currentTime,
                       src: activeUrl,
                     });
-                  } catch (e) {}
+                  } catch (e) {
+                    void e;
+                  }
                 } catch (e) {
-                  /* ignore */
+                  void e;
                 }
 
                 // Start a small watchdog that tries to resume the audio context if it becomes suspended
@@ -304,23 +365,39 @@ export const usePlayerStore = create<PlayerState>()(
                         console.debug('[audio-watchdog] attempted resume');
                       }
                     } catch (e) {
-                      /* ignore */
+                      void e;
                     }
                   }, 3000);
 
                   // store watchdog id
-                  // @ts-ignore - browser setInterval returns number
+                  // browser setInterval returns number in browsers
                   set({ audioWatchdogId: Number(watchdogId) });
                 } catch (e) {
-                  /* ignore watchdog errors */
+                  void e;
                 }
               } catch (err) {
                 console.debug('Audio node already connected or connection failed', err);
               }
             }
           },
-          onpause: () => set({ isPlaying: false }),
-          onend: () => set({ isPlaying: false, seek: 0 }),
+          onpause: () => {
+            try {
+              const { audioWatchdogId: existingWatchdogId } = get();
+              if (existingWatchdogId) clearInterval(existingWatchdogId);
+            } catch (e) {
+              void e;
+            }
+            set({ isPlaying: false, audioWatchdogId: null });
+          },
+          onend: () => {
+            try {
+              const { audioWatchdogId: existingWatchdogId } = get();
+              if (existingWatchdogId) clearInterval(existingWatchdogId);
+            } catch (e) {
+              void e;
+            }
+            set({ isPlaying: false, seek: 0, audioWatchdogId: null });
+          },
           onload: function () {
             set({ duration: newHowl.duration() });
           },

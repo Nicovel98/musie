@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "test:playback": "node ./tools/playback-test.js",
     "test:playback:compare": "node ./tools/playback-compare.js",
-    "test:playback:app-compare": "node ./tools/playback-app-compare.js"
+    "test:playback:app-compare": "node ./tools/playback-app-compare.js",
+    "test:playback:burnin": "node ./tools/playback-burnin.js"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.3.0",

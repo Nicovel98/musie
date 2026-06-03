@@ -10,11 +10,25 @@ export const useMediaQuery = (query: string) => {
     if (typeof window === 'undefined') return;
     const m = window.matchMedia(query);
     const handler = () => setMatches(m.matches);
-    m.addEventListener ? m.addEventListener('change', handler) : m.addListener(handler);
-    // sync
-    setMatches(m.matches);
+
+    type LegacyMediaQueryList = MediaQueryList & {
+      addListener?: (listener: (e: MediaQueryListEvent) => void) => void;
+      removeListener?: (listener: (e: MediaQueryListEvent) => void) => void;
+    };
+
+    const legacy = m as LegacyMediaQueryList;
+    if (m.addEventListener) {
+      m.addEventListener('change', handler);
+    } else if (legacy.addListener) {
+      legacy.addListener(handler);
+    }
+
     return () => {
-      m.removeEventListener ? m.removeEventListener('change', handler) : m.removeListener(handler);
+      if (m.removeEventListener) {
+        m.removeEventListener('change', handler);
+      } else if (legacy.removeListener) {
+        legacy.removeListener(handler);
+      }
     };
   }, [query]);
 

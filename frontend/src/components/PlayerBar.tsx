@@ -1,7 +1,8 @@
-import { Play, Pause, SkipBack, SkipForward, Repeat, Shuffle, Heart } from 'lucide-react';
-import { useRef } from 'react';
+import { Heart } from 'lucide-react';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { VolumeControl } from './VolumeControl';
+import { PlaybackControls } from './PlaybackControls';
+import { useScrubSeeking } from '../hooks/useScrubSeeking';
 
 interface PlayerBarProps {
   useThemeAudioColors?: boolean;
@@ -10,10 +11,29 @@ interface PlayerBarProps {
 export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
   const { currentTrack, isPlaying, togglePlay, seek, duration, fastSeek, volume, setVolume } =
     usePlayerStore();
-  const scrubResumeRef = useRef(false);
-  const scrubActiveRef = useRef(false);
-  const seekRafRef = useRef<number | null>(null);
-  const pendingSeekRef = useRef<number | null>(null);
+  const { songs, setTrack } = usePlayerStore();
+
+  const { handleSeekChange, handleScrubStart, handleScrubEnd } = useScrubSeeking({
+    isPlaying,
+    togglePlay,
+    fastSeek,
+  });
+
+  const goPrev = () => {
+    if (!currentTrack || songs.length === 0) return;
+    const idx = songs.findIndex((s) => s.id === currentTrack.id);
+    if (idx === -1) return;
+    const nextIdx = (idx - 1 + songs.length) % songs.length;
+    setTrack(songs[nextIdx]);
+  };
+
+  const goNext = () => {
+    if (!currentTrack || songs.length === 0) return;
+    const idx = songs.findIndex((s) => s.id === currentTrack.id);
+    if (idx === -1) return;
+    const nextIdx = (idx + 1) % songs.length;
+    setTrack(songs[nextIdx]);
+  };
 
   if (!currentTrack) return null;
 
@@ -34,56 +54,6 @@ export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
   const controlAccentSecondaryClass = useThemeAudioColors
     ? 'text-[var(--accent-secondary)]'
     : 'text-blue-400';
-
-  const handleSeekChange = (value: string) => {
-    const nextSeek = Number(value);
-    if (!Number.isFinite(nextSeek)) return;
-
-    pendingSeekRef.current = nextSeek;
-
-    if (seekRafRef.current !== null) return;
-
-    seekRafRef.current = requestAnimationFrame(() => {
-      seekRafRef.current = null;
-      const seekValue = pendingSeekRef.current;
-      if (seekValue !== null) fastSeek(seekValue);
-    });
-  };
-
-  const handleScrubStart = () => {
-    if (scrubActiveRef.current) return;
-
-    scrubActiveRef.current = true;
-    scrubResumeRef.current = isPlaying;
-
-    if (isPlaying) {
-      togglePlay();
-    }
-  };
-
-  const handleScrubEnd = () => {
-    if (!scrubActiveRef.current) return;
-
-    scrubActiveRef.current = false;
-
-    if (seekRafRef.current !== null) {
-      cancelAnimationFrame(seekRafRef.current);
-      seekRafRef.current = null;
-    }
-
-    const seekValue = pendingSeekRef.current;
-    pendingSeekRef.current = null;
-
-    if (seekValue !== null) {
-      fastSeek(seekValue);
-    }
-
-    if (scrubResumeRef.current) {
-      togglePlay();
-    }
-
-    scrubResumeRef.current = false;
-  };
 
   return (
     /*
@@ -113,45 +83,21 @@ export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
           </button>
         </div>
 
-        <div className="flex items-center justify-between gap-1 px-0">
-          <button
-            className={`flex h-7 w-7 items-center justify-center rounded-full text-[var(--text-muted)] opacity-80 active:opacity-100 transition-colors active:${controlAccentClass}`}
-          >
-            <Shuffle size={14} />
-          </button>
-
-          <button
-            aria-label="Previous track"
-            className={`flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-muted)] opacity-80 active:opacity-100 transition-colors active:${controlAccentSecondaryClass}`}
-          >
-            <SkipBack size={16} />
-          </button>
-
-          <button
-            onClick={togglePlay}
-            aria-label={isPlaying ? 'Pause' : 'Play'}
-            className="w-9 h-9 flex items-center justify-center bg-[var(--text-main)] text-[var(--bg-main)] rounded-full shadow-xl active:scale-95 transition-all"
-          >
-            {isPlaying ? (
-              <Pause size={18} fill="currentColor" />
-            ) : (
-              <Play size={18} fill="currentColor" className="ml-0.5" />
-            )}
-          </button>
-
-          <button
-            aria-label="Next track"
-            className={`flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-muted)] opacity-80 active:opacity-100 transition-colors active:${controlAccentSecondaryClass}`}
-          >
-            <SkipForward size={16} />
-          </button>
-
-          <button
-            className={`flex h-7 w-7 items-center justify-center rounded-full text-[var(--text-muted)] opacity-80 active:opacity-100 transition-colors active:${controlAccentClass}`}
-          >
-            <Repeat size={14} />
-          </button>
-        </div>
+        <PlaybackControls
+          isPlaying={isPlaying}
+          onTogglePlay={togglePlay}
+          onPrev={goPrev}
+          onNext={goNext}
+          useThemeAudioColors={useThemeAudioColors}
+          buttonSizeClass="h-8 w-8"
+          playButtonSizeClass="w-9 h-9"
+          iconSize={14}
+          playIconSize={18}
+          iconClassName={`text-[var(--text-muted)] opacity-80 active:opacity-100 active:${controlAccentClass}`}
+          secondaryIconClassName={`text-[var(--text-muted)] opacity-80 active:opacity-100 active:${controlAccentSecondaryClass}`}
+          playButtonClassName="flex items-center justify-center bg-[var(--text-main)] text-[var(--bg-main)] rounded-full shadow-xl active:scale-95 transition-all"
+          className="justify-between gap-1 px-0"
+        />
       </div>
 
       {/* 1. INFO CANCIÓN */}
@@ -178,45 +124,19 @@ export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
 
       {/* 2. CONTROLES (Móvil: Solo Play/Pause | Desktop: Full) */}
       <div className="hidden md:flex flex-col items-center flex-1 max-w-[44%] gap-0.5">
-        <div className="flex items-center gap-2 md:gap-4">
-          <button
-            className={`text-[var(--text-muted)] opacity-80 hover:opacity-100 transition-colors hidden md:block hover:${controlAccentClass}`}
-          >
-            <Shuffle size={16} />
-          </button>
-
-          <button
-            aria-label="Previous track"
-            className={`text-[var(--text-main)] opacity-70 hover:opacity-100 transition-all active:scale-90 hidden md:block hover:${controlAccentSecondaryClass}`}
-          >
-            <SkipBack size={24} fill="currentColor" />
-          </button>
-
-          <button
-            onClick={togglePlay}
-            aria-label={isPlaying ? 'Pause' : 'Play'}
-            className="w-10 h-10 md:w-11 md:h-11 flex items-center justify-center bg-[var(--text-main)] text-[var(--bg-main)] rounded-full hover:scale-105 transition-all shadow-xl active:scale-95"
-          >
-            {isPlaying ? (
-              <Pause size={20} fill="currentColor" />
-            ) : (
-              <Play size={20} fill="currentColor" className="ml-0.5" />
-            )}
-          </button>
-
-          <button
-            aria-label="Next track"
-            className={`text-[var(--text-main)] opacity-70 hover:opacity-100 transition-all active:scale-90 hidden md:block hover:${controlAccentSecondaryClass}`}
-          >
-            <SkipForward size={24} fill="currentColor" />
-          </button>
-
-          <button
-            className={`text-[var(--text-muted)] opacity-80 hover:opacity-100 transition-colors hidden md:block hover:${controlAccentClass}`}
-          >
-            <Repeat size={16} />
-          </button>
-        </div>
+        <PlaybackControls
+          isPlaying={isPlaying}
+          onTogglePlay={togglePlay}
+          useThemeAudioColors={useThemeAudioColors}
+          buttonSizeClass="h-10 w-10 md:h-11 md:w-11"
+          playButtonSizeClass="w-10 h-10 md:w-11 md:h-11"
+          iconSize={16}
+          playIconSize={20}
+          iconClassName={`text-[var(--text-muted)] opacity-80 hover:opacity-100 transition-colors hidden md:flex hover:${controlAccentClass}`}
+          secondaryIconClassName={`text-[var(--text-main)] opacity-70 hover:opacity-100 transition-all active:scale-90 hidden md:flex hover:${controlAccentSecondaryClass}`}
+          playButtonClassName="flex items-center justify-center bg-[var(--text-main)] text-[var(--bg-main)] rounded-full hover:scale-105 transition-all shadow-xl active:scale-95"
+          className="gap-2 md:gap-4"
+        />
 
         {/* BARRA DE PROGRESO DESKTOP */}
         <div className="w-full hidden md:flex items-center gap-2 group/progress mb-1">
