@@ -67,22 +67,16 @@ export const NowPlaying = ({
     volume,
     setVolume,
     setTrack,
+    playPreviousTrack,
+    playNextTrack,
   } = usePlayerStore();
 
   const goPrev = () => {
-    if (!currentTrack || songs.length === 0) return;
-    const idx = songs.findIndex((s) => s.id === currentTrack.id);
-    if (idx === -1) return;
-    const nextIdx = (idx - 1 + songs.length) % songs.length;
-    setTrack(songs[nextIdx]);
+    playPreviousTrack();
   };
 
   const goNext = () => {
-    if (!currentTrack || songs.length === 0) return;
-    const idx = songs.findIndex((s) => s.id === currentTrack.id);
-    if (idx === -1) return;
-    const nextIdx = (idx + 1) % songs.length;
-    setTrack(songs[nextIdx]);
+    playNextTrack();
   };
 
   const audioData = useVisualizer(barCount, vizPreset);

@@ -34,11 +34,14 @@ interface PlayerState {
   gainNode: GainNode | null;
   compressor: DynamicsCompressorNode | null;
   objectUrl: string | null;
+  connectedMediaNode: HTMLAudioElement | null;
   audioCleanup?: (() => void) | null;
   audioWatchdogId?: number | null;
   addSongs: (files: File[]) => void;
   clearSongs: () => void;
   setTrack: (track: Track) => void;
+  playPreviousTrack: () => void;
+  playNextTrack: () => void;
   togglePlay: () => void;
   setVolume: (val: number) => void;
   setSeek: (val: number) => void;
@@ -50,6 +53,30 @@ const clampSeekValue = (val: number, duration: number) => {
   if (!Number.isFinite(val)) return 0;
   if (!Number.isFinite(duration) || duration <= 0) return Math.max(0, val);
   return Math.min(Math.max(0, val), duration);
+};
+
+const getTrackIndex = (songs: Track[], currentTrack: Track | null) =>
+  currentTrack ? songs.findIndex((song) => song.id === currentTrack.id) : -1;
+
+const getTrackSource = (track: Track) => {
+  if (track.fileData) {
+    const file = track.fileData as File;
+    return {
+      src: URL.createObjectURL(file),
+      format: file.name?.split('.').pop()?.toLowerCase() || 'mp3',
+      isObjectUrl: true,
+    };
+  }
+
+  const remoteUrl = track.audioUrl?.trim();
+  if (!remoteUrl) return null;
+
+  const extension = remoteUrl.split('?')[0].split('#')[0].split('.').pop()?.toLowerCase();
+  return {
+    src: remoteUrl,
+    format: extension || undefined,
+    isObjectUrl: false,
+  };
 };
 
 export const usePlayerStore = create<PlayerState>()(
@@ -68,6 +95,7 @@ export const usePlayerStore = create<PlayerState>()(
       gainNode: null,
       compressor: null,
       objectUrl: null,
+      connectedMediaNode: null,
       audioCleanup: null,
       audioWatchdogId: null,
 
@@ -150,20 +178,17 @@ export const usePlayerStore = create<PlayerState>()(
           isPlaying: false,
           analyzer: null,
           howl: null,
+          mediaSource: null,
+          gainNode: null,
+          compressor: null,
+          objectUrl: null,
+          connectedMediaNode: null,
         });
       },
 
       setTrack: (track) => {
         // Cleanup existing Howl and audio graph before creating a new one
-        const {
-          howl: oldHowl,
-          mediaSource,
-          gainNode,
-          compressor,
-          analyzer,
-          objectUrl,
-          audioWatchdogId,
-        } = get();
+        const { howl: oldHowl, objectUrl } = get();
         if (oldHowl) oldHowl.unload();
 
         try {
@@ -177,61 +202,29 @@ export const usePlayerStore = create<PlayerState>()(
         } catch (e) {
           void e;
         }
-
-        try {
-          if (mediaSource) mediaSource.disconnect();
-        } catch (e) {
-          void e;
-        }
-        try {
-          if (gainNode) gainNode.disconnect();
-        } catch (e) {
-          void e;
-        }
-        try {
-          if (compressor) compressor.disconnect();
-        } catch (e) {
-          void e;
-        }
-        try {
-          if (analyzer) analyzer.disconnect();
-        } catch (e) {
-          void e;
-        }
         try {
           if (objectUrl) URL.revokeObjectURL(objectUrl);
-        } catch (e) {
-          void e;
-        }
-        try {
-          if (audioWatchdogId) clearInterval(audioWatchdogId);
         } catch (e) {
           void e;
         }
 
         // Clear references
         set({
-          analyzer: null,
-          mediaSource: null,
-          gainNode: null,
-          compressor: null,
           objectUrl: null,
           audioCleanup: null,
           audioWatchdogId: null,
         });
 
-        if (!track.fileData) return;
+        const trackSource = getTrackSource(track);
+        if (!trackSource) return;
 
-        // Solución al error de TS: Forzamos a File para acceder a .name
-        const file = track.fileData as File;
-        const extension = file.name?.split('.').pop()?.toLowerCase() || 'mp3';
-        const activeUrl = URL.createObjectURL(file);
+        const activeUrl = trackSource.src;
 
         // Creamos Howl con volumen a 1. El control de ganancia real lo haremos
         // mediante un GainNode conectado al contexto de Howler.
         const newHowl = new Howl({
           src: [activeUrl],
-          format: [extension],
+          format: trackSource.format ? [trackSource.format] : undefined,
           html5: true,
           volume: 1,
           onplay: () => {
@@ -250,9 +243,44 @@ export const usePlayerStore = create<PlayerState>()(
             if (node) {
               try {
                 const ctx = Howler.ctx;
+                const {
+                  connectedMediaNode: existingConnectedNode,
+                  mediaSource: existingMediaSource,
+                  gainNode: existingGainNode,
+                  compressor: existingCompressor,
+                  analyzer: existingAnalyzer,
+                } = get();
+
+                if (existingConnectedNode === node && existingMediaSource) {
+                  set({ objectUrl: trackSource.isObjectUrl ? activeUrl : null });
+                  return;
+                }
+
+                if (existingConnectedNode && existingConnectedNode !== node) {
+                  try {
+                    existingMediaSource?.disconnect();
+                  } catch (e) {
+                    void e;
+                  }
+                  try {
+                    existingGainNode?.disconnect();
+                  } catch (e) {
+                    void e;
+                  }
+                  try {
+                    existingCompressor?.disconnect();
+                  } catch (e) {
+                    void e;
+                  }
+                  try {
+                    existingAnalyzer?.disconnect();
+                  } catch (e) {
+                    void e;
+                  }
+                }
 
                 // Crear fuente desde el elemento de audio
-                const source = ctx.createMediaElementSource(node);
+                const mediaSourceNode = ctx.createMediaElementSource(node);
 
                 // Attach lightweight listeners to help diagnose unexpected pauses
                 const onPause = () =>
@@ -319,7 +347,7 @@ export const usePlayerStore = create<PlayerState>()(
                 analyzer.fftSize = 256;
 
                 // Cadena: source -> gain -> compressor -> analyzer -> destination
-                source.connect(gainNode);
+                mediaSourceNode.connect(gainNode);
                 gainNode.connect(compressor);
                 compressor.connect(analyzer);
                 analyzer.connect(Howler.ctx.destination);
@@ -329,8 +357,9 @@ export const usePlayerStore = create<PlayerState>()(
                   analyzer,
                   gainNode,
                   compressor,
-                  mediaSource: source,
-                  objectUrl: activeUrl,
+                  mediaSource: mediaSourceNode,
+                  connectedMediaNode: node,
+                  objectUrl: trackSource.isObjectUrl ? activeUrl : null,
                   audioCleanup: cleanupListeners,
                 });
 
@@ -343,7 +372,7 @@ export const usePlayerStore = create<PlayerState>()(
                   // @ts-expect-error adding non-standard debug prop to window
                   window.__musie_debug.mediaNode = node;
                   // @ts-expect-error adding non-standard debug prop to window
-                  window.__musie_debug.source = source;
+                  window.__musie_debug.source = mediaSourceNode;
                   try {
                     console.debug('[audio-event] onplay - debug refs exposed', {
                       currentTime: node?.currentTime,
@@ -397,6 +426,7 @@ export const usePlayerStore = create<PlayerState>()(
               void e;
             }
             set({ isPlaying: false, seek: 0, audioWatchdogId: null });
+            get().playNextTrack();
           },
           onload: function () {
             set({ duration: newHowl.duration() });
@@ -405,6 +435,28 @@ export const usePlayerStore = create<PlayerState>()(
 
         newHowl.play();
         set({ currentTrack: track, lastTrack: track, howl: newHowl, isPlaying: true });
+      },
+
+      playPreviousTrack: () => {
+        const { songs, currentTrack } = get();
+        if (songs.length === 0) return;
+
+        const currentIndex = getTrackIndex(songs, currentTrack);
+        if (currentIndex === -1) return;
+
+        const previousIndex = (currentIndex - 1 + songs.length) % songs.length;
+        get().setTrack(songs[previousIndex]);
+      },
+
+      playNextTrack: () => {
+        const { songs, currentTrack } = get();
+        if (songs.length === 0) return;
+
+        const currentIndex = getTrackIndex(songs, currentTrack);
+        if (currentIndex === -1) return;
+
+        const nextIndex = (currentIndex + 1) % songs.length;
+        get().setTrack(songs[nextIndex]);
       },
 
       togglePlay: () => {

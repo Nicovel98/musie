@@ -9,9 +9,18 @@ interface PlayerBarProps {
 }
 
 export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
-  const { currentTrack, isPlaying, togglePlay, seek, duration, fastSeek, volume, setVolume } =
-    usePlayerStore();
-  const { songs, setTrack } = usePlayerStore();
+  const {
+    currentTrack,
+    isPlaying,
+    togglePlay,
+    seek,
+    duration,
+    fastSeek,
+    volume,
+    setVolume,
+    playPreviousTrack,
+    playNextTrack,
+  } = usePlayerStore();
 
   const { handleSeekChange, handleScrubStart, handleScrubEnd } = useScrubSeeking({
     isPlaying,
@@ -20,19 +29,11 @@ export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
   });
 
   const goPrev = () => {
-    if (!currentTrack || songs.length === 0) return;
-    const idx = songs.findIndex((s) => s.id === currentTrack.id);
-    if (idx === -1) return;
-    const nextIdx = (idx - 1 + songs.length) % songs.length;
-    setTrack(songs[nextIdx]);
+    playPreviousTrack();
   };
 
   const goNext = () => {
-    if (!currentTrack || songs.length === 0) return;
-    const idx = songs.findIndex((s) => s.id === currentTrack.id);
-    if (idx === -1) return;
-    const nextIdx = (idx + 1) % songs.length;
-    setTrack(songs[nextIdx]);
+    playNextTrack();
   };
 
   if (!currentTrack) return null;
