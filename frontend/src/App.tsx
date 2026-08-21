@@ -4,6 +4,7 @@ import { AppShell } from './components/AppShell';
 import { useProgress } from './hooks/useProgress';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { usePlayerStore } from './store/usePlayerStore';
+import { readTrackMetadata } from './store/trackMetadata';
 
 type View = 'home' | 'library' | 'settings';
 type LibraryTab = 'library' | 'favorites' | 'playlist';
@@ -157,16 +158,24 @@ function App() {
         const blob = await response.blob();
         const pathname = new URL(decodedUrl).pathname;
         const filename = pathname.split('/').filter(Boolean).pop() || 'audio.mp3';
-        const title = filename.replace(/\.[^/.]+$/, '');
+        const fallbackTitle = filename.replace(/\.[^/.]+$/, '');
 
         const file = new File([blob], filename, { type: blob.type || 'audio/mpeg' });
+        const metadata = await readTrackMetadata(file);
         setTrack({
           id: `external-${filename}-${Date.now()}`,
-          title,
-          artist: 'Audio externo',
-          coverUrl: heroThumbnail,
+          title: metadata.title || fallbackTitle,
+          artist: metadata.artist || 'Audio externo',
+          album: metadata.album,
+          albumArtist: metadata.albumArtist,
+          genre: metadata.genre,
+          year: metadata.year,
+          coverUrl: metadata.coverUrl || heroThumbnail,
           audioUrl: decodedUrl,
           fileData: file,
+          durationSeconds: metadata.durationSeconds,
+          addedAt: Date.now(),
+          source: 'external',
         });
       } catch (error) {
         console.debug('[audio-event] external audio load failed', error);

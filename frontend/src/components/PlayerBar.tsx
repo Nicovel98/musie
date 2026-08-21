@@ -3,6 +3,7 @@ import { usePlayerStore } from '../store/usePlayerStore';
 import { VolumeControl } from './VolumeControl';
 import { PlaybackControls } from './PlaybackControls';
 import { useScrubSeeking } from '../hooks/useScrubSeeking';
+import { formatDuration, getDurationInputMax, getProgressPercent } from '../utils/time';
 
 interface PlayerBarProps {
   useThemeAudioColors?: boolean;
@@ -41,13 +42,7 @@ export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
   if (!currentTrack) return null;
   const isFavorite = favoriteTrackIds.includes(currentTrack.id);
 
-  const formatTime = (s: number) => {
-    const mins = Math.floor(s / 60) || 0;
-    const secs = Math.floor(s % 60) || 0;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const progressPercent = (seek / duration) * 100 || 0;
+  const progressPercent = getProgressPercent(seek, duration);
   const progressFillClassName = useThemeAudioColors
     ? 'absolute inset-y-0 left-0 bg-[var(--accent-primary)] shadow-[0_0_10px_rgba(0,143,214,0.30)]'
     : 'absolute inset-y-0 left-0 bg-blue-500 shadow-[0_0_10px_rgba(37,99,235,0.30)]';
@@ -159,13 +154,13 @@ export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
         {/* BARRA DE PROGRESO DESKTOP */}
         <div className="w-full hidden md:flex items-center gap-2 group/progress mb-1">
           <span className="text-[10px] font-mono text-[var(--text-muted)] w-10 text-right tabular-nums">
-            {formatTime(seek)}
+            {formatDuration(seek)}
           </span>
           <div className="flex-1 h-1 bg-[var(--bg-elevated)] rounded-full relative overflow-hidden group-hover/progress:h-1.5 transition-all">
             <input
               type="range"
               min="0"
-              max={duration || 0}
+              max={getDurationInputMax(duration)}
               step="0.1"
               value={seek}
               onPointerDown={handleScrubStart}
@@ -177,7 +172,7 @@ export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
             <div className={progressFillClassName} style={{ width: `${progressPercent}%` }} />
           </div>
           <span className="text-[10px] font-mono text-[var(--text-muted)] w-10 tabular-nums">
-            {formatTime(duration)}
+            {formatDuration(duration)}
           </span>
         </div>
       </div>

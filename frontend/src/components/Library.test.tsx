@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 
 import { describe, expect, it } from 'vitest';
-import { filterLibraryTracksByMode, sortLibraryTracks } from './Library';
+import { filterLibraryTracksByMode, sortLibraryTracks } from './libraryHelpers';
 
 describe('Library favorites helpers', () => {
   const tracks = [

@@ -1,3 +1,5 @@
+import { formatDuration, getDurationInputMax } from '../utils/time';
+
 interface VisualizerBarsProps {
   audioData: Uint8Array;
   seek: number;
@@ -18,11 +20,6 @@ interface VisualizerBarsProps {
   progressFillClassName: string;
   timeClassName: string;
 }
-
-const formatTime = (seconds: number) =>
-  `${Math.floor(seconds / 60)}:${Math.floor(seconds % 60)
-    .toString()
-    .padStart(2, '0')}`;
 
 export const VisualizerBars = ({
   audioData,
@@ -55,7 +52,7 @@ export const VisualizerBars = ({
         <input
           type="range"
           min="0"
-          max={duration || 0}
+          max={getDurationInputMax(duration)}
           step="0.1"
           value={seek}
           onPointerDown={onScrubStart}
@@ -84,11 +81,11 @@ export const VisualizerBars = ({
       </div>
 
       <div className={progressRowClassName}>
-        <span className={timeClassName}>{formatTime(seek)}</span>
+        <span className={timeClassName}>{formatDuration(seek)}</span>
         <div className={progressTrackClassName}>
           <div className={progressFillClassName} style={{ width: `${progressPercent}%` }} />
         </div>
-        <span className={timeClassName}>{formatTime(duration)}</span>
+        <span className={timeClassName}>{formatDuration(duration)}</span>
       </div>
     </div>
   );

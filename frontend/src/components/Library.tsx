@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Plus,
   Clock3,
@@ -11,72 +11,19 @@ import {
   Library as LibraryIcon,
   GripVertical,
   X,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 import { usePlayerStore } from '../store/usePlayerStore';
-
-import type { Track } from '../types/track';
+import { readTrackDuration } from '../store/trackMetadata';
+import { formatDuration } from '../utils/time';
+import { filterLibraryTracksByMode, sortLibraryTracks } from './libraryHelpers';
 
 interface LibraryProps {
   useThemeAudioColors?: boolean;
   activeTab: 'library' | 'favorites' | 'playlist';
   setActiveTab: (tab: 'library' | 'favorites' | 'playlist') => void;
 }
-
-export const filterLibraryTracksByMode = (
-  tracks: readonly Track[],
-  favoriteTrackIds: string[],
-  showFavoritesOnly: boolean,
-  activeTab: 'library' | 'favorites' | 'playlist'
-) => {
-  if (activeTab === 'favorites' || showFavoritesOnly) {
-    return tracks.filter((track) => favoriteTrackIds.includes(track.id));
-  }
-
-  return tracks;
-};
-
-export const sortLibraryTracks = <T extends Track>(
-  tracks: readonly T[],
-  sortMode: 'recent' | 'title' | 'artist',
-  favoriteTrackIds: string[],
-  activeTab: 'library' | 'favorites' | 'playlist'
-) => {
-  const sortedTracks = [...tracks];
-
-  if (sortMode === 'title') {
-    return sortedTracks.sort((left, right) => left.title.localeCompare(right.title));
-  }
-
-  if (sortMode === 'artist') {
-    return sortedTracks.sort((left, right) => left.artist.localeCompare(right.artist));
-  }
-
-  if (sortMode === 'recent') {
-    if (activeTab === 'favorites') {
-      const favoriteIndexMap = new Map(
-        favoriteTrackIds.map((favoriteTrackId, index) => [favoriteTrackId, index])
-      );
-
-      return sortedTracks.sort((left, right) => {
-        const leftIndex = favoriteIndexMap.get(left.id) ?? -1;
-        const rightIndex = favoriteIndexMap.get(right.id) ?? -1;
-
-        if (leftIndex === rightIndex) return 0;
-        if (leftIndex === -1) return 1;
-        if (rightIndex === -1) return -1;
-        return rightIndex - leftIndex;
-      });
-    }
-
-    return sortedTracks.sort((left, right) => {
-      const leftIndex = tracks.findIndex((track) => track.id === left.id);
-      const rightIndex = tracks.findIndex((track) => track.id === right.id);
-      return rightIndex - leftIndex;
-    });
-  }
-
-  return sortedTracks;
-};
 
 export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }: LibraryProps) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -85,10 +32,12 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
   const [pendingRemoveTrackId, setPendingRemoveTrackId] = useState<string | null>(null);
   const [draggedPlaylistTrackId, setDraggedPlaylistTrackId] = useState<string | null>(null);
   const [dropTargetTrackId, setDropTargetTrackId] = useState<string | null>(null);
+  const pendingDurationReadsRef = useRef(new Set<string>());
   const libraryTracks = usePlayerStore((state) => state.libraryTracks);
   const playlistTracks = usePlayerStore((state) => state.playlistTracks);
   const favoriteTrackIds = usePlayerStore((state) => state.favoriteTrackIds);
   const addSongs = usePlayerStore((state) => state.addSongs);
+  const updateTrackMetadata = usePlayerStore((state) => state.updateTrackMetadata);
   const clearLibrary = usePlayerStore((state) => state.clearLibrary);
   const clearPlaylist = usePlayerStore((state) => state.clearPlaylist);
   const clearFavorites = usePlayerStore((state) => state.clearFavorites);
@@ -117,7 +66,7 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
     ? 'text-[var(--accent-secondary)]'
     : 'text-blue-500';
   const queueActionButtonBaseClass =
-    'inline-flex h-9 min-w-[6.5rem] items-center justify-center gap-2 rounded-full border px-3 text-[10px] font-black uppercase tracking-[0.24em] transition-all';
+    'inline-flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full border px-0 text-[10px] font-black uppercase tracking-[0.24em] transition-all md:w-auto md:min-w-[6.5rem] md:px-3';
   const queueActionIconClass = 'shrink-0';
 
   const tabs = [
@@ -134,6 +83,32 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
     showFavoritesOnly,
     activeTab
   );
+
+  useEffect(() => {
+    let isActive = true;
+    const tracksWithoutDuration = libraryTracks.filter(
+      (track) => track.durationSeconds === undefined && (track.fileData || track.audioUrl)
+    );
+
+    tracksWithoutDuration.forEach((track) => {
+      if (pendingDurationReadsRef.current.has(track.id)) return;
+
+      pendingDurationReadsRef.current.add(track.id);
+      const source = track.fileData || track.audioUrl;
+      void readTrackDuration(source)
+        .then((durationSeconds) => {
+          if (isActive && durationSeconds !== undefined) {
+            updateTrackMetadata(track.id, { durationSeconds });
+          }
+        })
+        .catch(() => undefined)
+        .finally(() => pendingDurationReadsRef.current.delete(track.id));
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, [libraryTracks, updateTrackMetadata]);
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const visibleLibraryTracks = sourceLibraryTracks.filter((track) => {
@@ -183,6 +158,15 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
     setTrack(tracks[0]);
   };
 
+  const handleLibraryTrackPlay = (track: (typeof libraryTracks)[number], isSelected: boolean) => {
+    clearPendingRemove();
+    if (isSelected) {
+      togglePlay();
+    } else {
+      setTrack(track);
+    }
+  };
+
   const clearPendingRemove = () => {
     setPendingRemoveTrackId(null);
   };
@@ -212,6 +196,14 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
     if (sourceTrackId) movePlaylistTrackToEnd(sourceTrackId);
     setDraggedPlaylistTrackId(null);
     setDropTargetTrackId(null);
+  };
+
+  const handlePlaylistKeyboardMove = (trackId: string, direction: 'up' | 'down') => {
+    const trackIndex = playlistTracks.findIndex((track) => track.id === trackId);
+    const targetIndex = direction === 'up' ? trackIndex - 1 : trackIndex + 1;
+
+    if (trackIndex < 0 || targetIndex < 0 || targetIndex >= playlistTracks.length) return;
+    movePlaylistTrack(trackId, playlistTracks[targetIndex].id);
   };
 
   const clearAction =
@@ -412,13 +404,13 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
             </div>
 
             {/* Cabecera de la tabla */}
-            <div className="mt-4 grid grid-cols-[40px_1fr_40px] md:grid-cols-[50px_1fr_120px_50px] gap-4 px-4 py-3 text-[var(--text-muted)] text-[10px] uppercase tracking-[0.3em] font-black border-b border-[var(--glass-border)]">
+            <div className="mt-4 grid grid-cols-[40px_1fr_auto] md:grid-cols-[50px_1fr_auto] gap-4 px-4 py-3 text-[var(--text-muted)] text-[10px] uppercase tracking-[0.3em] font-black border-b border-[var(--glass-border)]">
               <span className="text-center">#</span>
               <span>Título / Artista</span>
               <span className="hidden md:flex justify-end pr-4 text-sm font-mono">
                 <Clock3 size={14} />
               </span>
-              <span></span>
+              <span className="hidden md:block" />
             </div>
 
             {/* LISTADO: El padding inferior 'pb-72' asegura que el scroll no choque con la PlayerBar + MobileTabs */}
@@ -475,20 +467,29 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
                   return (
                     <div
                       key={track.id}
+                      role="group"
+                      aria-label={`${track.title} by ${track.artist}`}
                       onClick={() => {
-                        clearPendingRemove();
-                        if (isSelected) {
-                          togglePlay();
-                        } else {
-                          setTrack(track);
-                        }
+                        handleLibraryTrackPlay(track, isSelected);
                       }}
-                      className={`group grid grid-cols-[40px_1fr_40px] md:grid-cols-[50px_1fr_120px_50px] items-center gap-4 px-4 py-3 rounded-2xl transition-all border border-transparent cursor-pointer ${
-                        isSelected ? selectedRowClass : 'hover:bg-[var(--glass-bg)]'
+                      className={`group grid grid-cols-[32px_minmax(0,1fr)_auto] md:grid-cols-[50px_minmax(0,1fr)_auto] items-center gap-3 md:gap-4 px-3 md:px-4 py-3 rounded-2xl transition-all border border-transparent cursor-pointer ${
+                        isSelected
+                          ? `${selectedRowClass} border-l-[3px] shadow-[0_8px_24px_color-mix(in_srgb,var(--accent-primary)_10%,transparent)]`
+                          : 'hover:bg-[var(--glass-bg)] hover:-translate-y-px'
                       }`}
                     >
                       {/* Número / Indicador */}
-                      <div className="flex justify-center items-center relative w-6 h-6 mx-auto">
+                      <button
+                        type="button"
+                        aria-label={
+                          isSelected && isPlaying ? `Pause ${track.title}` : `Play ${track.title}`
+                        }
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleLibraryTrackPlay(track, isSelected);
+                        }}
+                        className="flex justify-center items-center relative w-6 h-6 mx-auto rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-primary)]"
+                      >
                         {isSelected && isPlaying ? (
                           <div className="flex gap-0.5 items-end h-3 group-hover:opacity-0 transition-opacity">
                             <div
@@ -527,7 +528,7 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
                             <Play size={16} fill="currentColor" />
                           )}
                         </div>
-                      </div>
+                      </button>
 
                       {/* Info Canción */}
                       <div className="flex items-center gap-4 overflow-hidden">
@@ -535,7 +536,11 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
                           src={track.coverUrl}
                           loading="lazy"
                           decoding="async"
-                          className="w-12 h-12 md:w-11 md:h-11 rounded-xl object-cover bg-white/5 border border-[var(--glass-border)]"
+                          className={`h-12 w-12 rounded-xl object-cover bg-white/5 border transition-all ${
+                            isSelected
+                              ? 'border-[var(--accent-primary)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent-primary)_14%,transparent)]'
+                              : 'border-[var(--glass-border)] group-hover:border-[var(--accent-secondary)]/40'
+                          }`}
                           alt=""
                         />
                         <div className="truncate">
@@ -548,94 +553,99 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
                           </p>
                           <p className="text-[10px] md:text-[11px] text-[var(--text-muted)] font-semibold uppercase tracking-widest truncate group-hover:text-[var(--text-main)] transition-colors">
                             {track.artist}
+                            {track.album ? ` · ${track.album}` : ''}
                           </p>
                         </div>
                       </div>
 
-                      <button
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          if (!isInPlaylist) {
-                            clearPendingRemove();
-                            handleLibraryTrackAdd(track);
-                            return;
+                      <div className="flex items-center justify-end gap-2 md:gap-3">
+                        <button
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (!isInPlaylist) {
+                              clearPendingRemove();
+                              handleLibraryTrackAdd(track);
+                              return;
+                            }
+
+                            if (pendingRemoveTrackId === track.id) {
+                              removeFromPlaylist(track.id);
+                              clearPendingRemove();
+                              return;
+                            }
+
+                            setPendingRemoveTrackId(track.id);
+                          }}
+                          onKeyDown={(event) => event.stopPropagation()}
+                          type="button"
+                          title={
+                            !isInPlaylist
+                              ? `Add ${track.title} to playlist`
+                              : pendingRemoveTrackId === track.id
+                                ? `Remove ${track.title} from playlist`
+                                : `Tap again to remove ${track.title}`
                           }
-
-                          if (pendingRemoveTrackId === track.id) {
-                            removeFromPlaylist(track.id);
-                            clearPendingRemove();
-                            return;
+                          aria-label={
+                            !isInPlaylist
+                              ? `Add ${track.title} to playlist`
+                              : pendingRemoveTrackId === track.id
+                                ? `Remove ${track.title} from playlist`
+                                : `Tap again to remove ${track.title}`
                           }
+                          className={`${queueActionButtonBaseClass} ${
+                            isInPlaylist
+                              ? useThemeAudioColors
+                                ? pendingRemoveTrackId === track.id
+                                  ? 'border-[color-mix(in_srgb,var(--accent-secondary)_42%,transparent)] bg-[color-mix(in_srgb,var(--accent-secondary)_20%,var(--bg-main))] text-[var(--accent-light)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--accent-secondary)_24%,transparent)]'
+                                  : 'border-[color-mix(in_srgb,var(--accent-secondary)_28%,transparent)] bg-[color-mix(in_srgb,var(--accent-secondary)_12%,var(--bg-main))] text-[var(--accent-secondary)] hover:bg-[color-mix(in_srgb,var(--accent-secondary)_16%,var(--bg-main))]'
+                                : 'cursor-default border-[var(--glass-border)] bg-[color-mix(in_srgb,var(--text-main)_10%,var(--bg-main))] text-[var(--text-main)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--text-main)_10%,transparent)]'
+                              : useThemeAudioColors
+                                ? 'border-[color-mix(in_srgb,var(--accent-primary)_20%,transparent)] bg-[color-mix(in_srgb,var(--accent-primary)_18%,var(--bg-main))] text-[var(--accent-secondary)] hover:bg-[color-mix(in_srgb,var(--accent-primary)_22%,var(--bg-main))]'
+                                : 'border-blue-500/20 bg-[color-mix(in_srgb,theme(colors.blue.500)_14%,var(--bg-main))] text-blue-300 hover:bg-[color-mix(in_srgb,theme(colors.blue.500)_20%,var(--bg-main))]'
+                          }`}
+                        >
+                          {isInPlaylist && pendingRemoveTrackId === track.id ? (
+                            <X size={12} strokeWidth={3} className={queueActionIconClass} />
+                          ) : isInPlaylist ? (
+                            <Check size={12} strokeWidth={3} className={queueActionIconClass} />
+                          ) : (
+                            <Plus size={12} strokeWidth={3} className={queueActionIconClass} />
+                          )}
+                          <span className="hidden md:inline">
+                            {!isInPlaylist
+                              ? 'Add'
+                              : pendingRemoveTrackId === track.id
+                                ? 'Remove'
+                                : 'In queue'}
+                          </span>
+                        </button>
 
-                          setPendingRemoveTrackId(track.id);
-                        }}
-                        type="button"
-                        title={
-                          !isInPlaylist
-                            ? `Add ${track.title} to playlist`
-                            : pendingRemoveTrackId === track.id
-                              ? `Remove ${track.title} from playlist`
-                              : `Tap again to remove ${track.title}`
-                        }
-                        aria-label={
-                          !isInPlaylist
-                            ? `Add ${track.title} to playlist`
-                            : pendingRemoveTrackId === track.id
-                              ? `Remove ${track.title} from playlist`
-                              : `Tap again to remove ${track.title}`
-                        }
-                        className={`${queueActionButtonBaseClass} ${
-                          isInPlaylist
-                            ? useThemeAudioColors
-                              ? pendingRemoveTrackId === track.id
-                                ? 'border-[color-mix(in_srgb,var(--accent-secondary)_42%,transparent)] bg-[color-mix(in_srgb,var(--accent-secondary)_20%,var(--bg-main))] text-[var(--accent-light)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--accent-secondary)_24%,transparent)]'
-                                : 'border-[color-mix(in_srgb,var(--accent-secondary)_28%,transparent)] bg-[color-mix(in_srgb,var(--accent-secondary)_12%,var(--bg-main))] text-[var(--accent-secondary)] hover:bg-[color-mix(in_srgb,var(--accent-secondary)_16%,var(--bg-main))]'
-                              : 'cursor-default border-[var(--glass-border)] bg-[color-mix(in_srgb,var(--text-main)_10%,var(--bg-main))] text-[var(--text-main)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--text-main)_10%,transparent)]'
-                            : useThemeAudioColors
-                              ? 'border-[color-mix(in_srgb,var(--accent-primary)_20%,transparent)] bg-[color-mix(in_srgb,var(--accent-primary)_18%,var(--bg-main))] text-[var(--accent-secondary)] hover:bg-[color-mix(in_srgb,var(--accent-primary)_22%,var(--bg-main))]'
-                              : 'border-blue-500/20 bg-[color-mix(in_srgb,theme(colors.blue.500)_14%,var(--bg-main))] text-blue-300 hover:bg-[color-mix(in_srgb,theme(colors.blue.500)_20%,var(--bg-main))]'
-                        }`}
-                      >
-                        {isInPlaylist && pendingRemoveTrackId === track.id ? (
-                          <X size={12} strokeWidth={3} className={queueActionIconClass} />
-                        ) : isInPlaylist ? (
-                          <Check size={12} strokeWidth={3} className={queueActionIconClass} />
-                        ) : (
-                          <Plus size={12} strokeWidth={3} className={queueActionIconClass} />
-                        )}
-                        {!isInPlaylist
-                          ? 'Add'
-                          : pendingRemoveTrackId === track.id
-                            ? 'Remove'
-                            : 'In queue'}
-                      </button>
+                        <span className="min-w-16 whitespace-nowrap text-right text-[10px] font-mono tabular-nums tracking-tighter text-[var(--text-muted)] md:min-w-20 md:text-sm">
+                          {formatDuration(track.durationSeconds)}
+                        </span>
 
-                      {/* Duración (Mono y grande como pediste) */}
-                      <span className="hidden md:block text-sm font-mono text-right pr-4 tracking-tighter text-[var(--text-muted)]">
-                        --:--
-                      </span>
-
-                      {/* Favorito */}
-                      <button
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          toggleTrackFavorite(track.id);
-                        }}
-                        type="button"
-                        aria-label={
-                          isFavorite
-                            ? `Remove ${track.title} from favorites`
-                            : `Add ${track.title} to favorites`
-                        }
-                        aria-pressed={isFavorite}
-                        className={`flex justify-end transition-all ${
-                          isFavorite
-                            ? selectedHeartClass
-                            : 'text-[var(--text-muted)] opacity-0 group-hover:opacity-100 hover:text-red-500'
-                        }`}
-                      >
-                        <Heart size={18} fill={isFavorite ? 'currentColor' : 'none'} />
-                      </button>
+                        <button
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleTrackFavorite(track.id);
+                          }}
+                          onKeyDown={(event) => event.stopPropagation()}
+                          type="button"
+                          aria-label={
+                            isFavorite
+                              ? `Remove ${track.title} from favorites`
+                              : `Add ${track.title} to favorites`
+                          }
+                          aria-pressed={isFavorite}
+                          className={`flex h-9 w-9 items-center justify-center rounded-full transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-primary)] ${
+                            isFavorite
+                              ? selectedHeartClass
+                              : 'text-[var(--text-muted)] md:opacity-0 md:group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-500'
+                          }`}
+                        >
+                          <Heart size={18} fill={isFavorite ? 'currentColor' : 'none'} />
+                        </button>
+                      </div>
                     </div>
                   );
                 })
@@ -791,7 +801,7 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
                         setDraggedPlaylistTrackId(null);
                         setDropTargetTrackId(null);
                       }}
-                      className={`group grid grid-cols-[42px_1fr_auto_auto] items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all cursor-grab active:cursor-grabbing ${
+                      className={`group grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all cursor-grab active:cursor-grabbing ${
                         isSelected
                           ? selectedRowClass
                           : isDropTarget
@@ -799,8 +809,41 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
                             : 'border-transparent hover:bg-[var(--glass-bg)]'
                       }`}
                     >
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--bg-elevated)] text-[11px] font-black text-[var(--text-muted)]">
-                        <GripVertical size={14} />
+                      <div className="flex items-center gap-1">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--bg-elevated)] text-[11px] font-black text-[var(--text-muted)]">
+                          <GripVertical size={14} />
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          <button
+                            type="button"
+                            disabled={
+                              playlistTracks.findIndex((item) => item.id === track.id) === 0
+                            }
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handlePlaylistKeyboardMove(track.id, 'up');
+                            }}
+                            aria-label={`Move ${track.title} up`}
+                            className="rounded p-0.5 text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)] disabled:invisible"
+                          >
+                            <ChevronUp size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={
+                              playlistTracks.findIndex((item) => item.id === track.id) ===
+                              playlistTracks.length - 1
+                            }
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handlePlaylistKeyboardMove(track.id, 'down');
+                            }}
+                            aria-label={`Move ${track.title} down`}
+                            className="rounded p-0.5 text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)] disabled:invisible"
+                          >
+                            <ChevronDown size={12} />
+                          </button>
+                        </div>
                       </div>
 
                       <div className="min-w-0">

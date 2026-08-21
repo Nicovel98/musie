@@ -10,6 +10,7 @@ import { PlayerBar } from './PlayerBar';
 import { VolumeControl } from './VolumeControl';
 import { PlaybackControls } from './PlaybackControls';
 import { useScrubSeeking } from '../hooks/useScrubSeeking';
+import { getProgressPercent } from '../utils/time';
 
 interface NowPlayingProps {
   setView: (view: 'home' | 'library' | 'settings') => void;
@@ -97,7 +98,7 @@ export const NowPlaying = ({
     null;
   const isCurrentTrackFavorite = currentTrack ? favoriteTrackIds.includes(currentTrack.id) : false;
 
-  const progressPercent = (seek / duration) * 100 || 0;
+  const progressPercent = getProgressPercent(seek, duration);
   const controlBtnSizeClass = isShortHeight ? 'w-9 h-9' : 'w-11 h-11';
   const controlIconSmall = isShortHeight ? 16 : 18;
   const sectionPadding = isShortHeight ? 'p-0.5' : 'p-1';

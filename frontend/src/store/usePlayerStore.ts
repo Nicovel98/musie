@@ -4,6 +4,7 @@ import { get, set, del } from 'idb-keyval';
 import { Howl, Howler } from 'howler';
 import type { Track } from '../types/track';
 import heroThumbnail from '../assets/hero.png';
+import { readTrackMetadata } from './trackMetadata';
 
 interface PersistedPlayerState {
   libraryTracks: Track[];
@@ -42,7 +43,11 @@ interface PlayerState {
   connectedMediaNode: HTMLAudioElement | null;
   audioCleanup?: (() => void) | null;
   audioWatchdogId?: number | null;
-  addSongs: (files: File[]) => void;
+  addSongs: (files: File[]) => Promise<void>;
+  updateTrackMetadata: (
+    trackId: string,
+    metadata: Partial<Pick<Track, 'durationSeconds' | 'lastPlayedAt' | 'playCount'>>
+  ) => void;
   clearLibrary: () => void;
   clearPlaylist: () => void;
   addToPlaylist: (track: Track) => void;
@@ -70,6 +75,12 @@ const clampSeekValue = (val: number, duration: number) => {
 
 const getTrackIndex = (songs: Track[], currentTrack: Track | null) =>
   currentTrack ? songs.findIndex((song) => song.id === currentTrack.id) : -1;
+
+const normalizeTrack = (track: Track): Track => ({
+  ...track,
+  addedAt: track.addedAt ?? 0,
+  source: track.source ?? (track.audioUrl ? 'remote' : 'local'),
+});
 
 const getTrackListByPlaybackContext = (
   state: Pick<PlayerState, 'libraryTracks' | 'playlistTracks' | 'currentTrack'>
@@ -140,16 +151,49 @@ export const usePlayerStore = create<PlayerState>()(
       audioCleanup: null,
       audioWatchdogId: null,
 
-      addSongs: (files) => {
-        const newTracks = files.map((file) => ({
-          id: crypto.randomUUID(),
-          title: file.name.replace(/\.[^/.]+$/, ''),
-          artist: 'Archivo Local',
-          coverUrl: heroThumbnail,
-          audioUrl: '',
-          fileData: file,
-        }));
+      addSongs: async (files) => {
+        const newTracks = await Promise.all(
+          files.map(async (file) => {
+            const metadata = await readTrackMetadata(file);
+
+            return {
+              id: crypto.randomUUID(),
+              title: metadata.title || file.name.replace(/\.[^/.]+$/, ''),
+              artist: metadata.artist || 'Archivo Local',
+              album: metadata.album,
+              albumArtist: metadata.albumArtist,
+              genre: metadata.genre,
+              year: metadata.year,
+              coverUrl: metadata.coverUrl || heroThumbnail,
+              audioUrl: '',
+              fileData: file,
+              durationSeconds: metadata.durationSeconds,
+              addedAt: Date.now(),
+              source: 'local' as const,
+            };
+          })
+        );
         set((state) => ({ libraryTracks: [...state.libraryTracks, ...newTracks] }));
+      },
+
+      updateTrackMetadata: (trackId, metadata) => {
+        set((state) => {
+          const updateTracks = (tracks: Track[]) =>
+            tracks.map((track) => (track.id === trackId ? { ...track, ...metadata } : track));
+          const currentTrack =
+            state.currentTrack?.id === trackId
+              ? { ...state.currentTrack, ...metadata }
+              : state.currentTrack;
+          const lastTrack =
+            state.lastTrack?.id === trackId ? { ...state.lastTrack, ...metadata } : state.lastTrack;
+
+          return {
+            libraryTracks: updateTracks(state.libraryTracks),
+            playlistTracks: updateTracks(state.playlistTracks),
+            currentTrack,
+            lastTrack,
+          };
+        });
       },
 
       clearLibrary: () => {
@@ -236,18 +280,66 @@ export const usePlayerStore = create<PlayerState>()(
           compressor: shouldStopPlayback ? null : state.compressor,
           objectUrl: shouldStopPlayback ? null : state.objectUrl,
           connectedMediaNode: shouldStopPlayback ? null : state.connectedMediaNode,
+          audioCleanup: shouldStopPlayback ? null : state.audioCleanup,
+          audioWatchdogId: shouldStopPlayback ? null : state.audioWatchdogId,
         }));
       },
 
       clearPlaylist: () => {
+        const { currentTrack, playlistTracks, libraryTracks, howl } = get();
+        const currentTrackInPlaylist = currentTrack
+          ? playlistTracks.some((track) => track.id === currentTrack.id)
+          : false;
+        const currentTrackInLibrary = currentTrack
+          ? libraryTracks.some((track) => track.id === currentTrack.id)
+          : false;
+        const shouldStopPlayback = currentTrackInPlaylist && !currentTrackInLibrary;
+
+        if (shouldStopPlayback && howl) howl.unload();
+
+        if (shouldStopPlayback) {
+          try {
+            const {
+              mediaSource,
+              gainNode,
+              compressor,
+              analyzer,
+              objectUrl,
+              audioCleanup,
+              audioWatchdogId,
+            } = get();
+            audioCleanup?.();
+            mediaSource?.disconnect();
+            gainNode?.disconnect();
+            compressor?.disconnect();
+            analyzer?.disconnect();
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+            if (audioWatchdogId) clearInterval(audioWatchdogId);
+          } catch {
+            // Cleanup is best effort because browser audio nodes may already be disconnected.
+          }
+        }
+
         set((state) => ({
           playlistTracks: [],
-          currentTrack: state.playlistTracks.some((track) => track.id === state.currentTrack?.id)
-            ? null
-            : state.currentTrack,
-          lastTrack: state.playlistTracks.some((track) => track.id === state.lastTrack?.id)
-            ? null
-            : state.lastTrack,
+          currentTrack: shouldStopPlayback ? null : state.currentTrack,
+          lastTrack:
+            shouldStopPlayback ||
+            state.playlistTracks.some((track) => track.id === state.lastTrack?.id)
+              ? null
+              : state.lastTrack,
+          isPlaying: shouldStopPlayback ? false : state.isPlaying,
+          seek: shouldStopPlayback ? 0 : state.seek,
+          duration: shouldStopPlayback ? 0 : state.duration,
+          analyzer: shouldStopPlayback ? null : state.analyzer,
+          howl: shouldStopPlayback ? null : state.howl,
+          mediaSource: shouldStopPlayback ? null : state.mediaSource,
+          gainNode: shouldStopPlayback ? null : state.gainNode,
+          compressor: shouldStopPlayback ? null : state.compressor,
+          objectUrl: shouldStopPlayback ? null : state.objectUrl,
+          connectedMediaNode: shouldStopPlayback ? null : state.connectedMediaNode,
+          audioCleanup: shouldStopPlayback ? null : state.audioCleanup,
+          audioWatchdogId: shouldStopPlayback ? null : state.audioWatchdogId,
         }));
       },
 
@@ -344,6 +436,8 @@ export const usePlayerStore = create<PlayerState>()(
           objectUrl: null,
           audioCleanup: null,
           audioWatchdogId: null,
+          seek: 0,
+          duration: 0,
         });
 
         const trackSource = getTrackSource(track);
@@ -359,6 +453,7 @@ export const usePlayerStore = create<PlayerState>()(
           html5: true,
           volume: 1,
           onplay: () => {
+            if (get().howl !== newHowl) return;
             set({ isPlaying: true, duration: newHowl.duration() });
 
             // Ensure we never accumulate watchdog intervals across resumes/tracks.
@@ -541,6 +636,7 @@ export const usePlayerStore = create<PlayerState>()(
             }
           },
           onpause: () => {
+            if (get().howl !== newHowl) return;
             try {
               const { audioWatchdogId: existingWatchdogId } = get();
               if (existingWatchdogId) clearInterval(existingWatchdogId);
@@ -550,6 +646,7 @@ export const usePlayerStore = create<PlayerState>()(
             set({ isPlaying: false, audioWatchdogId: null });
           },
           onend: () => {
+            if (get().howl !== newHowl) return;
             try {
               const { audioWatchdogId: existingWatchdogId } = get();
               if (existingWatchdogId) clearInterval(existingWatchdogId);
@@ -560,7 +657,12 @@ export const usePlayerStore = create<PlayerState>()(
             get().playNextTrack();
           },
           onload: function () {
-            set({ duration: newHowl.duration() });
+            if (get().howl !== newHowl) return;
+            const duration = newHowl.duration();
+            set({ duration });
+            if (Number.isFinite(duration) && duration > 0) {
+              get().updateTrackMetadata(track.id, { durationSeconds: duration });
+            }
           },
         });
 
@@ -681,20 +783,20 @@ export const usePlayerStore = create<PlayerState>()(
     {
       name: 'musie-pwa-storage',
       storage: customBinaryStorage,
-      version: 3,
+      version: 4,
       migrate: (persistedState) => {
         const state = persistedState as Partial<
           PersistedPlayerState & { songs?: Track[]; favoriteTrackIds?: string[] }
         >;
-        const libraryTracks = state.libraryTracks ?? state.songs ?? [];
-        const playlistTracks = state.playlistTracks ?? state.songs ?? [];
+        const libraryTracks = (state.libraryTracks ?? state.songs ?? []).map(normalizeTrack);
+        const playlistTracks = (state.playlistTracks ?? state.songs ?? []).map(normalizeTrack);
 
         return {
           libraryTracks,
           playlistTracks,
           favoriteTrackIds: state.favoriteTrackIds ?? [],
           volume: state.volume ?? 0.5,
-          lastTrack: state.lastTrack ?? null,
+          lastTrack: state.lastTrack ? normalizeTrack(state.lastTrack) : null,
         };
       },
       partialize: (state): PersistedPlayerState => ({

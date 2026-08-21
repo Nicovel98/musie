@@ -32,7 +32,7 @@ export const PlaybackControls = ({
   className = '',
 }: PlaybackControlsProps) => {
   const mutedControlClassName = useThemeAudioColors
-    ? 'text-[var(--text-muted)] opacity-80 hover:opacity-100 hover:text-[var(--accent-primary)] hover:bg-[color-mix(in_srgb,var(--accent-primary)_12%,transparent)] transition-all duration-200 ease-out hover:scale-105 active:scale-95'
+    ? 'text-[var(--text-muted)] opacity-80 hover:opacity-100 hover:text-[var(--accent-primary)] hover:bg-[color-mix(in_srgb,var(--accent-primary)_12%,transparent)] transition-all duration-200 ease-out hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:scale-100'
     : iconClassName || 'text-[var(--text-muted)] transition-colors';
 
   const skipControlClassName = useThemeAudioColors
@@ -47,6 +47,8 @@ export const PlaybackControls = ({
     <div className={`flex items-center gap-1 ${className}`.trim()}>
       <button
         type="button"
+        disabled
+        aria-label="Shuffle unavailable"
         className={`flex items-center justify-center ${buttonSizeClass} rounded-full ${mutedControlClassName}`}
       >
         <Shuffle size={iconSize} />
@@ -85,6 +87,8 @@ export const PlaybackControls = ({
 
       <button
         type="button"
+        disabled
+        aria-label="Repeat unavailable"
         className={`flex items-center justify-center ${buttonSizeClass} rounded-full ${mutedControlClassName}`}
       >
         <Repeat size={iconSize} />
