@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
+import heroThumbnail from './assets/hero.png';
 import { AppShell } from './components/AppShell';
 import { useProgress } from './hooks/useProgress';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { usePlayerStore } from './store/usePlayerStore';
 
 type View = 'home' | 'library' | 'settings';
+type LibraryTab = 'library' | 'favorites' | 'playlist';
 type ThemeMode = 'dark' | 'light';
 type DarkTheme = 'quantum' | 'classic';
 type LightTheme = 'light' | 'light-quantum';
@@ -14,6 +16,7 @@ const THEME_MODE_STORAGE_KEY = 'musie-theme-mode';
 const DARK_THEME_STORAGE_KEY = 'musie-dark-theme';
 const LIGHT_THEME_STORAGE_KEY = 'musie-light-theme';
 const THEME_AUDIO_EFFECT_STORAGE_KEY = 'musie-theme-audio-effect';
+const SIDEBAR_PIN_STORAGE_KEY = 'musie:sidebar-pinned';
 
 const applyThemeToDocument = (
   themeMode: ThemeMode,
@@ -34,6 +37,7 @@ const applyThemeToDocument = (
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('home');
+  const [libraryTab, setLibraryTab] = useState<LibraryTab>('library');
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     if (typeof window === 'undefined') return 'dark';
 
@@ -87,6 +91,15 @@ function App() {
 
     return true;
   });
+  const [sidebarPinned, setSidebarPinned] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+
+    try {
+      return window.localStorage.getItem(SIDEBAR_PIN_STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
   const autoLoadedRef = useRef(false);
   const setTrack = usePlayerStore((state) => state.setTrack);
   useProgress();
@@ -106,10 +119,11 @@ function App() {
       window.localStorage.setItem(DARK_THEME_STORAGE_KEY, darkTheme);
       window.localStorage.setItem(LIGHT_THEME_STORAGE_KEY, lightTheme);
       window.localStorage.setItem(THEME_AUDIO_EFFECT_STORAGE_KEY, String(themeAffectsAudioUi));
+      window.localStorage.setItem(SIDEBAR_PIN_STORAGE_KEY, String(sidebarPinned));
     } catch {
       /* ignore storage errors */
     }
-  }, [themeMode, darkTheme, lightTheme, themeAffectsAudioUi]);
+  }, [themeMode, darkTheme, lightTheme, themeAffectsAudioUi, sidebarPinned]);
 
   const cycleThemeMode = () => {
     setThemeMode((currentMode) => (currentMode === 'dark' ? 'light' : 'dark'));
@@ -150,7 +164,7 @@ function App() {
           id: `external-${filename}-${Date.now()}`,
           title,
           artist: 'Audio externo',
-          coverUrl: 'https://unsplash.com',
+          coverUrl: heroThumbnail,
           audioUrl: decodedUrl,
           fileData: file,
         });
@@ -166,6 +180,8 @@ function App() {
     <AppShell
       currentView={currentView}
       setCurrentView={setCurrentView}
+      libraryTab={libraryTab}
+      setLibraryTab={setLibraryTab}
       themeMode={themeMode}
       darkTheme={darkTheme}
       lightTheme={lightTheme}
@@ -176,6 +192,8 @@ function App() {
       selectLightTheme={selectLightTheme}
       shouldShowMobileTabs={shouldShowMobileTabs}
       showSidebar={showSidebar}
+      sidebarPinned={sidebarPinned}
+      setSidebarPinned={setSidebarPinned}
     />
   );
 }

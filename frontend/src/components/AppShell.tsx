@@ -7,6 +7,7 @@ import { PlayerBar } from './PlayerBar';
 import { MobileTabs } from './MobileTabs';
 
 type View = 'home' | 'library' | 'settings';
+type LibraryTab = 'library' | 'favorites' | 'playlist';
 type ThemeMode = 'dark' | 'light';
 type DarkTheme = 'quantum' | 'classic';
 type LightTheme = 'light' | 'light-quantum';
@@ -14,6 +15,8 @@ type LightTheme = 'light' | 'light-quantum';
 interface AppShellProps {
   currentView: View;
   setCurrentView: (view: View) => void;
+  libraryTab: LibraryTab;
+  setLibraryTab: (tab: LibraryTab) => void;
   themeMode: ThemeMode;
   darkTheme: DarkTheme;
   lightTheme: LightTheme;
@@ -24,11 +27,15 @@ interface AppShellProps {
   selectLightTheme: (theme: LightTheme) => void;
   shouldShowMobileTabs: boolean;
   showSidebar: boolean;
+  sidebarPinned: boolean;
+  setSidebarPinned: (value: boolean) => void;
 }
 
 export const AppShell = ({
   currentView,
   setCurrentView,
+  libraryTab,
+  setLibraryTab,
   themeMode,
   darkTheme,
   lightTheme,
@@ -39,6 +46,8 @@ export const AppShell = ({
   selectLightTheme,
   shouldShowMobileTabs,
   showSidebar,
+  sidebarPinned,
+  setSidebarPinned,
 }: AppShellProps) => {
   return (
     <div className="flex flex-col h-screen w-full bg-[var(--bg-main)] text-[var(--text-main)] overflow-hidden font-sans transition-colors duration-500 relative">
@@ -48,8 +57,12 @@ export const AppShell = ({
             <Sidebar
               setView={setCurrentView}
               currentView={currentView}
+              libraryTab={libraryTab}
+              setLibraryTab={setLibraryTab}
               themeMode={themeMode}
               cycleThemeMode={cycleThemeMode}
+              isPinned={sidebarPinned}
+              setIsPinned={setSidebarPinned}
             />
           </div>
         )}
@@ -98,7 +111,11 @@ export const AppShell = ({
                 exit={{ opacity: 0 }}
                 className="h-full overflow-y-auto custom-scrollbar pb-[calc(var(--mobile-tabs-height)+var(--mobile-playerbar-height)+env(safe-area-inset-bottom)+1rem)] lg:pb-1"
               >
-                <Library useThemeAudioColors={themeAffectsAudioUi} />
+                <Library
+                  useThemeAudioColors={themeAffectsAudioUi}
+                  activeTab={libraryTab}
+                  setActiveTab={setLibraryTab}
+                />
               </motion.div>
             )}
           </AnimatePresence>

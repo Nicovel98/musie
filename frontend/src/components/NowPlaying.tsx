@@ -56,7 +56,9 @@ export const NowPlaying = ({
     return 'mid';
   });
   const {
-    songs,
+    libraryTracks,
+    playlistTracks,
+    favoriteTrackIds,
     currentTrack,
     lastTrack,
     isPlaying,
@@ -69,6 +71,7 @@ export const NowPlaying = ({
     setTrack,
     playPreviousTrack,
     playNextTrack,
+    toggleTrackFavorite,
   } = usePlayerStore();
 
   const goPrev = () => {
@@ -86,7 +89,13 @@ export const NowPlaying = ({
     fastSeek,
   });
 
-  const featuredTrack = currentTrack ?? lastTrack ?? songs[songs.length - 1] ?? songs[0] ?? null;
+  const featuredTrack =
+    currentTrack ??
+    lastTrack ??
+    playlistTracks[playlistTracks.length - 1] ??
+    libraryTracks[0] ??
+    null;
+  const isCurrentTrackFavorite = currentTrack ? favoriteTrackIds.includes(currentTrack.id) : false;
 
   const progressPercent = (seek / duration) * 100 || 0;
   const controlBtnSizeClass = isShortHeight ? 'w-9 h-9' : 'w-11 h-11';
@@ -220,10 +229,23 @@ export const NowPlaying = ({
                 </div>
 
                 <button
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-muted)] shadow-[var(--glass-shadow)] backdrop-blur-xl hover:text-red-500 active:scale-95 transition-all shrink-0"
-                  aria-label="Like track"
+                  onClick={() => toggleTrackFavorite(currentTrack.id)}
+                  className={`flex h-10 w-10 items-center justify-center rounded-full bg-[var(--glass-bg)] border border-[var(--glass-border)] shadow-[var(--glass-shadow)] backdrop-blur-xl active:scale-95 transition-all shrink-0 ${
+                    isCurrentTrackFavorite
+                      ? 'text-red-500'
+                      : 'text-[var(--text-muted)] hover:text-red-500'
+                  }`}
+                  aria-label={
+                    isCurrentTrackFavorite
+                      ? 'Remove track from favorites'
+                      : 'Add track to favorites'
+                  }
+                  aria-pressed={isCurrentTrackFavorite}
                 >
-                  <Heart className="h-4 w-4 hover:fill-red-500 transition-colors" />
+                  <Heart
+                    className="h-4 w-4 transition-colors"
+                    fill={isCurrentTrackFavorite ? 'currentColor' : 'none'}
+                  />
                 </button>
               </div>
 
@@ -538,10 +560,21 @@ export const NowPlaying = ({
             </p>
           </div>
           <button
-            className="flex h-[clamp(2.15rem,6vw,2.5rem)] w-[clamp(2.15rem,6vw,2.5rem)] items-center justify-center rounded-full bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-muted)] shadow-[var(--glass-shadow)] backdrop-blur-xl hover:text-red-500 active:scale-95 transition-all shrink-0"
-            aria-label="Like track"
+            onClick={() => toggleTrackFavorite(currentTrack.id)}
+            className={`flex h-[clamp(2.15rem,6vw,2.5rem)] w-[clamp(2.15rem,6vw,2.5rem)] items-center justify-center rounded-full bg-[var(--glass-bg)] border border-[var(--glass-border)] shadow-[var(--glass-shadow)] backdrop-blur-xl active:scale-95 transition-all shrink-0 ${
+              isCurrentTrackFavorite
+                ? 'text-red-500'
+                : 'text-[var(--text-muted)] hover:text-red-500'
+            }`}
+            aria-label={
+              isCurrentTrackFavorite ? 'Remove track from favorites' : 'Add track to favorites'
+            }
+            aria-pressed={isCurrentTrackFavorite}
           >
-            <Heart className="h-[clamp(0.9rem,2.6vw,1.15rem)] w-[clamp(0.9rem,2.6vw,1.15rem)] hover:fill-red-500 transition-colors" />
+            <Heart
+              className="h-[clamp(0.9rem,2.6vw,1.15rem)] w-[clamp(0.9rem,2.6vw,1.15rem)] transition-colors"
+              fill={isCurrentTrackFavorite ? 'currentColor' : 'none'}
+            />
           </button>
         </div>
 

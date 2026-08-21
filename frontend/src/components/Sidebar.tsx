@@ -11,15 +11,20 @@ import {
   Pin,
   type LucideIcon,
 } from 'lucide-react';
+import { usePlayerStore } from '../store/usePlayerStore';
 import { SidebarSection as SidebarSectionView } from './SidebarSection';
 import { SidebarFooter } from './SidebarFooter';
 
 type View = 'home' | 'library' | 'settings';
+type LibraryTab = 'library' | 'favorites' | 'playlist';
 type ThemeMode = 'dark' | 'light';
 
 interface NavItem {
   icon: LucideIcon;
   label: string;
+  onClick: () => void;
+  isActive: boolean;
+  badge?: number | string;
 }
 
 interface SidebarSectionData {
@@ -30,17 +35,25 @@ interface SidebarSectionData {
 export const Sidebar = ({
   currentView,
   setView,
+  libraryTab,
+  setLibraryTab,
   themeMode,
   cycleThemeMode,
+  isPinned,
+  setIsPinned,
 }: {
   currentView: View;
   setView: (v: View) => void;
+  libraryTab: LibraryTab;
+  setLibraryTab: (tab: LibraryTab) => void;
   themeMode: ThemeMode;
   cycleThemeMode: () => void;
+  isPinned: boolean;
+  setIsPinned: (value: boolean) => void;
 }) => {
-  const [isPinned, setIsPinned] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const favoriteTrackCount = usePlayerStore((state) => state.favoriteTrackIds.length);
 
   const handleMouseEnter = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -48,28 +61,79 @@ export const Sidebar = ({
   };
 
   const handleMouseLeave = () => {
-    timeoutRef.current = setTimeout(() => setIsHovered(false), 700);
+    timeoutRef.current = setTimeout(() => setIsHovered(false), 280);
   };
 
   const isExpanded = isPinned || isHovered;
   const isDarkMode = themeMode === 'dark';
   const themeLabel = isDarkMode ? 'Dark' : 'Light';
 
+  const openLibraryTab = (tab: LibraryTab) => {
+    setLibraryTab(tab);
+    setView('library');
+  };
+
+  const mainItems: NavItem[] = [
+    {
+      icon: Home,
+      label: 'Home',
+      onClick: () => setView('home'),
+      isActive: currentView === 'home',
+    },
+    {
+      icon: Library,
+      label: 'Library',
+      onClick: () => openLibraryTab('library'),
+      isActive: currentView === 'library' && libraryTab === 'library',
+    },
+    {
+      icon: Heart,
+      label: 'Favorites',
+      onClick: () => openLibraryTab('favorites'),
+      isActive: currentView === 'library' && libraryTab === 'favorites',
+      badge: favoriteTrackCount > 0 ? favoriteTrackCount : undefined,
+    },
+  ];
+
   const sections: SidebarSectionData[] = [
     {
       title: 'Space',
       items: [
-        { icon: Disc, label: 'Albums' },
-        { icon: ListMusic, label: 'Playlists' },
-        { icon: Heart, label: 'Favorites' },
+        {
+          icon: Disc,
+          label: 'Albums',
+          onClick: () => openLibraryTab('library'),
+          isActive: currentView === 'library' && libraryTab === 'library',
+        },
+        {
+          icon: ListMusic,
+          label: 'Playlists',
+          onClick: () => openLibraryTab('playlist'),
+          isActive: currentView === 'library' && libraryTab === 'playlist',
+        },
       ],
     },
     {
       title: 'Settings',
       items: [
-        { icon: SlidersHorizontal, label: 'Equalizer' },
-        { icon: Activity, label: 'Visualizer' },
-        { icon: Settings, label: 'Preferences' },
+        {
+          icon: SlidersHorizontal,
+          label: 'Equalizer',
+          onClick: () => setView('settings'),
+          isActive: currentView === 'settings',
+        },
+        {
+          icon: Activity,
+          label: 'Visualizer',
+          onClick: () => setView('settings'),
+          isActive: currentView === 'settings',
+        },
+        {
+          icon: Settings,
+          label: 'Preferences',
+          onClick: () => setView('settings'),
+          isActive: currentView === 'settings',
+        },
       ],
     },
   ];
@@ -79,14 +143,14 @@ export const Sidebar = ({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       style={{ background: 'var(--sidebar-bg)' }}
-      className={`h-full flex flex-col z-40 transition-[width,background-color] duration-700 ease-in-out shrink-0 border-r
-        ${isExpanded ? 'w-56' : 'w-20'}
+      className={`h-full flex flex-col z-40 transition-[width,background-color] duration-300 ease-out shrink-0 border-r
+        ${isExpanded ? 'w-[236px]' : 'w-[78px]'}
         ${isDarkMode ? 'border-[var(--sidebar-border)] shadow-[var(--sidebar-shadow)]' : 'border-[var(--sidebar-border)] shadow-[var(--sidebar-shadow)]'}
       `}
     >
       {/* 1. LOGO Y PIN */}
-      <div className="h-20 flex items-center px-[26px] shrink-0 overflow-hidden">
-        <div className="flex items-center justify-between min-w-[172px] w-full">
+      <div className="h-16 flex items-center px-3 shrink-0 overflow-hidden">
+        <div className="flex items-center justify-between min-w-[208px] w-full">
           <div className="flex items-center gap-3">
             <div
               className={`w-7 h-7 rounded-lg shrink-0 transition-all duration-500 shadow-lg
@@ -105,9 +169,10 @@ export const Sidebar = ({
           </div>
           <button
             onClick={() => setIsPinned(!isPinned)}
-            className={`transition-all duration-500 hover:scale-110
+            aria-label={isPinned ? 'Unpin sidebar' : 'Pin sidebar'}
+            className={`transition-all duration-300 hover:scale-110
             ${isPinned ? 'text-[var(--accent-primary)] rotate-45' : 'text-[var(--text-muted)]'}
-            ${isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+            ${isExpanded ? 'opacity-100' : 'opacity-100'}`}
           >
             <Pin size={14} fill={isPinned ? 'currentColor' : 'none'} />
           </button>
@@ -115,53 +180,63 @@ export const Sidebar = ({
       </div>
 
       {/* 2. NAVEGACIÓN PRINCIPAL */}
-      <nav className="flex-1 space-y-5 overflow-y-auto no-scrollbar overflow-x-hidden pt-2 px-4">
-        <ul className="space-y-1">
-          {(['home', 'library', 'settings'] as View[]).map((id) => {
-            const Icon = id === 'home' ? Home : id === 'library' ? Library : Settings;
-            const isActive = currentView === id;
+      <nav className="flex-1 flex flex-col min-h-0 overflow-hidden pt-2 px-3">
+        <ul className="space-y-1 shrink-0">
+          {mainItems.map((item) => {
             return (
               <li
-                key={id}
-                onClick={() => setView(id)}
-                className={`group/nav flex items-center h-11 rounded-xl cursor-pointer transition-all duration-300 overflow-hidden
+                key={item.label}
+                onClick={item.onClick}
+                title={!isExpanded ? item.label : undefined}
+                className={`group/nav flex items-center h-11 rounded-xl cursor-pointer transition-all duration-300 overflow-hidden border
                   ${
-                    isActive
+                    item.isActive
                       ? isDarkMode
                         ? 'bg-[color-mix(in_srgb,var(--accent-primary)_12%,transparent)] text-[var(--tab-active-text)] border border-[color-mix(in_srgb,var(--accent-primary)_20%,transparent)]'
                         : 'bg-[color-mix(in_srgb,var(--accent-primary)_9%,transparent)] text-[var(--tab-active-text)] border border-[color-mix(in_srgb,var(--accent-primary)_16%,transparent)]'
                       : isDarkMode
-                        ? 'text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--text-main)]'
-                        : 'text-[var(--text-muted)] hover:bg-black/5 hover:text-[var(--text-main)]'
+                        ? 'text-[var(--text-muted)] border-transparent hover:bg-white/5 hover:text-[var(--text-main)]'
+                        : 'text-[var(--text-muted)] border-transparent hover:bg-black/5 hover:text-[var(--text-main)]'
                   }`}
               >
-                <div className="flex items-center gap-4 px-3.5 min-w-[200px]">
-                  <Icon
-                    size={22}
-                    className={`shrink-0 transition-colors ${isActive ? 'text-[var(--accent-primary)]' : 'group-hover/nav:text-[var(--accent-secondary)]'}`}
-                  />
-                  <span
-                    className={`font-black text-base tracking-tight whitespace-nowrap transition-all duration-700
-                    ${isExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'}`}
-                  >
-                    {id === 'home' ? 'Home' : id === 'library' ? 'Library' : 'Settings'}
-                  </span>
+                <div className="flex items-center justify-between gap-3 px-3.5 min-w-[200px]">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <item.icon
+                      size={22}
+                      className={`shrink-0 transition-colors ${item.isActive ? 'text-[var(--accent-primary)]' : 'group-hover/nav:text-[var(--accent-secondary)]'}`}
+                    />
+                    <span
+                      className={`font-black text-base tracking-tight whitespace-nowrap transition-all duration-700
+                      ${isExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'}`}
+                    >
+                      {item.label}
+                    </span>
+                  </div>
+
+                  {item.badge && isExpanded && (
+                    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[var(--accent-primary)] px-1.5 py-0.5 text-[10px] font-black text-[var(--bg-main)] shadow-md">
+                      {item.badge}
+                    </span>
+                  )}
                 </div>
               </li>
             );
           })}
         </ul>
 
-        {/* SECCIONES DINÁMICAS */}
-        {sections.map((section) => (
-          <SidebarSectionView
-            key={section.title}
-            title={section.title}
-            items={section.items}
-            isExpanded={isExpanded}
-            isDarkMode={isDarkMode}
-          />
-        ))}
+        <div className="my-4 h-px bg-[var(--glass-border)]" />
+
+        <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar overflow-x-hidden space-y-4 pb-3">
+          {sections.map((section) => (
+            <SidebarSectionView
+              key={section.title}
+              title={section.title}
+              items={section.items}
+              isExpanded={isExpanded}
+              isDarkMode={isDarkMode}
+            />
+          ))}
+        </div>
       </nav>
 
       {/* 3. TEMA Y USUARIO */}

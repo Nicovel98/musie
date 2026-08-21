@@ -14,8 +14,8 @@ export const SidebarFooter = ({
   cycleThemeMode,
 }: SidebarFooterProps) => {
   return (
-    <div className="shrink-0 pt-2 border-t transition-colors border-[var(--glass-border)]">
-      <div className="px-4 mb-1">
+    <div className="shrink-0 pt-2 pb-2 border-t transition-colors border-[var(--glass-border)]">
+      <div className="px-3 mb-1">
         <button
           onClick={cycleThemeMode}
           className={`flex items-center w-full h-10 rounded-xl transition-all overflow-hidden group/theme
@@ -43,7 +43,7 @@ export const SidebarFooter = ({
         </button>
       </div>
 
-      <div className="p-3">
+      <div className="px-3 pt-2">
         <div
           className={`flex items-center h-12 rounded-xl transition-all duration-700 overflow-hidden cursor-pointer border
           ${isDarkMode ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-black/5 border-black/5 hover:bg-black/10'}`}

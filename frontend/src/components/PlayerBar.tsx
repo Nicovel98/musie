@@ -11,6 +11,7 @@ interface PlayerBarProps {
 export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
   const {
     currentTrack,
+    favoriteTrackIds,
     isPlaying,
     togglePlay,
     seek,
@@ -20,6 +21,7 @@ export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
     setVolume,
     playPreviousTrack,
     playNextTrack,
+    toggleTrackFavorite,
   } = usePlayerStore();
 
   const { handleSeekChange, handleScrubStart, handleScrubEnd } = useScrubSeeking({
@@ -37,6 +39,7 @@ export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
   };
 
   if (!currentTrack) return null;
+  const isFavorite = favoriteTrackIds.includes(currentTrack.id);
 
   const formatTime = (s: number) => {
     const mins = Math.floor(s / 60) || 0;
@@ -79,8 +82,15 @@ export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
               {currentTrack.artist}
             </p>
           </div>
-          <button className="mr-2 text-[var(--text-muted)] opacity-80 hover:text-red-500 hover:opacity-100 transition-colors shrink-0">
-            <Heart size={14} />
+          <button
+            onClick={() => toggleTrackFavorite(currentTrack.id)}
+            aria-label={isFavorite ? 'Remove track from favorites' : 'Add track to favorites'}
+            aria-pressed={isFavorite}
+            className={`mr-2 opacity-80 hover:opacity-100 transition-colors shrink-0 ${
+              isFavorite ? 'text-red-500' : 'text-[var(--text-muted)] hover:text-red-500'
+            }`}
+          >
+            <Heart size={14} fill={isFavorite ? 'currentColor' : 'none'} />
           </button>
         </div>
 
@@ -118,8 +128,15 @@ export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
             {currentTrack.artist}
           </p>
         </div>
-        <button className="text-[var(--text-muted)] hover:text-red-500 transition-colors ml-2 hidden lg:block">
-          <Heart size={18} />
+        <button
+          onClick={() => toggleTrackFavorite(currentTrack.id)}
+          aria-label={isFavorite ? 'Remove track from favorites' : 'Add track to favorites'}
+          aria-pressed={isFavorite}
+          className={`transition-colors ml-2 hidden lg:block ${
+            isFavorite ? 'text-red-500' : 'text-[var(--text-muted)] hover:text-red-500'
+          }`}
+        >
+          <Heart size={18} fill={isFavorite ? 'currentColor' : 'none'} />
         </button>
       </div>
 
