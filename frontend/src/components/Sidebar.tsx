@@ -15,7 +15,7 @@ import { usePlayerStore } from '../store/usePlayerStore';
 import { SidebarSection as SidebarSectionView } from './SidebarSection';
 import { SidebarFooter } from './SidebarFooter';
 
-type View = 'home' | 'library' | 'settings';
+type View = 'home' | 'library' | 'equalizer' | 'visualizer' | 'preferences';
 type LibraryTab = 'library' | 'favorites' | 'playlist';
 type ThemeMode = 'dark' | 'light';
 
@@ -114,25 +114,25 @@ export const Sidebar = ({
       ],
     },
     {
-      title: 'Settings',
+      title: 'Config',
       items: [
         {
           icon: SlidersHorizontal,
-          label: 'Equalizer',
-          onClick: () => setView('settings'),
-          isActive: currentView === 'settings',
+          label: 'EQ',
+          onClick: () => setView('equalizer'),
+          isActive: currentView === 'equalizer',
         },
         {
           icon: Activity,
           label: 'Visualizer',
-          onClick: () => setView('settings'),
-          isActive: currentView === 'settings',
+          onClick: () => setView('visualizer'),
+          isActive: currentView === 'visualizer',
         },
         {
           icon: Settings,
           label: 'Preferences',
-          onClick: () => setView('settings'),
-          isActive: currentView === 'settings',
+          onClick: () => setView('preferences'),
+          isActive: currentView === 'preferences',
         },
       ],
     },

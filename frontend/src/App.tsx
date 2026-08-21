@@ -6,7 +6,7 @@ import { useMediaQuery } from './hooks/useMediaQuery';
 import { usePlayerStore } from './store/usePlayerStore';
 import { readTrackMetadata } from './store/trackMetadata';
 
-type View = 'home' | 'library' | 'settings';
+type View = 'home' | 'library' | 'equalizer' | 'visualizer' | 'preferences';
 type LibraryTab = 'library' | 'favorites' | 'playlist';
 type ThemeMode = 'dark' | 'light';
 type DarkTheme = 'quantum' | 'classic';

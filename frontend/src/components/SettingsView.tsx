@@ -1,4 +1,6 @@
-import { Check, Layers3, Sparkles } from 'lucide-react';
+import { Check, Layers3, Sparkles, SlidersHorizontal } from 'lucide-react';
+import { usePlayerStore } from '../store/usePlayerStore';
+import type { EqPresetName } from '../store/eq';
 
 type DarkTheme = 'quantum' | 'classic';
 type LightTheme = 'light' | 'light-quantum';
@@ -139,6 +141,22 @@ export const SettingsView = ({
 }: SettingsViewProps) => {
   const orderedDarkThemes = orderThemes(darkThemes, selectedDarkTheme);
   const orderedLightThemes = orderThemes(lightThemes, selectedLightTheme);
+  const eqBands = usePlayerStore((state) => state.eqBands);
+  const eqPreset = usePlayerStore((state) => state.eqPreset);
+  const eqEnabled = usePlayerStore((state) => state.eqEnabled);
+  const setEqPreset = usePlayerStore((state) => state.setEqPreset);
+  const setEqEnabled = usePlayerStore((state) => state.setEqEnabled);
+  const updateEqBand = usePlayerStore((state) => state.updateEqBand);
+  const resetEq = usePlayerStore((state) => state.resetEq);
+
+  const eqPresetOptions: { id: EqPresetName; label: string }[] = [
+    { id: 'flat', label: 'Flat' },
+    { id: 'bass', label: 'Bass' },
+    { id: 'vocal', label: 'Vocal' },
+    { id: 'rock', label: 'Rock' },
+    { id: 'classical', label: 'Classical' },
+    { id: 'treble', label: 'Treble' },
+  ];
 
   return (
     <div className="h-full overflow-y-auto custom-scrollbar px-4 py-5 md:px-6 lg:px-8">
@@ -146,14 +164,13 @@ export const SettingsView = ({
         <header className="space-y-2">
           <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.32em] text-[var(--text-muted)]">
             <Sparkles size={14} />
-            <span>Settings</span>
+            <span>Preferences</span>
           </div>
           <h1 className="text-[clamp(1.5rem,4vw,2.4rem)] font-black tracking-tighter text-[var(--text-main)]">
-            Tema visual
+            Personalización
           </h1>
           <p className="max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
-            Elige una base y deja listo el sistema para sumar más temas después sin tocar
-            componentes sueltos.
+            Ajusta la apariencia del reproductor y deja la experiencia visual lista para tu estilo.
           </p>
         </header>
 
@@ -220,6 +237,95 @@ export const SettingsView = ({
                 />
               </button>
             </div>
+          </div>
+        </section>
+
+        <section className="rounded-[28px] border border-[var(--glass-border)] bg-[var(--glass-bg)] p-5 shadow-[var(--glass-shadow)] backdrop-blur-xl">
+          <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.28em] text-[var(--text-muted)]">
+              <SlidersHorizontal size={14} />
+              <span>Equalizer</span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
+                {eqEnabled ? 'Activo' : 'Desactivado'}
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={eqEnabled}
+                onClick={() => setEqEnabled(!eqEnabled)}
+                className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border transition-colors duration-300 ${
+                  eqEnabled
+                    ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/25'
+                    : 'border-[var(--glass-border)] bg-black/10'
+                }`}
+              >
+                <span
+                  className={`inline-block h-6 w-6 transform rounded-full bg-[var(--text-main)] shadow transition-transform duration-300 ${
+                    eqEnabled ? 'translate-x-7' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          <div className="mb-5 flex flex-wrap gap-2">
+            {eqPresetOptions.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => setEqPreset(preset.id)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-black uppercase tracking-[0.18em] transition-all ${
+                  eqPreset === preset.id
+                    ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/15 text-[var(--text-main)]'
+                    : 'border-[var(--glass-border)] bg-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                }`}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-5">
+            {eqBands.map((band, index) => (
+              <div
+                key={band.frequency}
+                className="rounded-[20px] border border-[var(--glass-border)] bg-[var(--glass-bg)]/70 p-3 text-center"
+              >
+                <div className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">
+                  {band.label}
+                </div>
+                <div className="mb-3 text-lg font-black text-[var(--text-main)]">
+                  {band.gain > 0 ? '+' : ''}
+                  {band.gain}dB
+                </div>
+                <div className="flex h-40 items-end justify-center">
+                  <input
+                    aria-label={`${band.label} equalizer band`}
+                    type="range"
+                    min={band.minGain}
+                    max={band.maxGain}
+                    step={1}
+                    value={band.gain}
+                    onChange={(event) => updateEqBand(index, Number(event.target.value))}
+                    className="h-32 w-2 rotate-180 accent-[var(--accent-primary)]"
+                    style={{ writingMode: 'vertical-lr' }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5 flex justify-end">
+            <button
+              type="button"
+              onClick={resetEq}
+              className="rounded-full border border-[var(--glass-border)] px-3 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-[var(--text-main)] transition-all hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)]"
+            >
+              Reset
+            </button>
           </div>
         </section>
 

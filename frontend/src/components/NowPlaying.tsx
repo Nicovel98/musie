@@ -13,7 +13,7 @@ import { useScrubSeeking } from '../hooks/useScrubSeeking';
 import { getProgressPercent } from '../utils/time';
 
 interface NowPlayingProps {
-  setView: (view: 'home' | 'library' | 'settings') => void;
+  setView: (view: 'home' | 'library' | 'equalizer' | 'preferences') => void;
   themeMode: 'dark' | 'light';
   cycleThemeMode: () => void;
   useThemeAudioColors: boolean;

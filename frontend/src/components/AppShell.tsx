@@ -2,11 +2,13 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { NowPlaying } from './NowPlaying';
 import { Library } from './Library';
+import { EqualizerView } from './EqualizerView';
+import { VisualizerView } from './VisualizerView';
 import { SettingsView } from './SettingsView';
 import { PlayerBar } from './PlayerBar';
 import { MobileTabs } from './MobileTabs';
 
-type View = 'home' | 'library' | 'settings';
+type View = 'home' | 'library' | 'equalizer' | 'visualizer' | 'preferences';
 type LibraryTab = 'library' | 'favorites' | 'playlist';
 type ThemeMode = 'dark' | 'light';
 type DarkTheme = 'quantum' | 'classic';
@@ -85,9 +87,31 @@ export const AppShell = ({
                   useThemeAudioColors={themeAffectsAudioUi}
                 />
               </motion.div>
-            ) : currentView === 'settings' ? (
+            ) : currentView === 'equalizer' ? (
               <motion.div
-                key="settings"
+                key="equalizer"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 12 }}
+                transition={{ type: 'spring', damping: 24, stiffness: 180 }}
+                className="h-full overflow-y-auto custom-scrollbar pb-[calc(var(--mobile-tabs-height)+var(--mobile-playerbar-height)+env(safe-area-inset-bottom)+1rem)] lg:pb-1"
+              >
+                <EqualizerView />
+              </motion.div>
+            ) : currentView === 'visualizer' ? (
+              <motion.div
+                key="visualizer"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 12 }}
+                transition={{ type: 'spring', damping: 24, stiffness: 180 }}
+                className="h-full overflow-y-auto custom-scrollbar pb-[calc(var(--mobile-tabs-height)+var(--mobile-playerbar-height)+env(safe-area-inset-bottom)+1rem)] lg:pb-1"
+              >
+                <VisualizerView />
+              </motion.div>
+            ) : currentView === 'preferences' ? (
+              <motion.div
+                key="preferences"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 12 }}

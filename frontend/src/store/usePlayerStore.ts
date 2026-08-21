@@ -4,6 +4,15 @@ import { get, set, del } from 'idb-keyval';
 import { Howl, Howler } from 'howler';
 import type { Track } from '../types/track';
 import heroThumbnail from '../assets/hero.png';
+import {
+  DEFAULT_EQ_BANDS,
+  DEFAULT_EQ_PRESET,
+  type EqBand,
+  type EqPresetName,
+  buildEqFilters,
+  getEqPreset,
+  applyEqBandsToFilters,
+} from './eq';
 import { readTrackMetadata } from './trackMetadata';
 
 interface PersistedPlayerState {
@@ -12,6 +21,9 @@ interface PersistedPlayerState {
   favoriteTrackIds: string[];
   volume: number;
   lastTrack: Track | null;
+  eqBands: EqBand[];
+  eqPreset: EqPresetName;
+  eqEnabled: boolean;
 }
 
 interface HowlInternal extends Howl {
@@ -39,6 +51,12 @@ interface PlayerState {
   mediaSource: MediaElementAudioSourceNode | null;
   gainNode: GainNode | null;
   compressor: DynamicsCompressorNode | null;
+  eqInput: GainNode | null;
+  eqOutput: GainNode | null;
+  eqFilters: BiquadFilterNode[];
+  eqBands: EqBand[];
+  eqPreset: EqPresetName;
+  eqEnabled: boolean;
   objectUrl: string | null;
   connectedMediaNode: HTMLAudioElement | null;
   audioCleanup?: (() => void) | null;
@@ -65,6 +83,10 @@ interface PlayerState {
   setSeek: (val: number) => void;
   fastSeek: (val: number) => void;
   updateProgress: () => void;
+  setEqPreset: (preset: EqPresetName) => void;
+  updateEqBand: (bandIndex: number, gain: number) => void;
+  setEqEnabled: (enabled: boolean) => void;
+  resetEq: () => void;
 }
 
 const clampSeekValue = (val: number, duration: number) => {
@@ -146,6 +168,12 @@ export const usePlayerStore = create<PlayerState>()(
       mediaSource: null,
       gainNode: null,
       compressor: null,
+      eqInput: null,
+      eqOutput: null,
+      eqFilters: [],
+      eqBands: DEFAULT_EQ_BANDS,
+      eqPreset: DEFAULT_EQ_PRESET,
+      eqEnabled: true,
       objectUrl: null,
       connectedMediaNode: null,
       audioCleanup: null,
@@ -503,6 +531,23 @@ export const usePlayerStore = create<PlayerState>()(
                   } catch (e) {
                     void e;
                   }
+                  try {
+                    get().eqInput?.disconnect();
+                  } catch (e) {
+                    void e;
+                  }
+                  try {
+                    get().eqOutput?.disconnect();
+                  } catch (e) {
+                    void e;
+                  }
+                  get().eqFilters.forEach((filter) => {
+                    try {
+                      filter.disconnect();
+                    } catch (e) {
+                      void e;
+                    }
+                  });
                 }
 
                 // Crear fuente desde el elemento de audio
@@ -572,10 +617,17 @@ export const usePlayerStore = create<PlayerState>()(
                 const analyzer = Howler.ctx.createAnalyser();
                 analyzer.fftSize = 256;
 
-                // Cadena: source -> gain -> compressor -> analyzer -> destination
+                const {
+                  input: eqInput,
+                  output: eqOutput,
+                  nodes: eqNodes,
+                } = buildEqFilters(Howler.ctx, get().eqBands);
+
+                // Cadena: source -> gain -> compressor -> EQ -> analyzer -> destination
                 mediaSourceNode.connect(gainNode);
                 gainNode.connect(compressor);
-                compressor.connect(analyzer);
+                compressor.connect(eqInput);
+                eqOutput.connect(analyzer);
                 analyzer.connect(Howler.ctx.destination);
 
                 // persist references so we can disconnect later
@@ -583,11 +635,16 @@ export const usePlayerStore = create<PlayerState>()(
                   analyzer,
                   gainNode,
                   compressor,
+                  eqInput,
+                  eqOutput,
+                  eqFilters: eqNodes,
                   mediaSource: mediaSourceNode,
                   connectedMediaNode: node,
                   objectUrl: trackSource.isObjectUrl ? activeUrl : null,
                   audioCleanup: cleanupListeners,
                 });
+
+                applyEqBandsToFilters(eqNodes, get().eqBands, get().eqEnabled);
 
                 // Expose lightweight debug references for test instrumentation
                 try {
@@ -779,6 +836,48 @@ export const usePlayerStore = create<PlayerState>()(
           if (typeof s === 'number') set({ seek: s });
         }
       },
+
+      setEqPreset: (preset) => {
+        const nextBands = getEqPreset(preset).map((band, index) => ({
+          ...DEFAULT_EQ_BANDS[index],
+          ...band,
+        }));
+
+        set({ eqPreset: preset, eqBands: nextBands });
+
+        const { eqFilters, eqEnabled } = get();
+        applyEqBandsToFilters(eqFilters, nextBands, eqEnabled);
+      },
+
+      updateEqBand: (bandIndex, gain) => {
+        set((state) => {
+          const nextBands = state.eqBands.map((band, index) => {
+            if (index !== bandIndex) return band;
+            return {
+              ...band,
+              gain,
+            };
+          });
+
+          return { eqBands: nextBands, eqPreset: 'custom' };
+        });
+
+        const { eqFilters, eqEnabled, eqBands } = get();
+        applyEqBandsToFilters(eqFilters, eqBands, eqEnabled);
+      },
+
+      setEqEnabled: (enabled) => {
+        const { eqFilters, eqBands } = get();
+        set({ eqEnabled: enabled });
+        applyEqBandsToFilters(eqFilters, eqBands, enabled);
+      },
+
+      resetEq: () => {
+        const nextBands = getEqPreset(DEFAULT_EQ_PRESET);
+        set({ eqBands: nextBands, eqPreset: DEFAULT_EQ_PRESET, eqEnabled: true });
+        const { eqFilters } = get();
+        applyEqBandsToFilters(eqFilters, nextBands, true);
+      },
     }),
     {
       name: 'musie-pwa-storage',
@@ -791,12 +890,22 @@ export const usePlayerStore = create<PlayerState>()(
         const libraryTracks = (state.libraryTracks ?? state.songs ?? []).map(normalizeTrack);
         const playlistTracks = (state.playlistTracks ?? state.songs ?? []).map(normalizeTrack);
 
+        const nextEqBands = (state.eqBands?.length ? state.eqBands : DEFAULT_EQ_BANDS).map(
+          (band, index) => ({
+            ...DEFAULT_EQ_BANDS[index],
+            ...band,
+          })
+        );
+
         return {
           libraryTracks,
           playlistTracks,
           favoriteTrackIds: state.favoriteTrackIds ?? [],
           volume: state.volume ?? 0.5,
           lastTrack: state.lastTrack ? normalizeTrack(state.lastTrack) : null,
+          eqBands: nextEqBands,
+          eqPreset: state.eqPreset ?? DEFAULT_EQ_PRESET,
+          eqEnabled: state.eqEnabled ?? true,
         };
       },
       partialize: (state): PersistedPlayerState => ({
@@ -805,6 +914,9 @@ export const usePlayerStore = create<PlayerState>()(
         favoriteTrackIds: state.favoriteTrackIds,
         volume: state.volume,
         lastTrack: state.lastTrack,
+        eqBands: state.eqBands,
+        eqPreset: state.eqPreset,
+        eqEnabled: state.eqEnabled,
       }),
     }
   )

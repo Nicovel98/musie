@@ -1,8 +1,8 @@
-import { Home, Library, SlidersHorizontal, Settings } from 'lucide-react';
+import { Activity, Home, Library, SlidersHorizontal, Settings } from 'lucide-react';
 
 interface MobileTabsProps {
-  currentView: 'home' | 'library' | 'settings';
-  setView: (view: 'home' | 'library' | 'settings') => void;
+  currentView: 'home' | 'library' | 'equalizer' | 'visualizer' | 'preferences';
+  setView: (view: 'home' | 'library' | 'equalizer' | 'visualizer' | 'preferences') => void;
 }
 
 export const MobileTabs = ({ currentView, setView }: MobileTabsProps) => {
@@ -10,7 +10,8 @@ export const MobileTabs = ({ currentView, setView }: MobileTabsProps) => {
     { id: 'home', icon: Home, label: 'Home' },
     { id: 'library', icon: Library, label: 'Library' },
     { id: 'equalizer', icon: SlidersHorizontal, label: 'EQ' },
-    { id: 'settings', icon: Settings, label: 'Settings' },
+    { id: 'visualizer', icon: Activity, label: 'Viz' },
+    { id: 'preferences', icon: Settings, label: 'Prefs' },
   ] as const;
 
   return (
@@ -31,7 +32,13 @@ export const MobileTabs = ({ currentView, setView }: MobileTabsProps) => {
           <button
             key={tab.id}
             onClick={() => {
-              if (tab.id === 'home' || tab.id === 'library' || tab.id === 'settings') {
+              if (
+                tab.id === 'home' ||
+                tab.id === 'library' ||
+                tab.id === 'equalizer' ||
+                tab.id === 'visualizer' ||
+                tab.id === 'preferences'
+              ) {
                 setView(tab.id);
               }
             }}
