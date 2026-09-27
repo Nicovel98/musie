@@ -2,7 +2,8 @@ import { useEffect } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
 
 export const useProgress = () => {
-  const { updateProgress, isPlaying } = usePlayerStore();
+  const isPlaying = usePlayerStore((state) => state.isPlaying);
+  const updateProgress = usePlayerStore((state) => state.updateProgress);
 
   useEffect(() => {
     if (!isPlaying) return;

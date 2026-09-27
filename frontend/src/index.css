@@ -258,6 +258,18 @@ body {
   animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* Efecto de cristal para el PlayerBar y Tabs */
 .glass-effect {
   background: var(--glass-bg);
@@ -265,6 +277,30 @@ body {
   -webkit-backdrop-filter: blur(24px) saturate(150%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
+}
+
+.library-track-row {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 72px;
+}
+
+@media (max-width: 640px) {
+  .glass-effect {
+    backdrop-filter: blur(10px) saturate(125%);
+    -webkit-backdrop-filter: blur(10px) saturate(125%);
+  }
+
+  .blur-\[120px\] {
+    filter: blur(60px) !important;
+  }
+
+  .blur-\[140px\] {
+    filter: blur(64px) !important;
+  }
+
+  .blur-\[100px\] {
+    filter: blur(48px) !important;
+  }
 }
 
 /*

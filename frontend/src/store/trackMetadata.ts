@@ -1,3 +1,5 @@
+import type { Track } from '../types/track';
+
 interface ParsedTags {
   title?: string;
   artist?: string;
@@ -21,11 +23,380 @@ interface MediaTags {
   };
 }
 
+const MAX_EMBEDDED_COVER_BYTES = 512 * 1024;
+const COVER_OPTIMIZATION_THRESHOLD = 350 * 1024;
+const MAX_OPTIMIZED_COVER_DIMENSION = 512;
+
+const bytesToBase64 = (bytes: number[]) => {
+  const chunkSize = 0x8000;
+  let binary = '';
+
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.slice(index, index + chunkSize));
+  }
+
+  return btoa(binary);
+};
+
 const getCoverUrl = (picture: MediaTags['picture']) => {
   if (!picture?.data?.length || !picture.format) return undefined;
+  if (picture.data.length > MAX_EMBEDDED_COVER_BYTES) return undefined;
 
-  const binary = picture.data.reduce((result, byte) => result + String.fromCharCode(byte), '');
-  return `data:${picture.format};base64,${btoa(binary)}`;
+  return `data:${picture.format};base64,${bytesToBase64(picture.data)}`;
+};
+
+export const optimizeCoverUrl = async (coverUrl: string) => {
+  if (
+    !coverUrl.startsWith('data:image/') ||
+    coverUrl.length <= COVER_OPTIMIZATION_THRESHOLD ||
+    typeof Image === 'undefined' ||
+    typeof document === 'undefined'
+  ) {
+    return coverUrl;
+  }
+
+  return new Promise<string>((resolve) => {
+    const image = new Image();
+    image.onload = () => {
+      try {
+        const scale = Math.min(
+          1,
+          MAX_OPTIMIZED_COVER_DIMENSION / image.naturalWidth,
+          MAX_OPTIMIZED_COVER_DIMENSION / image.naturalHeight
+        );
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+        const context = canvas.getContext('2d');
+        if (!context) {
+          resolve(coverUrl);
+          return;
+        }
+
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob || blob.size >= coverUrl.length) {
+              resolve(coverUrl);
+              return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = () =>
+              resolve(typeof reader.result === 'string' ? reader.result : coverUrl);
+            reader.onerror = () => resolve(coverUrl);
+            reader.readAsDataURL(blob);
+          },
+          'image/webp',
+          0.82
+        );
+      } catch {
+        resolve(coverUrl);
+      }
+    };
+    image.onerror = () => resolve(coverUrl);
+    image.src = coverUrl;
+  });
+};
+
+interface CoverSearchResponse {
+  recordings?: Array<{ releases?: Array<{ id: string; title?: string }> }>;
+}
+
+interface CoverArtReleaseResponse {
+  images?: Array<{
+    front?: boolean;
+    image?: string;
+    thumbnails?: { large?: string; small?: string };
+  }>;
+}
+
+interface DeezerSearchResponse {
+  data?: Array<{
+    title?: string;
+    artist?: { name?: string };
+    album?: {
+      title?: string;
+      cover_xl?: string;
+      cover_big?: string;
+      cover_medium?: string;
+    };
+  }>;
+}
+
+interface ItunesSearchResponse {
+  results?: Array<{
+    trackName?: string;
+    artistName?: string;
+    collectionName?: string;
+    artworkUrl100?: string;
+  }>;
+}
+
+const normalizeSearchText = (value: string | undefined) =>
+  value
+    ?.trim()
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ') ?? '';
+
+const readBlobAsDataUrl = (blob: Blob) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () =>
+      typeof reader.result === 'string'
+        ? resolve(reader.result)
+        : reject(new Error('Invalid cover response'));
+    reader.onerror = () => reject(reader.error ?? new Error('Unable to read cover'));
+    reader.readAsDataURL(blob);
+  });
+
+const fetchImageAsDataUrl = async (url: string, signal: AbortSignal) => {
+  const response = await fetch(url, { signal });
+  if (!response.ok) return null;
+  const blob = await response.blob();
+  if (!blob.type.startsWith('image/')) return null;
+  return optimizeCoverUrl(await readBlobAsDataUrl(blob));
+};
+
+export const getYouTubeThumbnail = (value: string) => {
+  try {
+    const url = new URL(value.trim());
+    let videoId = url.searchParams.get('v');
+    if (!videoId && (url.hostname === 'youtu.be' || url.hostname.endsWith('.youtu.be'))) {
+      videoId = url.pathname.split('/').filter(Boolean)[0] ?? null;
+    }
+    if (!videoId && /youtube\.com$/i.test(url.hostname)) {
+      const segments = url.pathname.split('/').filter(Boolean);
+      if (segments[0] === 'shorts' || segments[0] === 'embed') videoId = segments[1] ?? null;
+    }
+    if (!videoId || !/^[a-zA-Z0-9_-]{6,20}$/.test(videoId)) return null;
+    return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+  } catch {
+    return null;
+  }
+};
+
+export interface AutomaticCoverOption {
+  imageUrl: string;
+  title: string;
+  artist: string;
+  album: string;
+  source: 'iTunes' | 'Deezer';
+}
+
+export const findAutomaticCoverOptions = async (
+  track: Pick<Track, 'title' | 'artist'>
+): Promise<AutomaticCoverOption[]> => {
+  const title = track.title.trim();
+  const artist = track.artist.trim();
+  if (!title) return [];
+
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 8000);
+  const genericArtists = new Set(['archivo local', 'audio externo', 'unknown artist', 'unknown']);
+
+  try {
+    const normalizedArtist = normalizeSearchText(artist);
+    const titleVariants = Array.from(
+      new Set([title, title.replace(/[-_]+/g, ' '), title.replace(/\s+/g, ' ')])
+    );
+    const itunesResponse = await fetch(
+      `https://itunes.apple.com/search?${new URLSearchParams({
+        term: genericArtists.has(normalizedArtist)
+          ? titleVariants[1]
+          : `${artist} ${titleVariants[1]}`,
+        entity: 'song',
+        limit: '8',
+      })}`,
+      { signal: controller.signal }
+    );
+
+    if (itunesResponse.ok) {
+      const itunesData = (await itunesResponse.json()) as ItunesSearchResponse;
+      const itunesOptions = (itunesData.results ?? [])
+        .map((item) => ({
+          imageUrl: item.artworkUrl100?.replace(/100x100bb\./, '600x600bb.'),
+          title: item.trackName ?? title,
+          artist: item.artistName ?? artist,
+          album: item.collectionName ?? 'Álbum desconocido',
+          source: 'iTunes' as const,
+        }))
+        .filter((option): option is Omit<typeof option, 'imageUrl'> & { imageUrl: string } =>
+          Boolean(option.imageUrl)
+        );
+
+      if (itunesOptions.length > 0) {
+        return Array.from(
+          new Map(itunesOptions.map((option) => [option.imageUrl, option])).values()
+        );
+      }
+    }
+
+    const queries = genericArtists.has(normalizedArtist)
+      ? titleVariants.map((variant) => `track:"${variant}"`)
+      : [
+          `artist:"${artist}" track:"${title}"`,
+          `artist:"${artist}" track:"${titleVariants[1]}"`,
+          `track:"${titleVariants[1]}"`,
+        ];
+    let results: DeezerSearchResponse['data'] = [];
+
+    for (const query of queries) {
+      const response = await fetch(
+        `https://api.deezer.com/search?${new URLSearchParams({ q: query, limit: '8' })}`,
+        { signal: controller.signal }
+      );
+      if (!response.ok) continue;
+
+      const data = (await response.json()) as DeezerSearchResponse;
+      results = data.data ?? [];
+      if (results.length > 0) break;
+    }
+
+    const normalizedTitle = normalizeSearchText(title);
+    const options = results
+      .map((item) => ({
+        imageUrl: item.album?.cover_xl ?? item.album?.cover_big ?? item.album?.cover_medium,
+        title: item.title ?? title,
+        artist: item.artist?.name ?? artist,
+        album: item.album?.title ?? 'Álbum desconocido',
+        source: 'Deezer' as const,
+        titleMatches: normalizeSearchText(item.title) === normalizedTitle,
+        artistMatches:
+          genericArtists.has(normalizedArtist) ||
+          normalizeSearchText(item.artist?.name) === normalizedArtist,
+      }))
+      .filter(
+        (
+          option
+        ): option is Omit<typeof option, 'imageUrl'> & { imageUrl: string } & {
+          titleMatches: boolean;
+          artistMatches: boolean;
+        } => Boolean(option.imageUrl)
+      )
+      .sort(
+        (left, right) =>
+          Number(right.titleMatches && right.artistMatches) -
+          Number(left.titleMatches && left.artistMatches)
+      );
+
+    return Array.from(new Map(options.map((option) => [option.imageUrl, option])).values());
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+};
+
+export const downloadAutomaticCover = async (imageUrl: string) => {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 8000);
+  try {
+    return await fetchImageAsDataUrl(imageUrl, controller.signal);
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+};
+
+export const findAutomaticCover = async (
+  track: Pick<Track, 'title' | 'artist' | 'album'>
+): Promise<string | null> => {
+  const options = await findAutomaticCoverOptions(track);
+  if (options.length === 0) return null;
+  return downloadAutomaticCover(options[0].imageUrl);
+
+  const title = track.title.trim();
+  const artist = track.artist.trim();
+  if (!title) return null;
+
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 8000);
+  const genericArtists = new Set(['archivo local', 'audio externo', 'unknown artist', 'unknown']);
+
+  try {
+    const deezerQuery = genericArtists.has(normalizeSearchText(artist))
+      ? `track:"${title}"`
+      : `artist:"${artist}" track:"${title}"`;
+    const deezerResponse = await fetch(
+      `https://api.deezer.com/search?${new URLSearchParams({
+        q: deezerQuery,
+        limit: '5',
+      })}`,
+      { signal: controller.signal }
+    );
+
+    if (deezerResponse.ok) {
+      const deezerData = (await deezerResponse.json()) as DeezerSearchResponse;
+      const normalizedTitle = normalizeSearchText(title);
+      const normalizedArtist = normalizeSearchText(artist);
+      const deezerResult =
+        deezerData.data?.find(
+          (item) =>
+            normalizeSearchText(item.title) === normalizedTitle &&
+            (genericArtists.has(normalizedArtist) ||
+              normalizeSearchText(item.artist?.name) === normalizedArtist)
+        ) ?? deezerData.data?.[0];
+      const coverUrl =
+        deezerResult?.album?.cover_xl ??
+        deezerResult?.album?.cover_big ??
+        deezerResult?.album?.cover_medium;
+
+      if (typeof coverUrl !== 'string') return null;
+      // @ts-expect-error Legacy fallback kept for stored callers; primary path returns above.
+      const result = await fetchImageAsDataUrl(coverUrl, controller.signal);
+      if (result) return result;
+    }
+
+    const query = genericArtists.has(normalizeSearchText(artist))
+      ? `recording:"${title}"`
+      : `recording:"${title}" AND artist:"${artist}"`;
+    const response = await fetch(
+      `https://musicbrainz.org/ws/2/recording/?${new URLSearchParams({
+        query,
+        fmt: 'json',
+        limit: '5',
+        inc: 'releases',
+      })}`,
+      { signal: controller.signal, headers: { Accept: 'application/json' } }
+    );
+    if (!response.ok) return null;
+
+    const data = (await response.json()) as CoverSearchResponse;
+    const album = normalizeSearchText(track.album);
+    const recording =
+      data.recordings?.find((item) =>
+        item.releases?.some((release) => normalizeSearchText(release.title) === album)
+      ) ?? data.recordings?.find((item) => item.releases?.length);
+    const releases = recording?.releases ?? [];
+    const orderedReleases = [
+      ...releases.filter((release) => normalizeSearchText(release.title) === album),
+      ...releases.filter((release) => normalizeSearchText(release.title) !== album),
+    ];
+
+    for (const release of orderedReleases.slice(0, 8)) {
+      const releaseResponse = await fetch(
+        `https://coverartarchive.org/release/${encodeURIComponent(release.id)}`,
+        { signal: controller.signal }
+      );
+      if (!releaseResponse.ok) continue;
+
+      const releaseData = (await releaseResponse.json()) as CoverArtReleaseResponse;
+      const image = releaseData.images?.find((item) => item.front) ?? releaseData.images?.[0];
+      const imageUrl = image?.thumbnails?.large ?? image?.image ?? image?.thumbnails?.small;
+      if (typeof imageUrl !== 'string') continue;
+      const validImageUrl = imageUrl;
+
+      // @ts-expect-error Legacy fallback kept for stored callers; primary path returns above.
+      const coverResponse = await fetch(validImageUrl, { signal: controller.signal });
+      if (!coverResponse.ok) continue;
+
+      const blob = await coverResponse.blob();
+      if (!blob.type.startsWith('image/')) continue;
+      return optimizeCoverUrl(await readBlobAsDataUrl(blob));
+    }
+
+    return null;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
 };
 
 const readEmbeddedTags = async (file: File): Promise<ParsedTags> => {
@@ -56,7 +427,10 @@ const readEmbeddedTags = async (file: File): Promise<ParsedTags> => {
   }
 };
 
-export const readTrackDuration = (source: Blob | string): Promise<number | undefined> =>
+export const readTrackDuration = (
+  source: Blob | string,
+  signal?: AbortSignal
+): Promise<number | undefined> =>
   new Promise((resolve) => {
     const objectUrl = typeof source === 'string' ? source : URL.createObjectURL(source);
     const audio = new Audio();
@@ -66,10 +440,14 @@ export const readTrackDuration = (source: Blob | string): Promise<number | undef
       if (settled) return;
       settled = true;
       window.clearTimeout(timeoutId);
+      signal?.removeEventListener('abort', handleAbort);
+      audio.pause();
       if (typeof source !== 'string') URL.revokeObjectURL(objectUrl);
       audio.removeAttribute('src');
       resolve(duration);
     }
+
+    const handleAbort = () => finish();
 
     const timeoutId = window.setTimeout(() => finish(), 15000);
 
@@ -83,6 +461,11 @@ export const readTrackDuration = (source: Blob | string): Promise<number | undef
     audio.onloadedmetadata = handleDurationChange;
     audio.ondurationchange = handleDurationChange;
     audio.onerror = () => finish();
+    if (signal?.aborted) {
+      finish();
+      return;
+    }
+    signal?.addEventListener('abort', handleAbort, { once: true });
     audio.src = objectUrl;
     audio.load();
   });

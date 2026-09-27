@@ -11,6 +11,7 @@ import { VolumeControl } from './VolumeControl';
 import { PlaybackControls } from './PlaybackControls';
 import { useScrubSeeking } from '../hooks/useScrubSeeking';
 import { getProgressPercent } from '../utils/time';
+import { useShallow } from 'zustand/react/shallow';
 
 interface NowPlayingProps {
   setView: (view: 'home' | 'library' | 'equalizer' | 'preferences') => void;
@@ -73,7 +74,26 @@ export const NowPlaying = ({
     playPreviousTrack,
     playNextTrack,
     toggleTrackFavorite,
-  } = usePlayerStore();
+  } = usePlayerStore(
+    useShallow((state) => ({
+      libraryTracks: state.libraryTracks,
+      playlistTracks: state.playlistTracks,
+      favoriteTrackIds: state.favoriteTrackIds,
+      currentTrack: state.currentTrack,
+      lastTrack: state.lastTrack,
+      isPlaying: state.isPlaying,
+      togglePlay: state.togglePlay,
+      seek: state.seek,
+      duration: state.duration,
+      fastSeek: state.fastSeek,
+      volume: state.volume,
+      setVolume: state.setVolume,
+      setTrack: state.setTrack,
+      playPreviousTrack: state.playPreviousTrack,
+      playNextTrack: state.playNextTrack,
+      toggleTrackFavorite: state.toggleTrackFavorite,
+    }))
+  );
 
   const goPrev = () => {
     playPreviousTrack();

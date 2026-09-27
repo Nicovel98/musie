@@ -102,7 +102,12 @@ function App() {
     }
   });
   const autoLoadedRef = useRef(false);
+  const coverMigrationStartedRef = useRef(false);
   const setTrack = usePlayerStore((state) => state.setTrack);
+  const optimizeStoredCovers = usePlayerStore((state) => state.optimizeStoredCovers);
+  const storedTrackCount = usePlayerStore(
+    (state) => state.libraryTracks.length + state.playlistTracks.length
+  );
   useProgress();
   const isSmallHeight = useMediaQuery('(max-height: 639px)');
   const isCompactLandscape = useMediaQuery(
@@ -111,6 +116,13 @@ function App() {
   const isLargeWidth = useMediaQuery('(min-width: 1024px)');
   const shouldShowMobileTabs = isSmallHeight || !isLargeWidth || isCompactLandscape;
   const showSidebar = !isSmallHeight && !isCompactLandscape;
+
+  useEffect(() => {
+    if (storedTrackCount > 0 && !coverMigrationStartedRef.current) {
+      coverMigrationStartedRef.current = true;
+      void optimizeStoredCovers();
+    }
+  }, [optimizeStoredCovers, storedTrackCount]);
 
   useEffect(() => {
     applyThemeToDocument(themeMode, darkTheme, lightTheme);
@@ -152,11 +164,16 @@ function App() {
     const loadExternalTrack = async () => {
       try {
         const decodedUrl = decodeURIComponent(audioUrl);
-        const response = await fetch(decodedUrl);
+        const externalUrl = new URL(decodedUrl, window.location.href);
+        if (!['http:', 'https:'].includes(externalUrl.protocol)) {
+          throw new Error('Unsupported external audio protocol');
+        }
+
+        const response = await fetch(externalUrl.href);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const blob = await response.blob();
-        const pathname = new URL(decodedUrl).pathname;
+        const pathname = externalUrl.pathname;
         const filename = pathname.split('/').filter(Boolean).pop() || 'audio.mp3';
         const fallbackTitle = filename.replace(/\.[^/.]+$/, '');
 

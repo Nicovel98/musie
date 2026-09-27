@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
+import { useShallow } from 'zustand/react/shallow';
 
 const downsampleAudioData = (source: Uint8Array, targetBars: number) => {
   if (source.length === 0 || targetBars <= 0) return new Uint8Array(0);
@@ -48,7 +49,9 @@ type VizPreset = 'soft' | 'mid' | 'vivid';
 
 export const useVisualizer = (targetBars = 32, preset: VizPreset = 'mid') => {
   // Obtenemos el analizador y el estado de reproducción del Store de Zustand
-  const { analyzer, isPlaying } = usePlayerStore();
+  const { analyzer, isPlaying } = usePlayerStore(
+    useShallow((state) => ({ analyzer: state.analyzer, isPlaying: state.isPlaying }))
+  );
 
   // Guardamos los datos de las frecuencias en un array de bytes (0 a 255)
   const [audioData, setAudioData] = useState<Uint8Array>(new Uint8Array(0));
@@ -94,17 +97,23 @@ export const useVisualizer = (targetBars = 32, preset: VizPreset = 'mid') => {
     let isActive = true;
     let animationFrameId = 0;
 
+    const scheduleUpdate = () => {
+      if (isActive && !document.hidden && animationFrameId === 0) {
+        animationFrameId = requestAnimationFrame(update);
+      }
+    };
+
     const update = () => {
+      animationFrameId = 0;
       if (!isActive) return;
 
-      // Keep visual work bounded on hidden tabs and cap updates to ~30fps.
+      // Avoid keeping an animation loop alive while the page is backgrounded.
+      if (typeof document !== 'undefined' && document.hidden) return;
+
+      // Keep visual work bounded and cap updates to ~20fps.
       const now = performance.now();
-      if (typeof document !== 'undefined' && document.hidden) {
-        animationFrameId = requestAnimationFrame(update);
-        return;
-      }
-      if (now - lastPaintRef.current < 33) {
-        animationFrameId = requestAnimationFrame(update);
+      if (now - lastPaintRef.current < 50) {
+        scheduleUpdate();
         return;
       }
       lastPaintRef.current = now;
@@ -175,16 +184,22 @@ export const useVisualizer = (targetBars = 32, preset: VizPreset = 'mid') => {
         setAudioData(nextFrame);
       }
 
-      // 3. Solicitamos el siguiente frame de animación (aprox. 60fps)
-      animationFrameId = requestAnimationFrame(update);
+      // 3. Solicitamos la siguiente actualización visual (aprox. 20fps)
+      scheduleUpdate();
     };
 
-    animationFrameId = requestAnimationFrame(update);
+    const handleVisibilityChange = () => {
+      if (!document.hidden) scheduleUpdate();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    scheduleUpdate();
 
     // Limpieza al desmontar el componente o pausar
     return () => {
       isActive = false;
       cancelAnimationFrame(animationFrameId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [analyzer, isPlaying, targetBars, preset]);
 

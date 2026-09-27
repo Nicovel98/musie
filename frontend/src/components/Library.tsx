@@ -13,11 +13,20 @@ import {
   X,
   ChevronUp,
   ChevronDown,
+  ImagePlus,
+  LoaderCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { usePlayerStore } from '../store/usePlayerStore';
-import { readTrackDuration } from '../store/trackMetadata';
+import {
+  downloadAutomaticCover,
+  findAutomaticCoverOptions,
+  type AutomaticCoverOption,
+  getYouTubeThumbnail,
+  readTrackDuration,
+} from '../store/trackMetadata';
 import { formatDuration } from '../utils/time';
-import { filterLibraryTracksByMode, sortLibraryTracks } from './libraryHelpers';
+import { filterLibraryTracksByMode, mergeTracksById, sortLibraryTracks } from './libraryHelpers';
 
 interface LibraryProps {
   useThemeAudioColors?: boolean;
@@ -32,6 +41,19 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
   const [pendingRemoveTrackId, setPendingRemoveTrackId] = useState<string | null>(null);
   const [draggedPlaylistTrackId, setDraggedPlaylistTrackId] = useState<string | null>(null);
   const [dropTargetTrackId, setDropTargetTrackId] = useState<string | null>(null);
+  const [coverSearchTrackId, setCoverSearchTrackId] = useState<string | null>(null);
+  const [coverSearchErrorTrackId, setCoverSearchErrorTrackId] = useState<string | null>(null);
+  const [coverOptions, setCoverOptions] = useState<{
+    trackId: string;
+    options: AutomaticCoverOption[];
+  } | null>(null);
+  const [coverChoiceLoading, setCoverChoiceLoading] = useState(false);
+  const [youtubeCover, setYoutubeCover] = useState<{
+    trackId: string;
+    title: string;
+    url: string;
+  } | null>(null);
+  const [youtubeCoverError, setYoutubeCoverError] = useState(false);
   const pendingDurationReadsRef = useRef(new Set<string>());
   const libraryTracks = usePlayerStore((state) => state.libraryTracks);
   const playlistTracks = usePlayerStore((state) => state.playlistTracks);
@@ -77,8 +99,9 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
 
   const playlistTrackIdSet = new Set(playlistTracks.map((track) => track.id));
   const favoriteTrackIdSet = new Set(favoriteTrackIds);
+  const favoriteSourceTracks = mergeTracksById(libraryTracks, playlistTracks);
   const sourceLibraryTracks = filterLibraryTracksByMode(
-    libraryTracks,
+    activeTab === 'favorites' ? favoriteSourceTracks : libraryTracks,
     favoriteTrackIds,
     showFavoritesOnly,
     activeTab
@@ -86,27 +109,40 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
 
   useEffect(() => {
     let isActive = true;
+    const abortController = new AbortController();
     const tracksWithoutDuration = libraryTracks.filter(
       (track) => track.durationSeconds === undefined && (track.fileData || track.audioUrl)
     );
-
-    tracksWithoutDuration.forEach((track) => {
-      if (pendingDurationReadsRef.current.has(track.id)) return;
+    const pendingTracks = tracksWithoutDuration.filter((track) => {
+      if (pendingDurationReadsRef.current.has(track.id)) return false;
 
       pendingDurationReadsRef.current.add(track.id);
-      const source = track.fileData || track.audioUrl;
-      void readTrackDuration(source)
-        .then((durationSeconds) => {
-          if (isActive && durationSeconds !== undefined) {
-            updateTrackMetadata(track.id, { durationSeconds });
-          }
-        })
-        .catch(() => undefined)
-        .finally(() => pendingDurationReadsRef.current.delete(track.id));
+      return true;
     });
+    let nextTrackIndex = 0;
+
+    const readNextDuration = async () => {
+      while (nextTrackIndex < pendingTracks.length) {
+        const track = pendingTracks[nextTrackIndex];
+        nextTrackIndex += 1;
+        const source = track.fileData || track.audioUrl;
+
+        await readTrackDuration(source, abortController.signal)
+          .then((durationSeconds) => {
+            if (isActive && durationSeconds !== undefined) {
+              updateTrackMetadata(track.id, { durationSeconds });
+            }
+          })
+          .catch(() => undefined)
+          .finally(() => pendingDurationReadsRef.current.delete(track.id));
+      }
+    };
+
+    void Promise.all([readNextDuration(), readNextDuration()]);
 
     return () => {
       isActive = false;
+      abortController.abort();
     };
   }, [libraryTracks, updateTrackMetadata]);
 
@@ -150,7 +186,7 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
   };
 
   const handlePlayFavorites = () => {
-    const tracks = libraryTracks.filter((track) => favoriteTrackIdSet.has(track.id));
+    const tracks = favoriteSourceTracks.filter((track) => favoriteTrackIdSet.has(track.id));
     if (tracks.length === 0) return;
 
     clearPlaylist();
@@ -232,8 +268,181 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
     e.target.value = '';
   };
 
+  const handleFindAutomaticCover = async (
+    event: React.MouseEvent<HTMLButtonElement>,
+    track: (typeof libraryTracks)[number]
+  ) => {
+    event.stopPropagation();
+    if (coverSearchTrackId) return;
+
+    setCoverSearchTrackId(track.id);
+    setCoverSearchErrorTrackId(null);
+    try {
+      const options = await findAutomaticCoverOptions(track);
+      if (options.length === 0) throw new Error('Cover not found');
+      setCoverOptions({ trackId: track.id, options });
+    } catch {
+      setCoverSearchErrorTrackId(track.id);
+    } finally {
+      setCoverSearchTrackId(null);
+    }
+  };
+
+  const handleCoverChoice = async (option: AutomaticCoverOption) => {
+    if (!coverOptions) return;
+
+    setCoverChoiceLoading(true);
+    try {
+      const coverUrl = await downloadAutomaticCover(option.imageUrl);
+      if (!coverUrl) throw new Error('Cover download failed');
+      updateTrackMetadata(coverOptions.trackId, { coverUrl });
+      setCoverOptions(null);
+    } catch {
+      setCoverSearchErrorTrackId(coverOptions.trackId);
+    } finally {
+      setCoverChoiceLoading(false);
+    }
+  };
+
+  const openYouTubeCoverSearch = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    track: (typeof libraryTracks)[number]
+  ) => {
+    event.stopPropagation();
+    const query = encodeURIComponent(`${track.artist} ${track.title}`);
+    window.open(`https://www.youtube.com/results?search_query=${query}`, '_blank', 'noopener');
+    setYoutubeCover({ trackId: track.id, title: track.title, url: '' });
+    setYoutubeCoverError(false);
+  };
+
+  const applyYouTubeCover = () => {
+    if (!youtubeCover) return;
+    const coverUrl = getYouTubeThumbnail(youtubeCover.url);
+    if (!coverUrl) {
+      setYoutubeCoverError(true);
+      return;
+    }
+
+    updateTrackMetadata(youtubeCover.trackId, { coverUrl });
+    setYoutubeCover(null);
+    setYoutubeCoverError(false);
+  };
+
   return (
     <div className="flex flex-col h-full animate-view-entry" onClick={clearPendingRemove}>
+      {coverOptions && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-label="Choose cover"
+            className="w-full max-w-2xl rounded-3xl border border-[var(--glass-border)] bg-[var(--bg-main)] p-5 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.25em] text-[var(--text-muted)]">
+                  Deezer
+                </p>
+                <h3 className="text-xl font-black text-[var(--text-main)]">Elige una portada</h3>
+              </div>
+              <button
+                type="button"
+                aria-label="Close cover choices"
+                onClick={() => setCoverOptions(null)}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)]"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+              {coverOptions.options.map((option) => (
+                <button
+                  key={option.imageUrl}
+                  type="button"
+                  disabled={coverChoiceLoading}
+                  onClick={() => void handleCoverChoice(option)}
+                  className="overflow-hidden rounded-2xl border border-[var(--glass-border)] text-left transition hover:border-[var(--accent-primary)] disabled:opacity-50"
+                >
+                  <img
+                    src={option.imageUrl}
+                    alt={`${option.title} - ${option.album}`}
+                    loading="lazy"
+                    className="aspect-square w-full object-cover"
+                  />
+                  <span className="block p-3">
+                    <span className="block truncate text-sm font-bold text-[var(--text-main)]">
+                      {option.album}
+                    </span>
+                    <span className="block truncate text-xs text-[var(--text-muted)]">
+                      {option.source} · {option.artist}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {youtubeCover && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-label="Add YouTube cover"
+            className="w-full max-w-lg rounded-3xl border border-[var(--glass-border)] bg-[var(--bg-main)] p-5 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.25em] text-[var(--text-muted)]">
+                  YouTube
+                </p>
+                <h3 className="text-xl font-black text-[var(--text-main)]">Pegar enlace</h3>
+                <p className="mt-1 text-sm text-[var(--text-muted)]">
+                  Elige un vídeo para “{youtubeCover.title}” y pega su enlace aquí.
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close YouTube cover"
+                onClick={() => setYoutubeCover(null)}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)]"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <input
+              autoFocus
+              value={youtubeCover.url}
+              onChange={(event) => {
+                setYoutubeCover({ ...youtubeCover, url: event.target.value });
+                setYoutubeCoverError(false);
+              }}
+              placeholder="https://www.youtube.com/watch?v=..."
+              aria-label="YouTube URL"
+              className="w-full rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] px-4 py-3 text-sm text-[var(--text-main)] outline-none focus:border-[var(--accent-primary)]"
+            />
+            {youtubeCoverError && (
+              <p className="mt-2 text-sm text-red-400">Pega un enlace válido de YouTube.</p>
+            )}
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setYoutubeCover(null)}
+                className="rounded-full border border-[var(--glass-border)] px-4 py-2 text-xs font-bold text-[var(--text-muted)]"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={applyYouTubeCover}
+                className="rounded-full bg-[var(--accent-primary)] px-4 py-2 text-xs font-black text-[var(--bg-main)]"
+              >
+                Usar portada
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* 1. CABECERA CON GLASSMORPHISM SUTIL */}
       <header className="p-6 md:p-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-gradient-to-b from-[var(--glass-bg)] to-transparent">
         <div className="space-y-4">
@@ -472,7 +681,7 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
                       onClick={() => {
                         handleLibraryTrackPlay(track, isSelected);
                       }}
-                      className={`group grid grid-cols-[32px_minmax(0,1fr)_auto] md:grid-cols-[50px_minmax(0,1fr)_auto] items-center gap-3 md:gap-4 px-3 md:px-4 py-3 rounded-2xl transition-all border border-transparent cursor-pointer ${
+                      className={`library-track-row group grid grid-cols-[32px_minmax(0,1fr)_auto] md:grid-cols-[50px_minmax(0,1fr)_auto] items-center gap-3 md:gap-4 px-3 md:px-4 py-3 rounded-2xl transition-all border border-transparent cursor-pointer ${
                         isSelected
                           ? `${selectedRowClass} border-l-[3px] shadow-[0_8px_24px_color-mix(in_srgb,var(--accent-primary)_10%,transparent)]`
                           : 'hover:bg-[var(--glass-bg)] hover:-translate-y-px'
@@ -559,6 +768,34 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
                       </div>
 
                       <div className="flex items-center justify-end gap-2 md:gap-3">
+                        <button
+                          type="button"
+                          onClick={(event) => handleFindAutomaticCover(event, track)}
+                          aria-label={`Find cover for ${track.title}`}
+                          title={
+                            coverSearchErrorTrackId === track.id
+                              ? 'No cover found'
+                              : 'Find cover automatically'
+                          }
+                          className={`flex h-9 w-9 items-center justify-center rounded-full text-[var(--text-muted)] transition-all hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-primary)] md:opacity-0 md:group-hover:opacity-100 ${
+                            coverSearchErrorTrackId === track.id ? 'text-red-400' : ''
+                          }`}
+                        >
+                          {coverSearchTrackId === track.id ? (
+                            <LoaderCircle size={16} className="animate-spin" />
+                          ) : (
+                            <ImagePlus size={17} />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => openYouTubeCoverSearch(event, track)}
+                          aria-label={`Find YouTube cover for ${track.title}`}
+                          title="Buscar portada en YouTube"
+                          className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--text-muted)] transition-all hover:bg-red-500/10 hover:text-red-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-primary)] md:opacity-0 md:group-hover:opacity-100"
+                        >
+                          <ExternalLink size={17} />
+                        </button>
                         <button
                           onClick={(event) => {
                             event.stopPropagation();
@@ -801,7 +1038,7 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
                         setDraggedPlaylistTrackId(null);
                         setDropTargetTrackId(null);
                       }}
-                      className={`group grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all cursor-grab active:cursor-grabbing ${
+                      className={`library-track-row group grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all cursor-grab active:cursor-grabbing ${
                         isSelected
                           ? selectedRowClass
                           : isDropTarget

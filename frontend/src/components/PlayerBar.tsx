@@ -4,6 +4,7 @@ import { VolumeControl } from './VolumeControl';
 import { PlaybackControls } from './PlaybackControls';
 import { useScrubSeeking } from '../hooks/useScrubSeeking';
 import { formatDuration, getDurationInputMax, getProgressPercent } from '../utils/time';
+import { useShallow } from 'zustand/react/shallow';
 
 interface PlayerBarProps {
   useThemeAudioColors?: boolean;
@@ -23,7 +24,22 @@ export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
     playPreviousTrack,
     playNextTrack,
     toggleTrackFavorite,
-  } = usePlayerStore();
+  } = usePlayerStore(
+    useShallow((state) => ({
+      currentTrack: state.currentTrack,
+      favoriteTrackIds: state.favoriteTrackIds,
+      isPlaying: state.isPlaying,
+      togglePlay: state.togglePlay,
+      seek: state.seek,
+      duration: state.duration,
+      fastSeek: state.fastSeek,
+      volume: state.volume,
+      setVolume: state.setVolume,
+      playPreviousTrack: state.playPreviousTrack,
+      playNextTrack: state.playNextTrack,
+      toggleTrackFavorite: state.toggleTrackFavorite,
+    }))
+  );
 
   const { handleSeekChange, handleScrubStart, handleScrubEnd } = useScrubSeeking({
     isPlaying,
@@ -140,6 +156,8 @@ export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
         <PlaybackControls
           isPlaying={isPlaying}
           onTogglePlay={togglePlay}
+          onPrev={goPrev}
+          onNext={goNext}
           useThemeAudioColors={useThemeAudioColors}
           buttonSizeClass="h-10 w-10 md:h-11 md:w-11"
           playButtonSizeClass="w-10 h-10 md:w-11 md:h-11"

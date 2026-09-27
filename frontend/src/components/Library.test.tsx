@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 
 import { describe, expect, it } from 'vitest';
-import { filterLibraryTracksByMode, sortLibraryTracks } from './libraryHelpers';
+import { filterLibraryTracksByMode, mergeTracksById, sortLibraryTracks } from './libraryHelpers';
 
 describe('Library favorites helpers', () => {
   const tracks = [
@@ -38,5 +38,24 @@ describe('Library favorites helpers', () => {
     const sorted = sortLibraryTracks(tracks, 'recent', ['a', 'b', 'c'], 'favorites');
 
     expect(sorted.map((track) => track.id)).toEqual(['c', 'b', 'a']);
+  });
+
+  it('keeps favorites from playlist sources visible in the favorites view', () => {
+    const playlistOnlyTrack = {
+      id: 'playlist-only',
+      title: 'Playlist Only',
+      artist: 'Artist P',
+      coverUrl: '/cover-p.jpg',
+      audioUrl: '/audio-p.mp3',
+    };
+    const availableTracks = mergeTracksById(tracks, [playlistOnlyTrack]);
+    const filtered = filterLibraryTracksByMode(
+      availableTracks,
+      ['playlist-only'],
+      false,
+      'favorites'
+    );
+
+    expect(filtered.map((track) => track.id)).toEqual(['playlist-only']);
   });
 });

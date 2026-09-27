@@ -1,12 +1,20 @@
+import { lazy, Suspense } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { NowPlaying } from './NowPlaying';
-import { Library } from './Library';
-import { EqualizerView } from './EqualizerView';
-import { VisualizerView } from './VisualizerView';
-import { SettingsView } from './SettingsView';
 import { PlayerBar } from './PlayerBar';
 import { MobileTabs } from './MobileTabs';
+
+const Library = lazy(() => import('./Library').then((module) => ({ default: module.Library })));
+const EqualizerView = lazy(() =>
+  import('./EqualizerView').then((module) => ({ default: module.EqualizerView }))
+);
+const VisualizerView = lazy(() =>
+  import('./VisualizerView').then((module) => ({ default: module.VisualizerView }))
+);
+const SettingsView = lazy(() =>
+  import('./SettingsView').then((module) => ({ default: module.SettingsView }))
+);
 
 type View = 'home' | 'library' | 'equalizer' | 'visualizer' | 'preferences';
 type LibraryTab = 'library' | 'favorites' | 'playlist';
@@ -70,79 +78,87 @@ export const AppShell = ({
         )}
 
         <main className="flex-1 relative overflow-hidden bg-[var(--bg-main)]">
-          <AnimatePresence mode="sync">
-            {currentView === 'home' ? (
-              <motion.div
-                key="now-playing"
-                initial={{ y: '100%' }}
-                animate={{ y: 0 }}
-                exit={{ y: '100%' }}
-                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="absolute inset-0 z-50 bg-[var(--bg-main)] pb-[calc(var(--mobile-tabs-height)+env(safe-area-inset-bottom))] lg:pb-2"
-              >
-                <NowPlaying
-                  setView={setCurrentView}
-                  themeMode={themeMode}
-                  cycleThemeMode={cycleThemeMode}
-                  useThemeAudioColors={themeAffectsAudioUi}
-                />
-              </motion.div>
-            ) : currentView === 'equalizer' ? (
-              <motion.div
-                key="equalizer"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 12 }}
-                transition={{ type: 'spring', damping: 24, stiffness: 180 }}
-                className="h-full overflow-y-auto custom-scrollbar pb-[calc(var(--mobile-tabs-height)+var(--mobile-playerbar-height)+env(safe-area-inset-bottom)+1rem)] lg:pb-1"
-              >
-                <EqualizerView />
-              </motion.div>
-            ) : currentView === 'visualizer' ? (
-              <motion.div
-                key="visualizer"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 12 }}
-                transition={{ type: 'spring', damping: 24, stiffness: 180 }}
-                className="h-full overflow-y-auto custom-scrollbar pb-[calc(var(--mobile-tabs-height)+var(--mobile-playerbar-height)+env(safe-area-inset-bottom)+1rem)] lg:pb-1"
-              >
-                <VisualizerView />
-              </motion.div>
-            ) : currentView === 'preferences' ? (
-              <motion.div
-                key="preferences"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 12 }}
-                transition={{ type: 'spring', damping: 24, stiffness: 180 }}
-                className="h-full overflow-y-auto custom-scrollbar pb-[calc(var(--mobile-tabs-height)+var(--mobile-playerbar-height)+env(safe-area-inset-bottom)+1rem)] lg:pb-1"
-              >
-                <SettingsView
-                  selectedDarkTheme={darkTheme}
-                  selectedLightTheme={lightTheme}
-                  setDarkTheme={selectDarkTheme}
-                  setLightTheme={selectLightTheme}
-                  themeAffectsAudioUi={themeAffectsAudioUi}
-                  setThemeAffectsAudioUi={setThemeAffectsAudioUi}
-                />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="library"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="h-full overflow-y-auto custom-scrollbar pb-[calc(var(--mobile-tabs-height)+var(--mobile-playerbar-height)+env(safe-area-inset-bottom)+1rem)] lg:pb-1"
-              >
-                <Library
-                  useThemeAudioColors={themeAffectsAudioUi}
-                  activeTab={libraryTab}
-                  setActiveTab={setLibraryTab}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <Suspense
+            fallback={
+              <div className="flex h-full items-center justify-center text-sm text-[var(--text-muted)]">
+                Loading view...
+              </div>
+            }
+          >
+            <AnimatePresence mode="sync">
+              {currentView === 'home' ? (
+                <motion.div
+                  key="now-playing"
+                  initial={{ y: '100%' }}
+                  animate={{ y: 0 }}
+                  exit={{ y: '100%' }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                  className="absolute inset-0 z-50 bg-[var(--bg-main)] pb-[calc(var(--mobile-tabs-height)+env(safe-area-inset-bottom))] lg:pb-2"
+                >
+                  <NowPlaying
+                    setView={setCurrentView}
+                    themeMode={themeMode}
+                    cycleThemeMode={cycleThemeMode}
+                    useThemeAudioColors={themeAffectsAudioUi}
+                  />
+                </motion.div>
+              ) : currentView === 'equalizer' ? (
+                <motion.div
+                  key="equalizer"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 12 }}
+                  transition={{ type: 'spring', damping: 24, stiffness: 180 }}
+                  className="h-full overflow-y-auto custom-scrollbar pb-[calc(var(--mobile-tabs-height)+var(--mobile-playerbar-height)+env(safe-area-inset-bottom)+1rem)] lg:pb-1"
+                >
+                  <EqualizerView />
+                </motion.div>
+              ) : currentView === 'visualizer' ? (
+                <motion.div
+                  key="visualizer"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 12 }}
+                  transition={{ type: 'spring', damping: 24, stiffness: 180 }}
+                  className="h-full overflow-y-auto custom-scrollbar pb-[calc(var(--mobile-tabs-height)+var(--mobile-playerbar-height)+env(safe-area-inset-bottom)+1rem)] lg:pb-1"
+                >
+                  <VisualizerView />
+                </motion.div>
+              ) : currentView === 'preferences' ? (
+                <motion.div
+                  key="preferences"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 12 }}
+                  transition={{ type: 'spring', damping: 24, stiffness: 180 }}
+                  className="h-full overflow-y-auto custom-scrollbar pb-[calc(var(--mobile-tabs-height)+var(--mobile-playerbar-height)+env(safe-area-inset-bottom)+1rem)] lg:pb-1"
+                >
+                  <SettingsView
+                    selectedDarkTheme={darkTheme}
+                    selectedLightTheme={lightTheme}
+                    setDarkTheme={selectDarkTheme}
+                    setLightTheme={selectLightTheme}
+                    themeAffectsAudioUi={themeAffectsAudioUi}
+                    setThemeAffectsAudioUi={setThemeAffectsAudioUi}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="library"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="h-full overflow-y-auto custom-scrollbar pb-[calc(var(--mobile-tabs-height)+var(--mobile-playerbar-height)+env(safe-area-inset-bottom)+1rem)] lg:pb-1"
+                >
+                  <Library
+                    useThemeAudioColors={themeAffectsAudioUi}
+                    activeTab={libraryTab}
+                    setActiveTab={setLibraryTab}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </Suspense>
         </main>
       </div>
 

@@ -144,4 +144,52 @@ describe('usePlayerStore favorites', () => {
       state: { favoriteTrackIds: [...favoriteTrackIds, nextTrackId] },
     });
   });
+
+  it('persists a shared audio blob once and restores it to both lists', async () => {
+    const audioFile = new Blob(['audio'], { type: 'audio/mpeg' });
+    const track = {
+      id: 'track-1',
+      title: 'Track 1',
+      artist: 'Artist',
+      coverUrl: '/cover.jpg',
+      audioUrl: '',
+      fileData: audioFile,
+      source: 'local' as const,
+    };
+
+    usePlayerStore.setState({
+      libraryTracks: [track],
+      playlistTracks: [track],
+      lastTrack: track,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const storedValue = await get('musie-pwa-storage');
+    const storedState = (storedValue as { state: Record<string, unknown> }).state;
+    const storedLibrary = storedState.libraryTracks as Record<string, unknown>[];
+    const storedPlaylist = storedState.playlistTracks as Record<string, unknown>[];
+    const storedAudioFiles = storedState.audioFiles as Record<string, Blob>;
+
+    expect(storedLibrary[0]).not.toHaveProperty('fileData');
+    expect(storedPlaylist[0]).not.toHaveProperty('fileData');
+    expect(storedAudioFiles['track-1']).toBeInstanceOf(Blob);
+    expect(storedAudioFiles['track-1']).toMatchObject({
+      size: audioFile.size,
+      type: audioFile.type,
+    });
+
+    usePlayerStore.setState({ libraryTracks: [], playlistTracks: [], lastTrack: null });
+    await set('musie-pwa-storage', storedValue);
+    await usePlayerStore.persist.rehydrate();
+
+    const rehydratedState = usePlayerStore.getState();
+    expect(rehydratedState.libraryTracks[0].fileData).toMatchObject({
+      size: audioFile.size,
+      type: audioFile.type,
+    });
+    expect(rehydratedState.playlistTracks[0].fileData).toMatchObject({
+      size: audioFile.size,
+      type: audioFile.type,
+    });
+  });
 });

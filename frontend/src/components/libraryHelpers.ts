@@ -1,5 +1,8 @@
 import type { Track } from '../types/track';
 
+export const mergeTracksById = (...trackLists: readonly (readonly Track[])[]) =>
+  Array.from(new Map(trackLists.flat().map((track) => [track.id, track])).values());
+
 export const filterLibraryTracksByMode = (
   tracks: readonly Track[],
   favoriteTrackIds: string[],

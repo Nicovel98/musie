@@ -13,11 +13,18 @@ import {
   getEqPreset,
   applyEqBandsToFilters,
 } from './eq';
-import { readTrackMetadata } from './trackMetadata';
+import { optimizeCoverUrl, readTrackMetadata } from './trackMetadata';
+
+const debugAudio = (...args: unknown[]) => {
+  if (import.meta.env.DEV) console.debug(...args);
+};
+
+type PersistedTrack = Omit<Track, 'fileData'>;
 
 interface PersistedPlayerState {
-  libraryTracks: Track[];
-  playlistTracks: Track[];
+  libraryTracks: PersistedTrack[];
+  playlistTracks: PersistedTrack[];
+  audioFiles: Record<string, Blob>;
   favoriteTrackIds: string[];
   volume: number;
   lastTrack: Track | null;
@@ -35,6 +42,24 @@ const customBinaryStorage: PersistStorage<PersistedPlayerState> = {
   setItem: async (name, value) => await set(name, value),
   removeItem: async (name) => await del(name),
 };
+
+const stripTrackFile = (track: Track): PersistedTrack => {
+  const persistedTrack = { ...track };
+  delete persistedTrack.fileData;
+  return persistedTrack;
+};
+
+const collectAudioFiles = (tracks: Track[], audioFiles: Record<string, Blob>) => {
+  tracks.forEach((track) => {
+    if (track.fileData) audioFiles[track.id] = track.fileData;
+  });
+};
+
+const restoreTrackFiles = (tracks: Track[], audioFiles: Record<string, Blob>) =>
+  tracks.map((track) => {
+    const fileData = track.fileData ?? audioFiles[track.id];
+    return fileData ? { ...track, fileData } : track;
+  });
 
 interface PlayerState {
   libraryTracks: Track[];
@@ -62,9 +87,10 @@ interface PlayerState {
   audioCleanup?: (() => void) | null;
   audioWatchdogId?: number | null;
   addSongs: (files: File[]) => Promise<void>;
+  optimizeStoredCovers: () => Promise<void>;
   updateTrackMetadata: (
     trackId: string,
-    metadata: Partial<Pick<Track, 'durationSeconds' | 'lastPlayedAt' | 'playCount'>>
+    metadata: Partial<Pick<Track, 'coverUrl' | 'durationSeconds' | 'lastPlayedAt' | 'playCount'>>
   ) => void;
   clearLibrary: () => void;
   clearPlaylist: () => void;
@@ -130,12 +156,56 @@ const moveArrayItem = <T>(items: T[], fromIndex: number, toIndex: number) => {
   return nextItems;
 };
 
+const mapWithConcurrency = async <T, R>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T) => Promise<R>
+) => {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+
+  const runWorker = async () => {
+    while (nextIndex < items.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      results[index] = await worker(items[index]);
+    }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => runWorker()));
+
+  return results;
+};
+
+const disconnectAudioNode = (node: AudioNode | null) => {
+  try {
+    node?.disconnect();
+  } catch {
+    // Audio nodes may already be disconnected by the browser.
+  }
+};
+
+const mediaSourceNodes = new WeakMap<HTMLAudioElement, MediaElementAudioSourceNode>();
+
 const getTrackSource = (track: Track) => {
   if (track.fileData) {
-    const file = track.fileData as File;
+    const file = track.fileData;
+    const filename = 'name' in file && typeof file.name === 'string' ? file.name : '';
+    const filenameFormat = filename.split('.').pop()?.toLowerCase();
+    const mimeFormat = file.type.split('/')[1]?.split(';')[0].toLowerCase();
+    const normalizedMimeFormat =
+      mimeFormat === 'mpeg'
+        ? 'mp3'
+        : mimeFormat === 'mp4' || mimeFormat === 'x-m4a'
+          ? 'm4a'
+          : mimeFormat === 'x-wav' || mimeFormat === 'wave'
+            ? 'wav'
+            : mimeFormat;
+    const format = filenameFormat || normalizedMimeFormat || undefined;
+
     return {
       src: URL.createObjectURL(file),
-      format: file.name?.split('.').pop()?.toLowerCase() || 'mp3',
+      format,
       isObjectUrl: true,
     };
   }
@@ -180,28 +250,66 @@ export const usePlayerStore = create<PlayerState>()(
       audioWatchdogId: null,
 
       addSongs: async (files) => {
-        const newTracks = await Promise.all(
-          files.map(async (file) => {
-            const metadata = await readTrackMetadata(file);
+        const newTracks = await mapWithConcurrency(files, 2, async (file) => {
+          const metadata = await readTrackMetadata(file);
 
-            return {
-              id: crypto.randomUUID(),
-              title: metadata.title || file.name.replace(/\.[^/.]+$/, ''),
-              artist: metadata.artist || 'Archivo Local',
-              album: metadata.album,
-              albumArtist: metadata.albumArtist,
-              genre: metadata.genre,
-              year: metadata.year,
-              coverUrl: metadata.coverUrl || heroThumbnail,
-              audioUrl: '',
-              fileData: file,
-              durationSeconds: metadata.durationSeconds,
-              addedAt: Date.now(),
-              source: 'local' as const,
-            };
-          })
-        );
+          return {
+            id: crypto.randomUUID(),
+            title: metadata.title || file.name.replace(/\.[^/.]+$/, ''),
+            artist: metadata.artist || 'Archivo Local',
+            album: metadata.album,
+            albumArtist: metadata.albumArtist,
+            genre: metadata.genre,
+            year: metadata.year,
+            coverUrl: metadata.coverUrl || heroThumbnail,
+            audioUrl: '',
+            fileData: file,
+            durationSeconds: metadata.durationSeconds,
+            addedAt: Date.now(),
+            source: 'local' as const,
+          };
+        });
         set((state) => ({ libraryTracks: [...state.libraryTracks, ...newTracks] }));
+      },
+
+      optimizeStoredCovers: async () => {
+        const { libraryTracks, playlistTracks, lastTrack } = get();
+        const tracks = Array.from(
+          new Map(
+            [...libraryTracks, ...playlistTracks, ...(lastTrack ? [lastTrack] : [])].map(
+              (track) => [track.id, track]
+            )
+          ).values()
+        ).filter(
+          (track) => track.coverUrl.startsWith('data:image/') && track.coverUrl.length > 350 * 1024
+        );
+
+        const optimizedTracks = await mapWithConcurrency(tracks, 2, async (track) => ({
+          id: track.id,
+          coverUrl: await optimizeCoverUrl(track.coverUrl),
+        }));
+        const optimizedById = new Map(
+          optimizedTracks
+            .filter(({ coverUrl }, index) => coverUrl.length < tracks[index].coverUrl.length)
+            .map(({ id, coverUrl }) => [id, coverUrl])
+        );
+
+        if (optimizedById.size === 0) return;
+
+        const updateCovers = (tracksToUpdate: Track[]) =>
+          tracksToUpdate.map((track) => {
+            const coverUrl = optimizedById.get(track.id);
+            return coverUrl ? { ...track, coverUrl } : track;
+          });
+
+        set((state) => ({
+          libraryTracks: updateCovers(state.libraryTracks),
+          playlistTracks: updateCovers(state.playlistTracks),
+          currentTrack: state.currentTrack
+            ? updateCovers([state.currentTrack])[0]
+            : state.currentTrack,
+          lastTrack: state.lastTrack ? updateCovers([state.lastTrack])[0] : state.lastTrack,
+        }));
       },
 
       updateTrackMetadata: (trackId, metadata) => {
@@ -242,6 +350,9 @@ export const usePlayerStore = create<PlayerState>()(
               gainNode,
               compressor,
               analyzer,
+              eqInput,
+              eqOutput,
+              eqFilters,
               objectUrl,
               audioCleanup,
               audioWatchdogId,
@@ -276,6 +387,9 @@ export const usePlayerStore = create<PlayerState>()(
               } catch (e) {
                 void e;
               }
+            disconnectAudioNode(eqInput);
+            disconnectAudioNode(eqOutput);
+            eqFilters.forEach(disconnectAudioNode);
             if (objectUrl)
               try {
                 URL.revokeObjectURL(objectUrl);
@@ -306,6 +420,9 @@ export const usePlayerStore = create<PlayerState>()(
           mediaSource: shouldStopPlayback ? null : state.mediaSource,
           gainNode: shouldStopPlayback ? null : state.gainNode,
           compressor: shouldStopPlayback ? null : state.compressor,
+          eqInput: shouldStopPlayback ? null : state.eqInput,
+          eqOutput: shouldStopPlayback ? null : state.eqOutput,
+          eqFilters: shouldStopPlayback ? [] : state.eqFilters,
           objectUrl: shouldStopPlayback ? null : state.objectUrl,
           connectedMediaNode: shouldStopPlayback ? null : state.connectedMediaNode,
           audioCleanup: shouldStopPlayback ? null : state.audioCleanup,
@@ -332,6 +449,9 @@ export const usePlayerStore = create<PlayerState>()(
               gainNode,
               compressor,
               analyzer,
+              eqInput,
+              eqOutput,
+              eqFilters,
               objectUrl,
               audioCleanup,
               audioWatchdogId,
@@ -341,6 +461,9 @@ export const usePlayerStore = create<PlayerState>()(
             gainNode?.disconnect();
             compressor?.disconnect();
             analyzer?.disconnect();
+            disconnectAudioNode(eqInput);
+            disconnectAudioNode(eqOutput);
+            eqFilters.forEach(disconnectAudioNode);
             if (objectUrl) URL.revokeObjectURL(objectUrl);
             if (audioWatchdogId) clearInterval(audioWatchdogId);
           } catch {
@@ -364,6 +487,9 @@ export const usePlayerStore = create<PlayerState>()(
           mediaSource: shouldStopPlayback ? null : state.mediaSource,
           gainNode: shouldStopPlayback ? null : state.gainNode,
           compressor: shouldStopPlayback ? null : state.compressor,
+          eqInput: shouldStopPlayback ? null : state.eqInput,
+          eqOutput: shouldStopPlayback ? null : state.eqOutput,
+          eqFilters: shouldStopPlayback ? [] : state.eqFilters,
           objectUrl: shouldStopPlayback ? null : state.objectUrl,
           connectedMediaNode: shouldStopPlayback ? null : state.connectedMediaNode,
           audioCleanup: shouldStopPlayback ? null : state.audioCleanup,
@@ -439,20 +565,34 @@ export const usePlayerStore = create<PlayerState>()(
 
       setTrack: (track) => {
         // Cleanup existing Howl and audio graph before creating a new one
-        const { howl: oldHowl, objectUrl } = get();
+        const {
+          howl: oldHowl,
+          objectUrl,
+          mediaSource,
+          gainNode,
+          compressor,
+          analyzer,
+          eqInput,
+          eqOutput,
+          eqFilters,
+          audioCleanup,
+          audioWatchdogId,
+        } = get();
         if (oldHowl) oldHowl.unload();
 
         try {
-          const { audioCleanup } = get();
-          if (audioCleanup)
-            try {
-              audioCleanup();
-            } catch (e) {
-              void e;
-            }
+          audioCleanup?.();
         } catch (e) {
           void e;
         }
+        disconnectAudioNode(mediaSource);
+        disconnectAudioNode(gainNode);
+        disconnectAudioNode(compressor);
+        disconnectAudioNode(analyzer);
+        disconnectAudioNode(eqInput);
+        disconnectAudioNode(eqOutput);
+        eqFilters.forEach(disconnectAudioNode);
+        if (audioWatchdogId) clearInterval(audioWatchdogId);
         try {
           if (objectUrl) URL.revokeObjectURL(objectUrl);
         } catch (e) {
@@ -461,6 +601,16 @@ export const usePlayerStore = create<PlayerState>()(
 
         // Clear references
         set({
+          howl: null,
+          isPlaying: false,
+          analyzer: null,
+          mediaSource: null,
+          gainNode: null,
+          compressor: null,
+          eqInput: null,
+          eqOutput: null,
+          eqFilters: [],
+          connectedMediaNode: null,
           objectUrl: null,
           audioCleanup: null,
           audioWatchdogId: null,
@@ -550,19 +700,21 @@ export const usePlayerStore = create<PlayerState>()(
                   });
                 }
 
-                // Crear fuente desde el elemento de audio
-                const mediaSourceNode = ctx.createMediaElementSource(node);
+                // Un elemento HTMLAudioElement solo puede tener una MediaElementSourceNode.
+                const mediaSourceNode =
+                  mediaSourceNodes.get(node) ?? ctx.createMediaElementSource(node);
+                mediaSourceNodes.set(node, mediaSourceNode);
 
                 // Attach lightweight listeners to help diagnose unexpected pauses
                 const onPause = () =>
-                  console.debug('[audio-event] pause', { currentTime: node.currentTime });
+                  debugAudio('[audio-event] pause', { currentTime: node.currentTime });
                 const onEnded = () =>
-                  console.debug('[audio-event] ended', { currentTime: node.currentTime });
+                  debugAudio('[audio-event] ended', { currentTime: node.currentTime });
                 const onStalled = () =>
-                  console.debug('[audio-event] stalled', { currentTime: node.currentTime });
+                  debugAudio('[audio-event] stalled', { currentTime: node.currentTime });
                 const onSuspend = () =>
-                  console.debug('[audio-event] suspend', { currentTime: node.currentTime });
-                const onError = (ev: Event) => console.debug('[audio-event] error', ev);
+                  debugAudio('[audio-event] suspend', { currentTime: node.currentTime });
+                const onError = (ev: Event) => debugAudio('[audio-event] error', ev);
 
                 try {
                   node.addEventListener('pause', onPause);
@@ -657,7 +809,7 @@ export const usePlayerStore = create<PlayerState>()(
                   // @ts-expect-error adding non-standard debug prop to window
                   window.__musie_debug.source = mediaSourceNode;
                   try {
-                    console.debug('[audio-event] onplay - debug refs exposed', {
+                    debugAudio('[audio-event] onplay - debug refs exposed', {
                       currentTime: node?.currentTime,
                       src: activeUrl,
                     });
@@ -674,7 +826,7 @@ export const usePlayerStore = create<PlayerState>()(
                     try {
                       if (Howler.ctx && Howler.ctx.state === 'suspended') {
                         Howler.ctx.resume().catch(() => {});
-                        console.debug('[audio-watchdog] attempted resume');
+                        debugAudio('[audio-watchdog] attempted resume');
                       }
                     } catch (e) {
                       void e;
@@ -688,7 +840,7 @@ export const usePlayerStore = create<PlayerState>()(
                   void e;
                 }
               } catch (err) {
-                console.debug('Audio node already connected or connection failed', err);
+                debugAudio('Audio node already connected or connection failed', err);
               }
             }
           },
@@ -713,6 +865,16 @@ export const usePlayerStore = create<PlayerState>()(
             set({ isPlaying: false, seek: 0, audioWatchdogId: null });
             get().playNextTrack();
           },
+          onloaderror: (_id, error) => {
+            if (get().howl !== newHowl) return;
+            debugAudio('[audio-event] load error', { trackId: track.id, error });
+            set({ isPlaying: false, duration: 0 });
+          },
+          onplayerror: (_id, error) => {
+            if (get().howl !== newHowl) return;
+            debugAudio('[audio-event] play error', { trackId: track.id, error });
+            set({ isPlaying: false });
+          },
           onload: function () {
             if (get().howl !== newHowl) return;
             const duration = newHowl.duration();
@@ -723,8 +885,9 @@ export const usePlayerStore = create<PlayerState>()(
           },
         });
 
-        newHowl.play();
         set({ currentTrack: track, lastTrack: track, howl: newHowl, isPlaying: true });
+        if (Howler.ctx?.state === 'suspended') void Howler.ctx.resume();
+        newHowl.play();
       },
 
       playPreviousTrack: () => {
@@ -813,11 +976,11 @@ export const usePlayerStore = create<PlayerState>()(
               set({ seek: nextSeek });
               return;
             } catch (err) {
-              console.debug('fastSeek failed, falling back to howl.seek()', err);
+              debugAudio('fastSeek failed, falling back to howl.seek()', err);
             }
           }
         } catch (err) {
-          console.debug('error accessing audio node for fastSeek', err);
+          debugAudio('error accessing audio node for fastSeek', err);
         }
 
         // Fallback
@@ -825,7 +988,7 @@ export const usePlayerStore = create<PlayerState>()(
           howl.seek(nextSeek);
           set({ seek: nextSeek });
         } catch (err) {
-          console.debug('howl.seek failed in fastSeek', err);
+          debugAudio('howl.seek failed in fastSeek', err);
         }
       },
 
@@ -882,13 +1045,20 @@ export const usePlayerStore = create<PlayerState>()(
     {
       name: 'musie-pwa-storage',
       storage: customBinaryStorage,
-      version: 4,
+      version: 5,
       migrate: (persistedState) => {
-        const state = persistedState as Partial<
-          PersistedPlayerState & { songs?: Track[]; favoriteTrackIds?: string[] }
-        >;
+        const state = persistedState as Partial<PersistedPlayerState> & {
+          libraryTracks?: Track[];
+          playlistTracks?: Track[];
+          songs?: Track[];
+          lastTrack?: Track | null;
+        };
         const libraryTracks = (state.libraryTracks ?? state.songs ?? []).map(normalizeTrack);
         const playlistTracks = (state.playlistTracks ?? state.songs ?? []).map(normalizeTrack);
+        const audioFiles = { ...(state.audioFiles ?? {}) };
+        collectAudioFiles(libraryTracks, audioFiles);
+        collectAudioFiles(playlistTracks, audioFiles);
+        if (state.lastTrack) collectAudioFiles([state.lastTrack], audioFiles);
 
         const nextEqBands = (state.eqBands?.length ? state.eqBands : DEFAULT_EQ_BANDS).map(
           (band, index) => ({
@@ -898,22 +1068,55 @@ export const usePlayerStore = create<PlayerState>()(
         );
 
         return {
-          libraryTracks,
-          playlistTracks,
+          libraryTracks: libraryTracks.map(stripTrackFile),
+          playlistTracks: playlistTracks.map(stripTrackFile),
+          audioFiles,
           favoriteTrackIds: state.favoriteTrackIds ?? [],
           volume: state.volume ?? 0.5,
-          lastTrack: state.lastTrack ? normalizeTrack(state.lastTrack) : null,
+          lastTrack: state.lastTrack ? stripTrackFile(normalizeTrack(state.lastTrack)) : null,
           eqBands: nextEqBands,
           eqPreset: state.eqPreset ?? DEFAULT_EQ_PRESET,
           eqEnabled: state.eqEnabled ?? true,
         };
       },
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as PersistedPlayerState & {
+          libraryTracks?: Track[];
+          playlistTracks?: Track[];
+          lastTrack?: Track | null;
+        };
+        const audioFiles = { ...(persisted.audioFiles ?? {}) };
+        const libraryTracks = persisted.libraryTracks ?? [];
+        const playlistTracks = persisted.playlistTracks ?? [];
+        collectAudioFiles(libraryTracks, audioFiles);
+        collectAudioFiles(playlistTracks, audioFiles);
+        if (persisted.lastTrack) collectAudioFiles([persisted.lastTrack], audioFiles);
+        const { audioFiles: ignoredAudioFiles, ...persistedWithoutAudioFiles } = persisted;
+        void ignoredAudioFiles;
+
+        return {
+          ...currentState,
+          ...persistedWithoutAudioFiles,
+          libraryTracks: restoreTrackFiles(libraryTracks, audioFiles),
+          playlistTracks: restoreTrackFiles(playlistTracks, audioFiles),
+          lastTrack: persisted.lastTrack
+            ? restoreTrackFiles([persisted.lastTrack], audioFiles)[0]
+            : null,
+        };
+      },
       partialize: (state): PersistedPlayerState => ({
-        libraryTracks: state.libraryTracks,
-        playlistTracks: state.playlistTracks,
+        libraryTracks: state.libraryTracks.map(stripTrackFile),
+        playlistTracks: state.playlistTracks.map(stripTrackFile),
+        audioFiles: (() => {
+          const audioFiles: Record<string, Blob> = {};
+          collectAudioFiles(state.libraryTracks, audioFiles);
+          collectAudioFiles(state.playlistTracks, audioFiles);
+          if (state.lastTrack) collectAudioFiles([state.lastTrack], audioFiles);
+          return audioFiles;
+        })(),
         favoriteTrackIds: state.favoriteTrackIds,
         volume: state.volume,
-        lastTrack: state.lastTrack,
+        lastTrack: state.lastTrack ? stripTrackFile(state.lastTrack) : null,
         eqBands: state.eqBands,
         eqPreset: state.eqPreset,
         eqEnabled: state.eqEnabled,
