@@ -23,6 +23,10 @@ export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
     setVolume,
     playPreviousTrack,
     playNextTrack,
+    shuffleEnabled,
+    repeatMode,
+    toggleShuffle,
+    cycleRepeatMode,
     toggleTrackFavorite,
   } = usePlayerStore(
     useShallow((state) => ({
@@ -37,6 +41,10 @@ export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
       setVolume: state.setVolume,
       playPreviousTrack: state.playPreviousTrack,
       playNextTrack: state.playNextTrack,
+      shuffleEnabled: state.shuffleEnabled,
+      repeatMode: state.repeatMode,
+      toggleShuffle: state.toggleShuffle,
+      cycleRepeatMode: state.cycleRepeatMode,
       toggleTrackFavorite: state.toggleTrackFavorite,
     }))
   );
@@ -110,6 +118,10 @@ export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
           onTogglePlay={togglePlay}
           onPrev={goPrev}
           onNext={goNext}
+          shuffleEnabled={shuffleEnabled}
+          onToggleShuffle={toggleShuffle}
+          repeatMode={repeatMode}
+          onCycleRepeat={cycleRepeatMode}
           useThemeAudioColors={useThemeAudioColors}
           buttonSizeClass="h-8 w-8"
           playButtonSizeClass="w-9 h-9"
@@ -158,6 +170,10 @@ export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
           onTogglePlay={togglePlay}
           onPrev={goPrev}
           onNext={goNext}
+          shuffleEnabled={shuffleEnabled}
+          onToggleShuffle={toggleShuffle}
+          repeatMode={repeatMode}
+          onCycleRepeat={cycleRepeatMode}
           useThemeAudioColors={useThemeAudioColors}
           buttonSizeClass="h-10 w-10 md:h-11 md:w-11"
           playButtonSizeClass="w-10 h-10 md:w-11 md:h-11"

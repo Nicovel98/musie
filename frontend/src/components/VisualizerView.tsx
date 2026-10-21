@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Activity } from 'lucide-react';
 import { useVisualizer } from '../hooks/useVisualizer';
 import { VisualizerPresetSelector } from './VisualizerPresetSelector';
@@ -7,7 +7,22 @@ import { usePlayerStore } from '../store/usePlayerStore';
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 export const VisualizerView = () => {
-  const [preset, setPreset] = useState<'soft' | 'mid' | 'vivid'>('mid');
+  const [preset, setPreset] = useState<'soft' | 'mid' | 'vivid'>(() => {
+    try {
+      const stored = localStorage.getItem('visualizerPreset');
+      if (stored === 'soft' || stored === 'mid' || stored === 'vivid') return stored;
+    } catch {
+      // Ignore unavailable browser storage.
+    }
+    return 'mid';
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem('visualizerPreset', preset);
+    } catch {
+      // Ignore unavailable browser storage.
+    }
+  }, [preset]);
   const audioData = useVisualizer(20, preset);
   const eqEnabled = usePlayerStore((state) => state.eqEnabled);
   const eqPreset = usePlayerStore((state) => state.eqPreset);

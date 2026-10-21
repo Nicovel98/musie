@@ -30,6 +30,7 @@ export const SidebarSection = ({ title, items, isExpanded, isDarkMode }: Sidebar
             key={item.label}
             onClick={item.onClick}
             title={!isExpanded ? item.label : undefined}
+            aria-current={item.isActive ? 'page' : undefined}
             className={`flex items-center h-9 rounded-lg cursor-pointer group/item transition-all overflow-hidden border
             ${
               item.isActive

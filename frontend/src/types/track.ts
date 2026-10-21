@@ -1,3 +1,5 @@
+import type { LyricsDocument } from './lyrics';
+
 export interface Track {
   id: string;
   title: string;
@@ -14,4 +16,5 @@ export interface Track {
   lastPlayedAt?: number;
   playCount?: number;
   source?: 'local' | 'remote' | 'external';
+  lyrics?: LyricsDocument;
 }

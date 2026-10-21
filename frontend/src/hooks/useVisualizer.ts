@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { useShallow } from 'zustand/react/shallow';
+import { useMediaQuery } from './useMediaQuery';
 
 const downsampleAudioData = (source: Uint8Array, targetBars: number) => {
   if (source.length === 0 || targetBars <= 0) return new Uint8Array(0);
@@ -52,6 +53,7 @@ export const useVisualizer = (targetBars = 32, preset: VizPreset = 'mid') => {
   const { analyzer, isPlaying } = usePlayerStore(
     useShallow((state) => ({ analyzer: state.analyzer, isPlaying: state.isPlaying }))
   );
+  const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
 
   // Guardamos los datos de las frecuencias en un array de bytes (0 a 255)
   const [audioData, setAudioData] = useState<Uint8Array>(new Uint8Array(0));
@@ -110,9 +112,10 @@ export const useVisualizer = (targetBars = 32, preset: VizPreset = 'mid') => {
       // Avoid keeping an animation loop alive while the page is backgrounded.
       if (typeof document !== 'undefined' && document.hidden) return;
 
-      // Keep visual work bounded and cap updates to ~20fps.
+      // Keep visual work bounded; reduced-motion devices use a lighter 10fps cadence.
       const now = performance.now();
-      if (now - lastPaintRef.current < 50) {
+      const minimumFrameInterval = prefersReducedMotion ? 100 : 50;
+      if (now - lastPaintRef.current < minimumFrameInterval) {
         scheduleUpdate();
         return;
       }
@@ -201,7 +204,7 @@ export const useVisualizer = (targetBars = 32, preset: VizPreset = 'mid') => {
       cancelAnimationFrame(animationFrameId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [analyzer, isPlaying, targetBars, preset]);
+  }, [analyzer, isPlaying, prefersReducedMotion, targetBars, preset]);
 
   return audioData;
 };

@@ -1,10 +1,15 @@
-import { Play, Pause, SkipBack, SkipForward, Repeat, Shuffle } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Repeat, Repeat1, Shuffle } from 'lucide-react';
+import type { RepeatMode } from '../store/usePlayerStore';
 
 interface PlaybackControlsProps {
   isPlaying: boolean;
   onTogglePlay: () => void;
   onPrev?: () => void;
   onNext?: () => void;
+  shuffleEnabled?: boolean;
+  onToggleShuffle?: () => void;
+  repeatMode?: RepeatMode;
+  onCycleRepeat?: () => void;
   buttonSizeClass: string;
   playButtonSizeClass: string;
   iconSize: number;
@@ -21,6 +26,10 @@ export const PlaybackControls = ({
   onTogglePlay,
   onPrev,
   onNext,
+  shuffleEnabled = false,
+  onToggleShuffle,
+  repeatMode = 'off',
+  onCycleRepeat,
   buttonSizeClass,
   playButtonSizeClass,
   iconSize,
@@ -47,9 +56,10 @@ export const PlaybackControls = ({
     <div className={`flex items-center gap-1 ${className}`.trim()}>
       <button
         type="button"
-        disabled
-        aria-label="Shuffle unavailable"
-        className={`flex items-center justify-center ${buttonSizeClass} rounded-full ${mutedControlClassName}`}
+        aria-label={shuffleEnabled ? 'Disable shuffle' : 'Enable shuffle'}
+        aria-pressed={shuffleEnabled}
+        onClick={onToggleShuffle}
+        className={`flex items-center justify-center ${buttonSizeClass} rounded-full ${shuffleEnabled ? 'text-[var(--accent-primary)] bg-[var(--accent-primary)]/12' : mutedControlClassName}`}
       >
         <Shuffle size={iconSize} />
       </button>
@@ -87,11 +97,25 @@ export const PlaybackControls = ({
 
       <button
         type="button"
-        disabled
-        aria-label="Repeat unavailable"
-        className={`flex items-center justify-center ${buttonSizeClass} rounded-full ${mutedControlClassName}`}
+        aria-label={
+          repeatMode === 'one'
+            ? 'Repeat once enabled'
+            : repeatMode === 'all'
+              ? 'Repeat all enabled'
+              : 'Enable repeat'
+        }
+        aria-pressed={repeatMode !== 'off'}
+        onClick={onCycleRepeat}
+        title={
+          repeatMode === 'one' ? 'Repeat once' : repeatMode === 'all' ? 'Repeat all' : 'Repeat off'
+        }
+        className={`flex items-center justify-center ${buttonSizeClass} rounded-full ${
+          repeatMode !== 'off'
+            ? 'text-[var(--accent-primary)] bg-[var(--accent-primary)]/12'
+            : mutedControlClassName
+        }`}
       >
-        <Repeat size={iconSize} />
+        {repeatMode === 'one' ? <Repeat1 size={iconSize} /> : <Repeat size={iconSize} />}
       </button>
     </div>
   );

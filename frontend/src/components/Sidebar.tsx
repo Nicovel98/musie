@@ -4,6 +4,7 @@ import {
   Library,
   Disc,
   ListMusic,
+  FileText,
   Heart,
   SlidersHorizontal,
   Activity,
@@ -11,11 +12,11 @@ import {
   Pin,
   type LucideIcon,
 } from 'lucide-react';
+import type { View } from '../types/navigation';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { SidebarSection as SidebarSectionView } from './SidebarSection';
 import { SidebarFooter } from './SidebarFooter';
 
-type View = 'home' | 'library' | 'equalizer' | 'visualizer' | 'preferences';
 type LibraryTab = 'library' | 'favorites' | 'playlist';
 type ThemeMode = 'dark' | 'light';
 
@@ -93,11 +94,17 @@ export const Sidebar = ({
       isActive: currentView === 'library' && libraryTab === 'favorites',
       badge: favoriteTrackCount > 0 ? favoriteTrackCount : undefined,
     },
+    {
+      icon: FileText,
+      label: 'Lyrics',
+      onClick: () => setView('lyrics'),
+      isActive: currentView === 'lyrics',
+    },
   ];
 
   const sections: SidebarSectionData[] = [
     {
-      title: 'Space',
+      title: 'Colección',
       items: [
         {
           icon: Disc,
@@ -114,7 +121,7 @@ export const Sidebar = ({
       ],
     },
     {
-      title: 'Config',
+      title: 'Herramientas',
       items: [
         {
           icon: SlidersHorizontal,
@@ -128,6 +135,11 @@ export const Sidebar = ({
           onClick: () => setView('visualizer'),
           isActive: currentView === 'visualizer',
         },
+      ],
+    },
+    {
+      title: 'Configuración',
+      items: [
         {
           icon: Settings,
           label: 'Preferences',
@@ -181,14 +193,23 @@ export const Sidebar = ({
 
       {/* 2. NAVEGACIÓN PRINCIPAL */}
       <nav className="flex-1 flex flex-col min-h-0 overflow-hidden pt-2 px-3">
-        <ul className="space-y-1 shrink-0">
-          {mainItems.map((item) => {
-            return (
-              <li
-                key={item.label}
-                onClick={item.onClick}
-                title={!isExpanded ? item.label : undefined}
-                className={`group/nav flex items-center h-11 rounded-xl cursor-pointer transition-all duration-300 overflow-hidden border
+        <section className="space-y-2">
+          <p
+            className={`px-3.5 text-[8px] uppercase tracking-[0.3em] font-black transition-opacity duration-500
+            ${isDarkMode ? 'text-[color-mix(in_srgb,var(--text-muted)_72%,transparent)]' : 'text-[color-mix(in_srgb,var(--text-muted)_80%,transparent)]'}
+            ${isExpanded ? 'opacity-100' : 'opacity-0'}`}
+          >
+            Principal
+          </p>
+          <ul className="space-y-1 shrink-0">
+            {mainItems.map((item) => {
+              return (
+                <li
+                  key={item.label}
+                  onClick={item.onClick}
+                  title={!isExpanded ? item.label : undefined}
+                  aria-current={item.isActive ? 'page' : undefined}
+                  className={`group/nav flex items-center h-11 rounded-xl cursor-pointer transition-all duration-300 overflow-hidden border
                   ${
                     item.isActive
                       ? isDarkMode
@@ -198,31 +219,32 @@ export const Sidebar = ({
                         ? 'text-[var(--text-muted)] border-transparent hover:bg-white/5 hover:text-[var(--text-main)]'
                         : 'text-[var(--text-muted)] border-transparent hover:bg-black/5 hover:text-[var(--text-main)]'
                   }`}
-              >
-                <div className="flex items-center justify-between gap-3 px-3.5 min-w-[200px]">
-                  <div className="flex items-center gap-4 min-w-0">
-                    <item.icon
-                      size={22}
-                      className={`shrink-0 transition-colors ${item.isActive ? 'text-[var(--accent-primary)]' : 'group-hover/nav:text-[var(--accent-secondary)]'}`}
-                    />
-                    <span
-                      className={`font-black text-base tracking-tight whitespace-nowrap transition-all duration-700
+                >
+                  <div className="flex items-center justify-between gap-3 px-3.5 min-w-[200px]">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <item.icon
+                        size={22}
+                        className={`shrink-0 transition-colors ${item.isActive ? 'text-[var(--accent-primary)]' : 'group-hover/nav:text-[var(--accent-secondary)]'}`}
+                      />
+                      <span
+                        className={`font-black text-base tracking-tight whitespace-nowrap transition-all duration-700
                       ${isExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'}`}
-                    >
-                      {item.label}
-                    </span>
-                  </div>
+                      >
+                        {item.label}
+                      </span>
+                    </div>
 
-                  {item.badge && isExpanded && (
-                    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[var(--accent-primary)] px-1.5 py-0.5 text-[10px] font-black text-[var(--bg-main)] shadow-md">
-                      {item.badge}
-                    </span>
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                    {item.badge && isExpanded && (
+                      <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[var(--accent-primary)] px-1.5 py-0.5 text-[10px] font-black text-[var(--bg-main)] shadow-md">
+                        {item.badge}
+                      </span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
 
         <div className="my-4 h-px bg-[var(--glass-border)]" />
 

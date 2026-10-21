@@ -4,6 +4,8 @@ import { Sidebar } from './Sidebar';
 import { NowPlaying } from './NowPlaying';
 import { PlayerBar } from './PlayerBar';
 import { MobileTabs } from './MobileTabs';
+import { LyricsView } from './LyricsView';
+import type { View } from '../types/navigation';
 
 const Library = lazy(() => import('./Library').then((module) => ({ default: module.Library })));
 const EqualizerView = lazy(() =>
@@ -16,7 +18,6 @@ const SettingsView = lazy(() =>
   import('./SettingsView').then((module) => ({ default: module.SettingsView }))
 );
 
-type View = 'home' | 'library' | 'equalizer' | 'visualizer' | 'preferences';
 type LibraryTab = 'library' | 'favorites' | 'playlist';
 type ThemeMode = 'dark' | 'light';
 type DarkTheme = 'quantum' | 'classic';
@@ -85,7 +86,7 @@ export const AppShell = ({
               </div>
             }
           >
-            <AnimatePresence mode="sync">
+            <AnimatePresence mode="wait">
               {currentView === 'home' ? (
                 <motion.div
                   key="now-playing"
@@ -101,6 +102,17 @@ export const AppShell = ({
                     cycleThemeMode={cycleThemeMode}
                     useThemeAudioColors={themeAffectsAudioUi}
                   />
+                </motion.div>
+              ) : currentView === 'lyrics' ? (
+                <motion.div
+                  key="lyrics"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 12 }}
+                  transition={{ type: 'spring', damping: 24, stiffness: 180 }}
+                  className="h-full overflow-y-auto custom-scrollbar pb-[calc(var(--mobile-tabs-height)+var(--mobile-playerbar-height)+env(safe-area-inset-bottom)+1rem)] lg:pb-1"
+                >
+                  <LyricsView />
                 </motion.div>
               ) : currentView === 'equalizer' ? (
                 <motion.div

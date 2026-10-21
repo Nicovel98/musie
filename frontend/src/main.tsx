@@ -6,14 +6,18 @@ import './index.css';
 // 1. Importamos la función de registro del plugin de PWA
 import { registerSW } from 'virtual:pwa-register';
 
-// 2. Registramos el Service Worker para que la app funcione Offline y sea instalable
-// Esto es vital para que aparezca el botón "Instalar App" en Chrome/Safari
-registerSW({
+const updateSW = registerSW({
   immediate: true,
   onNeedRefresh() {
-    // Opcional: Aquí podrías mostrar un aviso de "Nueva versión disponible"
+    void updateSW();
   },
   onOfflineReady() {},
+});
+
+void navigator.storage?.persist?.().catch((error: unknown) => {
+  if (import.meta.env.DEV) {
+    console.debug('[storage] persistent storage request failed', error);
+  }
 });
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

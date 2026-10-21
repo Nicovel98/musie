@@ -1,8 +1,9 @@
 import { Activity, Home, Library, SlidersHorizontal, Settings } from 'lucide-react';
+import type { View } from '../types/navigation';
 
 interface MobileTabsProps {
-  currentView: 'home' | 'library' | 'equalizer' | 'visualizer' | 'preferences';
-  setView: (view: 'home' | 'library' | 'equalizer' | 'visualizer' | 'preferences') => void;
+  currentView: View;
+  setView: (view: View) => void;
 }
 
 export const MobileTabs = ({ currentView, setView }: MobileTabsProps) => {

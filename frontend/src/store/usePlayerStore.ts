@@ -3,6 +3,7 @@ import { persist, type PersistStorage, type StorageValue } from 'zustand/middlew
 import { get, set, del } from 'idb-keyval';
 import { Howl, Howler } from 'howler';
 import type { Track } from '../types/track';
+import type { AlbumCollection } from '../types/album';
 import heroThumbnail from '../assets/hero.png';
 import {
   DEFAULT_EQ_BANDS,
@@ -31,15 +32,96 @@ interface PersistedPlayerState {
   eqBands: EqBand[];
   eqPreset: EqPresetName;
   eqEnabled: boolean;
+  shuffleEnabled: boolean;
+  repeatMode: RepeatMode;
+  albums: AlbumCollection[];
 }
 
 interface HowlInternal extends Howl {
   _sounds: { _node: HTMLAudioElement }[];
 }
 
+let pendingStorageWrite = Promise.resolve();
+let storageWriteActive = false;
+const MAX_PERSISTED_COVER_LENGTH = 350 * 1024;
+
+const isQuotaError = (error: unknown) => {
+  if (error instanceof DOMException && error.name === 'QuotaExceededError') return true;
+  return error instanceof Error && /quota|storage|space/i.test(error.message);
+};
+
+const optimizePersistedCovers = async (value: StorageValue<PersistedPlayerState>) => {
+  const state = value.state;
+  const tracks = [...state.libraryTracks, ...state.playlistTracks];
+  const covers = new Map<string, string>();
+
+  for (const track of tracks) {
+    if (
+      !track.coverUrl.startsWith('data:image/') ||
+      track.coverUrl.length <= MAX_PERSISTED_COVER_LENGTH
+    ) {
+      continue;
+    }
+
+    covers.set(track.id, await optimizeCoverUrl(track.coverUrl));
+  }
+
+  const updateTracks = (items: PersistedTrack[]) =>
+    items.map((track) => {
+      const optimizedCover = covers.get(track.id);
+      if (!optimizedCover || optimizedCover.length < track.coverUrl.length) {
+        return optimizedCover ? { ...track, coverUrl: optimizedCover } : track;
+      }
+
+      return { ...track, coverUrl: heroThumbnail };
+    });
+
+  return {
+    ...value,
+    state: {
+      ...state,
+      libraryTracks: updateTracks(state.libraryTracks),
+      playlistTracks: updateTracks(state.playlistTracks),
+      lastTrack: state.lastTrack ? updateTracks([state.lastTrack])[0] : state.lastTrack,
+    },
+  };
+};
+
+const persistWithRecovery = async (name: string, value: StorageValue<PersistedPlayerState>) => {
+  try {
+    await set(name, value);
+  } catch (error) {
+    if (!isQuotaError(error)) throw error;
+
+    const recoveredValue = await optimizePersistedCovers(value);
+    await set(name, recoveredValue);
+  }
+};
+
 const customBinaryStorage: PersistStorage<PersistedPlayerState> = {
-  getItem: async (name) => (await get<StorageValue<PersistedPlayerState>>(name)) || null,
-  setItem: async (name, value) => await set(name, value),
+  getItem: async (name) => {
+    await pendingStorageWrite;
+    return (await get<StorageValue<PersistedPlayerState>>(name)) || null;
+  },
+  setItem: async (name, value) => {
+    const write = storageWriteActive
+      ? pendingStorageWrite.catch(() => undefined).then(() => persistWithRecovery(name, value))
+      : persistWithRecovery(name, value);
+    storageWriteActive = true;
+    pendingStorageWrite = write.then(
+      () => {
+        storageWriteActive = false;
+      },
+      (error) => {
+        storageWriteActive = false;
+        console.error('[storage] failed to persist player state', error);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('musie-storage-error'));
+        }
+      }
+    );
+    return write;
+  },
   removeItem: async (name) => await del(name),
 };
 
@@ -82,6 +164,9 @@ interface PlayerState {
   eqBands: EqBand[];
   eqPreset: EqPresetName;
   eqEnabled: boolean;
+  shuffleEnabled: boolean;
+  repeatMode: RepeatMode;
+  albums: AlbumCollection[];
   objectUrl: string | null;
   connectedMediaNode: HTMLAudioElement | null;
   audioCleanup?: (() => void) | null;
@@ -90,7 +175,9 @@ interface PlayerState {
   optimizeStoredCovers: () => Promise<void>;
   updateTrackMetadata: (
     trackId: string,
-    metadata: Partial<Pick<Track, 'coverUrl' | 'durationSeconds' | 'lastPlayedAt' | 'playCount'>>
+    metadata: Partial<
+      Pick<Track, 'coverUrl' | 'durationSeconds' | 'lastPlayedAt' | 'playCount' | 'lyrics'>
+    >
   ) => void;
   clearLibrary: () => void;
   clearPlaylist: () => void;
@@ -104,6 +191,11 @@ interface PlayerState {
   setTrack: (track: Track) => void;
   playPreviousTrack: () => void;
   playNextTrack: () => void;
+  toggleShuffle: () => void;
+  cycleRepeatMode: () => void;
+  createAlbum: (album: Omit<AlbumCollection, 'id' | 'createdAt'>) => void;
+  updateAlbum: (albumId: string, album: Partial<Omit<AlbumCollection, 'id'>>) => void;
+  deleteAlbum: (albumId: string) => void;
   togglePlay: () => void;
   setVolume: (val: number) => void;
   setSeek: (val: number) => void;
@@ -115,6 +207,11 @@ interface PlayerState {
   resetEq: () => void;
 }
 
+export type RepeatMode = 'off' | 'all' | 'one';
+
+const normalizeRepeatMode = (value: unknown): RepeatMode =>
+  value === 'all' || value === 'one' ? value : 'off';
+
 const clampSeekValue = (val: number, duration: number) => {
   if (!Number.isFinite(val)) return 0;
   if (!Number.isFinite(duration) || duration <= 0) return Math.max(0, val);
@@ -123,6 +220,22 @@ const clampSeekValue = (val: number, duration: number) => {
 
 const getTrackIndex = (songs: Track[], currentTrack: Track | null) =>
   currentTrack ? songs.findIndex((song) => song.id === currentTrack.id) : -1;
+
+const getNextTrackIndex = (
+  tracks: Track[],
+  currentIndex: number,
+  shuffleEnabled: boolean,
+  repeatMode: RepeatMode
+) => {
+  if (shuffleEnabled && tracks.length > 1) {
+    const candidates = tracks.map((_, index) => index).filter((index) => index !== currentIndex);
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
+
+  const nextIndex = currentIndex + 1;
+  if (nextIndex < tracks.length) return nextIndex;
+  return repeatMode === 'all' ? 0 : -1;
+};
 
 const normalizeTrack = (track: Track): Track => ({
   ...track,
@@ -244,6 +357,9 @@ export const usePlayerStore = create<PlayerState>()(
       eqBands: DEFAULT_EQ_BANDS,
       eqPreset: DEFAULT_EQ_PRESET,
       eqEnabled: true,
+      shuffleEnabled: false,
+      repeatMode: 'off' as RepeatMode,
+      albums: [],
       objectUrl: null,
       connectedMediaNode: null,
       audioCleanup: null,
@@ -252,6 +368,7 @@ export const usePlayerStore = create<PlayerState>()(
       addSongs: async (files) => {
         const newTracks = await mapWithConcurrency(files, 2, async (file) => {
           const metadata = await readTrackMetadata(file);
+          const coverUrl = await optimizeCoverUrl(metadata.coverUrl || heroThumbnail);
 
           return {
             id: crypto.randomUUID(),
@@ -261,7 +378,7 @@ export const usePlayerStore = create<PlayerState>()(
             albumArtist: metadata.albumArtist,
             genre: metadata.genre,
             year: metadata.year,
-            coverUrl: metadata.coverUrl || heroThumbnail,
+            coverUrl,
             audioUrl: '',
             fileData: file,
             durationSeconds: metadata.durationSeconds,
@@ -409,6 +526,7 @@ export const usePlayerStore = create<PlayerState>()(
 
         set((state) => ({
           libraryTracks: [],
+          albums: [],
           favoriteTrackIds: state.favoriteTrackIds.filter((favoriteTrackId) =>
             state.playlistTracks.some((track) => track.id === favoriteTrackId)
           ),
@@ -862,6 +980,11 @@ export const usePlayerStore = create<PlayerState>()(
             } catch (e) {
               void e;
             }
+            if (get().repeatMode === 'one') {
+              set({ isPlaying: false, seek: 0, audioWatchdogId: null });
+              get().setTrack(track);
+              return;
+            }
             set({ isPlaying: false, seek: 0, audioWatchdogId: null });
             get().playNextTrack();
           },
@@ -885,7 +1008,13 @@ export const usePlayerStore = create<PlayerState>()(
           },
         });
 
-        set({ currentTrack: track, lastTrack: track, howl: newHowl, isPlaying: true });
+        set({
+          currentTrack: track,
+          lastTrack: track,
+          howl: newHowl,
+          isPlaying: true,
+          objectUrl: trackSource.isObjectUrl ? activeUrl : null,
+        });
         if (Howler.ctx?.state === 'suspended') void Howler.ctx.resume();
         newHowl.play();
       },
@@ -907,7 +1036,7 @@ export const usePlayerStore = create<PlayerState>()(
       },
 
       playNextTrack: () => {
-        const { libraryTracks, playlistTracks, currentTrack } = get();
+        const { libraryTracks, playlistTracks, currentTrack, shuffleEnabled, repeatMode } = get();
         const activeTracks = getTrackListByPlaybackContext({
           libraryTracks,
           playlistTracks,
@@ -918,8 +1047,39 @@ export const usePlayerStore = create<PlayerState>()(
         const currentIndex = getTrackIndex(activeTracks, currentTrack);
         if (currentIndex === -1) return;
 
-        const nextIndex = (currentIndex + 1) % activeTracks.length;
+        const nextIndex = getNextTrackIndex(activeTracks, currentIndex, shuffleEnabled, repeatMode);
+        if (nextIndex < 0) {
+          set({ isPlaying: false, seek: 0 });
+          return;
+        }
         get().setTrack(activeTracks[nextIndex]);
+      },
+
+      toggleShuffle: () => {
+        set((state) => ({ shuffleEnabled: !state.shuffleEnabled }));
+      },
+
+      cycleRepeatMode: () => {
+        set((state) => ({
+          repeatMode:
+            state.repeatMode === 'off' ? 'all' : state.repeatMode === 'all' ? 'one' : 'off',
+        }));
+      },
+
+      createAlbum: (album) => {
+        set((state) => ({
+          albums: [...state.albums, { ...album, id: crypto.randomUUID(), createdAt: Date.now() }],
+        }));
+      },
+
+      updateAlbum: (albumId, album) => {
+        set((state) => ({
+          albums: state.albums.map((item) => (item.id === albumId ? { ...item, ...album } : item)),
+        }));
+      },
+
+      deleteAlbum: (albumId) => {
+        set((state) => ({ albums: state.albums.filter((album) => album.id !== albumId) }));
       },
 
       togglePlay: () => {
@@ -1045,7 +1205,7 @@ export const usePlayerStore = create<PlayerState>()(
     {
       name: 'musie-pwa-storage',
       storage: customBinaryStorage,
-      version: 5,
+      version: 6,
       migrate: (persistedState) => {
         const state = persistedState as Partial<PersistedPlayerState> & {
           libraryTracks?: Track[];
@@ -1077,6 +1237,9 @@ export const usePlayerStore = create<PlayerState>()(
           eqBands: nextEqBands,
           eqPreset: state.eqPreset ?? DEFAULT_EQ_PRESET,
           eqEnabled: state.eqEnabled ?? true,
+          shuffleEnabled: state.shuffleEnabled ?? false,
+          repeatMode: normalizeRepeatMode(state.repeatMode),
+          albums: state.albums ?? [],
         };
       },
       merge: (persistedState, currentState) => {
@@ -1102,6 +1265,9 @@ export const usePlayerStore = create<PlayerState>()(
           lastTrack: persisted.lastTrack
             ? restoreTrackFiles([persisted.lastTrack], audioFiles)[0]
             : null,
+          shuffleEnabled: persisted.shuffleEnabled ?? false,
+          repeatMode: normalizeRepeatMode(persisted.repeatMode),
+          albums: persisted.albums ?? [],
         };
       },
       partialize: (state): PersistedPlayerState => ({
@@ -1120,6 +1286,9 @@ export const usePlayerStore = create<PlayerState>()(
         eqBands: state.eqBands,
         eqPreset: state.eqPreset,
         eqEnabled: state.eqEnabled,
+        shuffleEnabled: state.shuffleEnabled,
+        repeatMode: state.repeatMode,
+        albums: state.albums,
       }),
     }
   )

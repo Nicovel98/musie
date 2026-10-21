@@ -12,6 +12,7 @@ import { PlaybackControls } from './PlaybackControls';
 import { useScrubSeeking } from '../hooks/useScrubSeeking';
 import { getProgressPercent } from '../utils/time';
 import { useShallow } from 'zustand/react/shallow';
+import { LyricsPanel } from './LyricsPanel';
 
 interface NowPlayingProps {
   setView: (view: 'home' | 'library' | 'equalizer' | 'preferences') => void;
@@ -73,7 +74,12 @@ export const NowPlaying = ({
     setTrack,
     playPreviousTrack,
     playNextTrack,
+    shuffleEnabled,
+    repeatMode,
+    toggleShuffle,
+    cycleRepeatMode,
     toggleTrackFavorite,
+    updateTrackMetadata,
   } = usePlayerStore(
     useShallow((state) => ({
       libraryTracks: state.libraryTracks,
@@ -91,7 +97,12 @@ export const NowPlaying = ({
       setTrack: state.setTrack,
       playPreviousTrack: state.playPreviousTrack,
       playNextTrack: state.playNextTrack,
+      shuffleEnabled: state.shuffleEnabled,
+      repeatMode: state.repeatMode,
+      toggleShuffle: state.toggleShuffle,
+      cycleRepeatMode: state.cycleRepeatMode,
       toggleTrackFavorite: state.toggleTrackFavorite,
+      updateTrackMetadata: state.updateTrackMetadata,
     }))
   );
 
@@ -195,6 +206,12 @@ export const NowPlaying = ({
             <button className="text-[var(--text-main)] opacity-40 hover:opacity-100 transition-colors">
               <MoreHorizontal size={22} />
             </button>
+            <LyricsPanel
+              track={currentTrack}
+              seek={seek}
+              updateTrackLyrics={(trackId, lyrics) => updateTrackMetadata(trackId, { lyrics })}
+              useThemeAudioColors={useThemeAudioColors}
+            />
           </div>
 
           <div className="grid flex-1 min-h-0 grid-cols-[minmax(0,0.42fr)_minmax(0,0.58fr)] gap-2">
@@ -213,6 +230,10 @@ export const NowPlaying = ({
                 onTogglePlay={togglePlay}
                 onPrev={goPrev}
                 onNext={goNext}
+                shuffleEnabled={shuffleEnabled}
+                onToggleShuffle={toggleShuffle}
+                repeatMode={repeatMode}
+                onCycleRepeat={cycleRepeatMode}
                 useThemeAudioColors={useThemeAudioColors}
                 buttonSizeClass="h-9 w-9"
                 playButtonSizeClass={controlBtnSizeClass}
@@ -249,6 +270,12 @@ export const NowPlaying = ({
                   </p>
                 </div>
 
+                <LyricsPanel
+                  track={currentTrack}
+                  seek={seek}
+                  updateTrackLyrics={(trackId, lyrics) => updateTrackMetadata(trackId, { lyrics })}
+                  useThemeAudioColors={useThemeAudioColors}
+                />
                 <button
                   onClick={() => toggleTrackFavorite(currentTrack.id)}
                   className={`flex h-10 w-10 items-center justify-center rounded-full bg-[var(--glass-bg)] border border-[var(--glass-border)] shadow-[var(--glass-shadow)] backdrop-blur-xl active:scale-95 transition-all shrink-0 ${
@@ -580,6 +607,12 @@ export const NowPlaying = ({
               {currentTrack.artist}
             </p>
           </div>
+          <LyricsPanel
+            track={currentTrack}
+            seek={seek}
+            updateTrackLyrics={(trackId, lyrics) => updateTrackMetadata(trackId, { lyrics })}
+            useThemeAudioColors={useThemeAudioColors}
+          />
           <button
             onClick={() => toggleTrackFavorite(currentTrack.id)}
             className={`flex h-[clamp(2.15rem,6vw,2.5rem)] w-[clamp(2.15rem,6vw,2.5rem)] items-center justify-center rounded-full bg-[var(--glass-bg)] border border-[var(--glass-border)] shadow-[var(--glass-shadow)] backdrop-blur-xl active:scale-95 transition-all shrink-0 ${
@@ -646,6 +679,10 @@ export const NowPlaying = ({
               onTogglePlay={togglePlay}
               onPrev={goPrev}
               onNext={goNext}
+              shuffleEnabled={shuffleEnabled}
+              onToggleShuffle={toggleShuffle}
+              repeatMode={repeatMode}
+              onCycleRepeat={cycleRepeatMode}
               useThemeAudioColors={useThemeAudioColors}
               buttonSizeClass="h-[clamp(1.25rem,4vw,1.5rem)] w-[clamp(1.25rem,4vw,1.5rem)]"
               playButtonSizeClass="h-[clamp(3rem,10vw,4rem)] w-[clamp(3rem,10vw,4rem)]"

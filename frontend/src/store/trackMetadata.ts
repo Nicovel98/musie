@@ -26,6 +26,7 @@ interface MediaTags {
 const MAX_EMBEDDED_COVER_BYTES = 512 * 1024;
 const COVER_OPTIMIZATION_THRESHOLD = 350 * 1024;
 const MAX_OPTIMIZED_COVER_DIMENSION = 512;
+const MAX_DOWNLOADED_COVER_BYTES = 8 * 1024 * 1024;
 
 const bytesToBase64 = (bytes: number[]) => {
   const chunkSize = 0x8000;
@@ -99,18 +100,6 @@ export const optimizeCoverUrl = async (coverUrl: string) => {
   });
 };
 
-interface CoverSearchResponse {
-  recordings?: Array<{ releases?: Array<{ id: string; title?: string }> }>;
-}
-
-interface CoverArtReleaseResponse {
-  images?: Array<{
-    front?: boolean;
-    image?: string;
-    thumbnails?: { large?: string; small?: string };
-  }>;
-}
-
 interface DeezerSearchResponse {
   data?: Array<{
     title?: string;
@@ -153,7 +142,12 @@ const readBlobAsDataUrl = (blob: Blob) =>
 const fetchImageAsDataUrl = async (url: string, signal: AbortSignal) => {
   const response = await fetch(url, { signal });
   if (!response.ok) return null;
+  const contentLength = Number(response.headers.get('content-length'));
+  if (Number.isFinite(contentLength) && contentLength > MAX_DOWNLOADED_COVER_BYTES) {
+    return null;
+  }
   const blob = await response.blob();
+  if (blob.size > MAX_DOWNLOADED_COVER_BYTES) return null;
   if (!blob.type.startsWith('image/')) return null;
   return optimizeCoverUrl(await readBlobAsDataUrl(blob));
 };
@@ -302,101 +296,6 @@ export const findAutomaticCover = async (
   const options = await findAutomaticCoverOptions(track);
   if (options.length === 0) return null;
   return downloadAutomaticCover(options[0].imageUrl);
-
-  const title = track.title.trim();
-  const artist = track.artist.trim();
-  if (!title) return null;
-
-  const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), 8000);
-  const genericArtists = new Set(['archivo local', 'audio externo', 'unknown artist', 'unknown']);
-
-  try {
-    const deezerQuery = genericArtists.has(normalizeSearchText(artist))
-      ? `track:"${title}"`
-      : `artist:"${artist}" track:"${title}"`;
-    const deezerResponse = await fetch(
-      `https://api.deezer.com/search?${new URLSearchParams({
-        q: deezerQuery,
-        limit: '5',
-      })}`,
-      { signal: controller.signal }
-    );
-
-    if (deezerResponse.ok) {
-      const deezerData = (await deezerResponse.json()) as DeezerSearchResponse;
-      const normalizedTitle = normalizeSearchText(title);
-      const normalizedArtist = normalizeSearchText(artist);
-      const deezerResult =
-        deezerData.data?.find(
-          (item) =>
-            normalizeSearchText(item.title) === normalizedTitle &&
-            (genericArtists.has(normalizedArtist) ||
-              normalizeSearchText(item.artist?.name) === normalizedArtist)
-        ) ?? deezerData.data?.[0];
-      const coverUrl =
-        deezerResult?.album?.cover_xl ??
-        deezerResult?.album?.cover_big ??
-        deezerResult?.album?.cover_medium;
-
-      if (typeof coverUrl !== 'string') return null;
-      // @ts-expect-error Legacy fallback kept for stored callers; primary path returns above.
-      const result = await fetchImageAsDataUrl(coverUrl, controller.signal);
-      if (result) return result;
-    }
-
-    const query = genericArtists.has(normalizeSearchText(artist))
-      ? `recording:"${title}"`
-      : `recording:"${title}" AND artist:"${artist}"`;
-    const response = await fetch(
-      `https://musicbrainz.org/ws/2/recording/?${new URLSearchParams({
-        query,
-        fmt: 'json',
-        limit: '5',
-        inc: 'releases',
-      })}`,
-      { signal: controller.signal, headers: { Accept: 'application/json' } }
-    );
-    if (!response.ok) return null;
-
-    const data = (await response.json()) as CoverSearchResponse;
-    const album = normalizeSearchText(track.album);
-    const recording =
-      data.recordings?.find((item) =>
-        item.releases?.some((release) => normalizeSearchText(release.title) === album)
-      ) ?? data.recordings?.find((item) => item.releases?.length);
-    const releases = recording?.releases ?? [];
-    const orderedReleases = [
-      ...releases.filter((release) => normalizeSearchText(release.title) === album),
-      ...releases.filter((release) => normalizeSearchText(release.title) !== album),
-    ];
-
-    for (const release of orderedReleases.slice(0, 8)) {
-      const releaseResponse = await fetch(
-        `https://coverartarchive.org/release/${encodeURIComponent(release.id)}`,
-        { signal: controller.signal }
-      );
-      if (!releaseResponse.ok) continue;
-
-      const releaseData = (await releaseResponse.json()) as CoverArtReleaseResponse;
-      const image = releaseData.images?.find((item) => item.front) ?? releaseData.images?.[0];
-      const imageUrl = image?.thumbnails?.large ?? image?.image ?? image?.thumbnails?.small;
-      if (typeof imageUrl !== 'string') continue;
-      const validImageUrl = imageUrl;
-
-      // @ts-expect-error Legacy fallback kept for stored callers; primary path returns above.
-      const coverResponse = await fetch(validImageUrl, { signal: controller.signal });
-      if (!coverResponse.ok) continue;
-
-      const blob = await coverResponse.blob();
-      if (!blob.type.startsWith('image/')) continue;
-      return optimizeCoverUrl(await readBlobAsDataUrl(blob));
-    }
-
-    return null;
-  } finally {
-    window.clearTimeout(timeoutId);
-  }
 };
 
 const readEmbeddedTags = async (file: File): Promise<ParsedTags> => {
