@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { NowPlaying } from './NowPlaying';
@@ -6,6 +6,9 @@ import { PlayerBar } from './PlayerBar';
 import { MobileTabs } from './MobileTabs';
 import { LyricsView } from './LyricsView';
 import type { View } from '../types/navigation';
+import type { Track } from '../types/track';
+import { usePlayerStore } from '../store/usePlayerStore';
+import { CoverSearchModal } from './CoverSearchModal';
 
 const Library = lazy(() => import('./Library').then((module) => ({ default: module.Library })));
 const EqualizerView = lazy(() =>
@@ -19,6 +22,7 @@ const SettingsView = lazy(() =>
 );
 
 type LibraryTab = 'library' | 'favorites' | 'playlist';
+type LibrarySection = 'tracks' | 'albums' | 'lyrics';
 type ThemeMode = 'dark' | 'light';
 type DarkTheme = 'quantum' | 'classic';
 type LightTheme = 'light' | 'light-quantum';
@@ -28,6 +32,10 @@ interface AppShellProps {
   setCurrentView: (view: View) => void;
   libraryTab: LibraryTab;
   setLibraryTab: (tab: LibraryTab) => void;
+  librarySection: LibrarySection;
+  setLibrarySection: (section: LibrarySection) => void;
+  selectedLyricsTrack: Track | null;
+  setSelectedLyricsTrack: (track: Track | null) => void;
   themeMode: ThemeMode;
   darkTheme: DarkTheme;
   lightTheme: LightTheme;
@@ -47,6 +55,10 @@ export const AppShell = ({
   setCurrentView,
   libraryTab,
   setLibraryTab,
+  librarySection,
+  setLibrarySection,
+  selectedLyricsTrack,
+  setSelectedLyricsTrack,
   themeMode,
   darkTheme,
   lightTheme,
@@ -60,16 +72,30 @@ export const AppShell = ({
   sidebarPinned,
   setSidebarPinned,
 }: AppShellProps) => {
+  const [coverSearchTrack, setCoverSearchTrack] = useState<Track | null>(null);
+  const updateTrackMetadata = usePlayerStore((state) => state.updateTrackMetadata);
+  const navigateView = (view: View) => {
+    if (view === 'lyrics') {
+      setLibraryTab('library');
+      setLibrarySection('lyrics');
+      setCurrentView('library');
+      return;
+    }
+
+    setCurrentView(view);
+  };
+
   return (
     <div className="flex flex-col h-screen w-full bg-[var(--bg-main)] text-[var(--text-main)] overflow-hidden font-sans transition-colors duration-500 relative">
       <div className="flex flex-1 overflow-hidden relative">
         {showSidebar && (
           <div className="hidden lg:flex h-full shrink-0 border-r border-[var(--sidebar-border)] h-sm:hidden lg-h-sm:hidden">
             <Sidebar
-              setView={setCurrentView}
+              setView={navigateView}
               currentView={currentView}
               libraryTab={libraryTab}
               setLibraryTab={setLibraryTab}
+              librarySection={librarySection}
               themeMode={themeMode}
               cycleThemeMode={cycleThemeMode}
               isPinned={sidebarPinned}
@@ -101,6 +127,7 @@ export const AppShell = ({
                     themeMode={themeMode}
                     cycleThemeMode={cycleThemeMode}
                     useThemeAudioColors={themeAffectsAudioUi}
+                    onOpenCoverSearch={setCoverSearchTrack}
                   />
                 </motion.div>
               ) : currentView === 'lyrics' ? (
@@ -112,7 +139,10 @@ export const AppShell = ({
                   transition={{ type: 'spring', damping: 24, stiffness: 180 }}
                   className="h-full overflow-y-auto custom-scrollbar pb-[calc(var(--mobile-tabs-height)+var(--mobile-playerbar-height)+env(safe-area-inset-bottom)+1rem)] lg:pb-1"
                 >
-                  <LyricsView />
+                  <LyricsView
+                    selectedTrack={selectedLyricsTrack}
+                    setSelectedTrack={setSelectedLyricsTrack}
+                  />
                 </motion.div>
               ) : currentView === 'equalizer' ? (
                 <motion.div
@@ -166,6 +196,12 @@ export const AppShell = ({
                     useThemeAudioColors={themeAffectsAudioUi}
                     activeTab={libraryTab}
                     setActiveTab={setLibraryTab}
+                    section={librarySection}
+                    setSection={setLibrarySection}
+                    onOpenLyrics={() => {
+                      setSelectedLyricsTrack(null);
+                      setCurrentView('lyrics');
+                    }}
                   />
                 </motion.div>
               )}
@@ -192,12 +228,23 @@ export const AppShell = ({
               }
             >
               <div className="w-full px-1">
-                <PlayerBar useThemeAudioColors={themeAffectsAudioUi} />
+                <PlayerBar
+                  useThemeAudioColors={themeAffectsAudioUi}
+                  onOpenCoverSearch={setCoverSearchTrack}
+                />
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
+
+      {coverSearchTrack && (
+        <CoverSearchModal
+          track={coverSearchTrack}
+          onClose={() => setCoverSearchTrack(null)}
+          updateTrackMetadata={updateTrackMetadata}
+        />
+      )}
 
       <div
         className="block lg:hidden h-sm:!block lg-h-sm:!block fixed bottom-0 left-0 right-0 z-50 mobile-tabs-shell"

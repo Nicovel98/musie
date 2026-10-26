@@ -1,4 +1,5 @@
 import { Heart } from 'lucide-react';
+import type { Track } from '../types/track';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { VolumeControl } from './VolumeControl';
 import { PlaybackControls } from './PlaybackControls';
@@ -8,9 +9,10 @@ import { useShallow } from 'zustand/react/shallow';
 
 interface PlayerBarProps {
   useThemeAudioColors?: boolean;
+  onOpenCoverSearch?: (track: Track) => void;
 }
 
-export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
+export const PlayerBar = ({ useThemeAudioColors = true, onOpenCoverSearch }: PlayerBarProps) => {
   const {
     currentTrack,
     favoriteTrackIds,
@@ -101,6 +103,17 @@ export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
               {currentTrack.artist}
             </p>
           </div>
+          {onOpenCoverSearch && (
+            <button
+              type="button"
+              onClick={() => onOpenCoverSearch(currentTrack)}
+              aria-label="Buscar o cambiar portada"
+              title="Buscar o cambiar portada"
+              className="shrink-0 text-[var(--text-muted)] transition-colors hover:text-[var(--text-main)]"
+            >
+              <img src={currentTrack.coverUrl} alt="" className="h-5 w-5 rounded object-cover" />
+            </button>
+          )}
           <button
             onClick={() => toggleTrackFavorite(currentTrack.id)}
             aria-label={isFavorite ? 'Remove track from favorites' : 'Add track to favorites'}
@@ -142,6 +155,17 @@ export const PlayerBar = ({ useThemeAudioColors = true }: PlayerBarProps) => {
             alt={currentTrack.title}
             className="w-9 h-9 md:w-14 md:h-14 rounded-lg object-cover shadow-lg border border-[var(--glass-border)]"
           />
+          {onOpenCoverSearch && (
+            <button
+              type="button"
+              onClick={() => onOpenCoverSearch(currentTrack)}
+              aria-label="Buscar o cambiar portada"
+              title="Buscar o cambiar portada"
+              className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/45 text-xs font-black text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+            >
+              Portada
+            </button>
+          )}
         </div>
         <div className="flex flex-col truncate">
           <h4 className="text-[var(--text-main)] text-sm md:text-[15px] font-bold truncate">

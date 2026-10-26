@@ -18,6 +18,7 @@ import { SidebarSection as SidebarSectionView } from './SidebarSection';
 import { SidebarFooter } from './SidebarFooter';
 
 type LibraryTab = 'library' | 'favorites' | 'playlist';
+type LibrarySection = 'tracks' | 'albums' | 'lyrics';
 type ThemeMode = 'dark' | 'light';
 
 interface NavItem {
@@ -38,6 +39,7 @@ export const Sidebar = ({
   setView,
   libraryTab,
   setLibraryTab,
+  librarySection = 'tracks',
   themeMode,
   cycleThemeMode,
   isPinned,
@@ -47,6 +49,7 @@ export const Sidebar = ({
   setView: (v: View) => void;
   libraryTab: LibraryTab;
   setLibraryTab: (tab: LibraryTab) => void;
+  librarySection?: LibrarySection;
   themeMode: ThemeMode;
   cycleThemeMode: () => void;
   isPinned: boolean;
@@ -98,7 +101,8 @@ export const Sidebar = ({
       icon: FileText,
       label: 'Lyrics',
       onClick: () => setView('lyrics'),
-      isActive: currentView === 'lyrics',
+      isActive:
+        currentView === 'library' && libraryTab === 'library' && librarySection === 'lyrics',
     },
   ];
 

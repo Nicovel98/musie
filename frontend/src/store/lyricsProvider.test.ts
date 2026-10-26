@@ -81,4 +81,17 @@ describe('LRCLIB lyrics provider', () => {
     await expect(request).rejects.toMatchObject({ name: 'AbortError' });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it('aborts immediately when the request signal is already aborted', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const fetchMock = vi.fn().mockRejectedValue(new DOMException('Aborted', 'AbortError'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fetchAutomaticLyrics(track, controller.signal)).rejects.toMatchObject({
+      name: 'AbortError',
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][1].signal.aborted).toBe(true);
+  });
 });

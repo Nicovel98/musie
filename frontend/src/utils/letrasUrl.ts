@@ -30,6 +30,6 @@ export const buildLetrasSearchUrl = (artist: string, title: string): string => {
 
 export const buildYouTubeSearchUrl = (artist: string, title: string): string => {
   const resolved = resolveArtistAndTitle(artist, title);
-  const query = encodeURIComponent(`${resolved.artist} ${resolved.title}`.trim());
+  const query = encodeURIComponent(`${resolved.title} ${resolved.artist}`.trim());
   return `https://www.youtube.com/results?search_query=${query}`;
 };

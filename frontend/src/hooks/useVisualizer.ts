@@ -46,6 +46,9 @@ const averageRange = (source: Uint8Array, startRatio: number, endRatio: number) 
   return samples > 0 ? total / samples : 0;
 };
 
+const framesAreEqual = (left: Uint8Array, right: Uint8Array) =>
+  left.length === right.length && left.every((value, index) => value === right[index]);
+
 type VizPreset = 'soft' | 'mid' | 'vivid';
 
 export const useVisualizer = (targetBars = 32, preset: VizPreset = 'mid') => {
@@ -57,6 +60,7 @@ export const useVisualizer = (targetBars = 32, preset: VizPreset = 'mid') => {
 
   // Guardamos los datos de las frecuencias en un array de bytes (0 a 255)
   const [audioData, setAudioData] = useState<Uint8Array>(new Uint8Array(0));
+  const audioDataRef = useRef(new Uint8Array(0));
   const previousFrameRef = useRef<Uint8Array>(new Uint8Array(0));
   const previousSourceRef = useRef<Uint8Array>(new Uint8Array(0));
   const pulseRef = useRef(0);
@@ -181,10 +185,16 @@ export const useVisualizer = (targetBars = 32, preset: VizPreset = 'mid') => {
         }
 
         previousFrameRef.current = blendedFrame;
-        setAudioData(blendedFrame);
+        if (!framesAreEqual(audioDataRef.current, blendedFrame)) {
+          audioDataRef.current = blendedFrame;
+          setAudioData(blendedFrame);
+        }
       } else {
         previousFrameRef.current = nextFrame;
-        setAudioData(nextFrame);
+        if (!framesAreEqual(audioDataRef.current, nextFrame)) {
+          audioDataRef.current = nextFrame;
+          setAudioData(nextFrame);
+        }
       }
 
       // 3. Solicitamos la siguiente actualización visual (aprox. 20fps)

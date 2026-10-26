@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Plus,
   Clock3,
+  Disc3,
   Play,
   Pause,
   Heart,
@@ -14,51 +15,63 @@ import {
   ChevronUp,
   ChevronDown,
   ImagePlus,
-  LoaderCircle,
+  FileText,
 } from 'lucide-react';
 import { usePlayerStore } from '../store/usePlayerStore';
-import {
-  downloadAutomaticCover,
-  findAutomaticCoverOptions,
-  type AutomaticCoverOption,
-  getYouTubeThumbnail,
-  readTrackDuration,
-} from '../store/trackMetadata';
+import { readTrackDuration } from '../store/trackMetadata';
+import type { Track } from '../types/track';
 import { formatDuration } from '../utils/time';
-import { buildYouTubeSearchUrl } from '../utils/letrasUrl';
 import { filterLibraryTracksByMode, mergeTracksById, sortLibraryTracks } from './libraryHelpers';
+import { CoverSearchModal } from './CoverSearchModal';
 
 interface LibraryProps {
   useThemeAudioColors?: boolean;
   activeTab: 'library' | 'favorites' | 'playlist';
   setActiveTab: (tab: 'library' | 'favorites' | 'playlist') => void;
+  onOpenLyrics: () => void;
+  section?: LibrarySection;
+  setSection?: (section: LibrarySection) => void;
 }
 
-export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }: LibraryProps) => {
+const LIBRARY_SECTION_STORAGE_KEY = 'musie:library-section';
+type LibrarySection = 'tracks' | 'albums' | 'lyrics';
+
+export const Library = ({
+  useThemeAudioColors = true,
+  activeTab,
+  setActiveTab,
+  onOpenLyrics,
+  section,
+  setSection,
+}: LibraryProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<'recent' | 'title' | 'artist'>('recent');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [localLibrarySection, setLocalLibrarySection] = useState<LibrarySection>(() => {
+    if (typeof window === 'undefined') return 'tracks';
+
+    try {
+      const storedSection = window.localStorage.getItem(LIBRARY_SECTION_STORAGE_KEY);
+      return storedSection === 'albums' || storedSection === 'lyrics' ? storedSection : 'tracks';
+    } catch {
+      return 'tracks';
+    }
+  });
+  const librarySection = section ?? localLibrarySection;
+  const updateLibrarySection = (nextSection: LibrarySection) => {
+    setLocalLibrarySection(nextSection);
+    setSection?.(nextSection);
+  };
   const [pendingRemoveTrackId, setPendingRemoveTrackId] = useState<string | null>(null);
   const [draggedPlaylistTrackId, setDraggedPlaylistTrackId] = useState<string | null>(null);
   const [dropTargetTrackId, setDropTargetTrackId] = useState<string | null>(null);
-  const [coverSearchTrackId, setCoverSearchTrackId] = useState<string | null>(null);
-  const [coverSearchErrorTrackId, setCoverSearchErrorTrackId] = useState<string | null>(null);
-  const [coverOptions, setCoverOptions] = useState<{
-    trackId: string;
-    options: AutomaticCoverOption[];
-  } | null>(null);
-  const [coverChoiceLoading, setCoverChoiceLoading] = useState(false);
+  const [coverSearchTrack, setCoverSearchTrack] = useState<Track | null>(null);
   const [storageError, setStorageError] = useState(false);
-  const [youtubeCover, setYoutubeCover] = useState<{
-    trackId: string;
-    title: string;
-    url: string;
-  } | null>(null);
-  const [youtubeCoverError, setYoutubeCoverError] = useState(false);
   const [isAlbumModalOpen, setIsAlbumModalOpen] = useState(false);
   const [albumName, setAlbumName] = useState('');
   const [albumArtist, setAlbumArtist] = useState('');
   const [albumTrackIds, setAlbumTrackIds] = useState<string[]>([]);
+  const albumDialogRef = useRef<HTMLDivElement>(null);
   const pendingDurationReadsRef = useRef(new Set<string>());
   const libraryTracks = usePlayerStore((state) => state.libraryTracks);
   const playlistTracks = usePlayerStore((state) => state.playlistTracks);
@@ -112,17 +125,27 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
   }, []);
 
   useEffect(() => {
-    if (!coverOptions) return;
+    try {
+      window.localStorage.setItem(LIBRARY_SECTION_STORAGE_KEY, librarySection);
+    } catch {
+      // Storage may be unavailable in private browsing or restricted environments.
+    }
+  }, [librarySection]);
+
+  useEffect(() => {
+    albumDialogRef.current?.focus({ preventScroll: true });
+  }, [isAlbumModalOpen]);
+
+  useEffect(() => {
+    if (!isAlbumModalOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || coverChoiceLoading) return;
-      setCoverOptions(null);
-      setYoutubeCover(null);
+      if (event.key === 'Escape') setIsAlbumModalOpen(false);
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [coverChoiceLoading, coverOptions]);
+  }, [isAlbumModalOpen]);
 
   const playlistTrackIdSet = useMemo(
     () => new Set(playlistTracks.map((track) => track.id)),
@@ -200,6 +223,18 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
     () => sortLibraryTracks(visibleLibraryTracks, sortMode, favoriteTrackIds, activeTab),
     [activeTab, favoriteTrackIds, sortMode, visibleLibraryTracks]
   );
+  const savedLyricsSongs = useMemo(() => {
+    const filteredTracks = libraryTracks.filter((track) => {
+      if (!track.lyrics) return false;
+      if (!normalizedQuery) return true;
+      return (
+        track.title.toLowerCase().includes(normalizedQuery) ||
+        track.artist.toLowerCase().includes(normalizedQuery)
+      );
+    });
+
+    return sortLibraryTracks(filteredTracks, sortMode, favoriteTrackIds, 'library');
+  }, [favoriteTrackIds, libraryTracks, normalizedQuery, sortMode]);
   const longTracks = useMemo(
     () =>
       libraryTracks
@@ -254,6 +289,11 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
 
   const clearPendingRemove = () => {
     setPendingRemoveTrackId(null);
+  };
+
+  const handleTabChange = (tab: LibraryProps['activeTab']) => {
+    clearPendingRemove();
+    setActiveTab(tab);
   };
 
   const openAlbumModal = () => {
@@ -341,11 +381,15 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
         ? 'Clear favorites'
         : 'Clear playlist';
   const activeCount =
-    activeTab === 'library'
-      ? libraryTracks.length
-      : activeTab === 'favorites'
-        ? sourceLibraryTracks.length
-        : playlistTracks.length;
+    activeTab === 'library' && librarySection === 'albums'
+      ? albums.length
+      : activeTab === 'library' && librarySection === 'lyrics'
+        ? savedLyricsSongs.length
+        : activeTab === 'library'
+          ? libraryTracks.length
+          : activeTab === 'favorites'
+            ? sourceLibraryTracks.length
+            : playlistTracks.length;
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -361,208 +405,14 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
     }
   };
 
-  const handleFindAutomaticCover = async (
-    event: React.MouseEvent<HTMLButtonElement>,
-    track: (typeof libraryTracks)[number]
-  ) => {
-    event.stopPropagation();
-    if (coverSearchTrackId) return;
-
-    setCoverSearchTrackId(track.id);
-    setCoverSearchErrorTrackId(null);
-    setYoutubeCover(null);
-    setCoverOptions({ trackId: track.id, options: [] });
-    try {
-      const options = await findAutomaticCoverOptions(track);
-      if (options.length === 0) throw new Error('Cover not found');
-      setCoverOptions({ trackId: track.id, options });
-    } catch {
-      setCoverSearchErrorTrackId(track.id);
-    } finally {
-      setCoverSearchTrackId(null);
-    }
-  };
-
-  const handleCoverChoice = async (option: AutomaticCoverOption) => {
-    if (!coverOptions) return;
-
-    setCoverChoiceLoading(true);
-    try {
-      const coverUrl = await downloadAutomaticCover(option.imageUrl);
-      if (!coverUrl) throw new Error('Cover download failed');
-      updateTrackMetadata(coverOptions.trackId, { coverUrl });
-      setCoverOptions(null);
-    } catch {
-      setCoverSearchErrorTrackId(coverOptions.trackId);
-    } finally {
-      setCoverChoiceLoading(false);
-    }
-  };
-
-  const openYouTubeCoverSearch = (
-    event: React.MouseEvent<HTMLButtonElement> | undefined,
-    track: (typeof libraryTracks)[number]
-  ) => {
-    event?.stopPropagation();
-    window.open(buildYouTubeSearchUrl(track.artist, track.title), '_blank', 'noopener,noreferrer');
-    setCoverOptions({ trackId: track.id, options: [] });
-    setYoutubeCover({ trackId: track.id, title: track.title, url: '' });
-    setYoutubeCoverError(false);
-  };
-
-  const applyYouTubeCover = () => {
-    if (!youtubeCover) return;
-    const coverUrl = getYouTubeThumbnail(youtubeCover.url);
-    if (!coverUrl) {
-      setYoutubeCoverError(true);
-      return;
-    }
-
-    updateTrackMetadata(youtubeCover.trackId, { coverUrl });
-    setCoverOptions(null);
-    setYoutubeCover(null);
-    setYoutubeCoverError(false);
-  };
-
   return (
     <div className="flex flex-col h-full animate-view-entry" onClick={clearPendingRemove}>
-      {coverOptions && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 backdrop-blur-sm sm:p-6"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !coverChoiceLoading) {
-              setCoverOptions(null);
-            }
-          }}
-        >
-          <div
-            role="dialog"
-            aria-label="Choose cover"
-            aria-modal="true"
-            className="my-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] bg-[var(--bg-main)] shadow-2xl sm:max-h-[calc(100dvh-3rem)]"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--glass-border)] bg-[var(--bg-main)] px-4 py-4 sm:px-5">
-              <div className="min-w-0">
-                <p className="text-xs font-black uppercase tracking-[0.25em] text-[var(--text-muted)]">
-                  Portada
-                </p>
-                <h3 className="truncate text-lg font-black text-[var(--text-main)] sm:text-xl">
-                  Elige una portada
-                </h3>
-              </div>
-              <button
-                type="button"
-                aria-label="Close cover choices"
-                onClick={() => setCoverOptions(null)}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-primary)]"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="min-h-0 overflow-y-auto p-4 custom-scrollbar sm:p-5">
-              {youtubeCover ? (
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">
-                      YouTube · opción secundaria
-                    </p>
-                    <p className="mt-1 text-sm text-[var(--text-muted)]">
-                      Elige un vídeo para “{youtubeCover.title}”, copia su enlace y pégalo aquí.
-                    </p>
-                  </div>
-                  <input
-                    autoFocus
-                    value={youtubeCover.url}
-                    onChange={(event) => {
-                      setYoutubeCover({ ...youtubeCover, url: event.target.value });
-                      setYoutubeCoverError(false);
-                    }}
-                    placeholder="https://www.youtube.com/watch?v=..."
-                    aria-label="YouTube URL"
-                    className="w-full rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] px-4 py-3 text-sm text-[var(--text-main)] outline-none focus:border-[var(--accent-primary)]"
-                  />
-                  {youtubeCoverError && (
-                    <p className="text-sm text-red-400">Pega un enlace válido de YouTube.</p>
-                  )}
-                  <div className="flex justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setYoutubeCover(null)}
-                      className="rounded-full border border-[var(--glass-border)] px-4 py-2 text-xs font-bold text-[var(--text-muted)]"
-                    >
-                      Volver a resultados automáticos
-                    </button>
-                    <button
-                      type="button"
-                      onClick={applyYouTubeCover}
-                      className="rounded-full bg-[var(--accent-primary)] px-4 py-2 text-xs font-black text-[var(--bg-main)]"
-                    >
-                      Usar portada
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <p className="text-sm font-bold text-[var(--text-main)]">
-                      Resultados automáticos
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const track = libraryTracks.find(
-                          (candidate) => candidate.id === coverOptions.trackId
-                        );
-                        if (track) openYouTubeCoverSearch(undefined, track);
-                      }}
-                      className="rounded-full border border-[var(--glass-border)] px-3 py-2 text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-main)]"
-                    >
-                      Buscar en YouTube
-                    </button>
-                  </div>
-                  {coverSearchTrackId === coverOptions.trackId ? (
-                    <div className="flex items-center justify-center gap-2 py-12 text-sm text-[var(--text-muted)]">
-                      <LoaderCircle size={18} className="animate-spin" />
-                      Buscando portadas automáticamente...
-                    </div>
-                  ) : coverOptions.options.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-                      {coverOptions.options.map((option) => (
-                        <button
-                          key={option.imageUrl}
-                          type="button"
-                          disabled={coverChoiceLoading}
-                          onClick={() => void handleCoverChoice(option)}
-                          className="min-w-0 overflow-hidden rounded-2xl border border-[var(--glass-border)] text-left transition hover:border-[var(--accent-primary)] disabled:opacity-50"
-                        >
-                          <img
-                            src={option.imageUrl}
-                            alt={`${option.title} - ${option.album}`}
-                            loading="lazy"
-                            className="aspect-square w-full object-cover"
-                          />
-                          <span className="block min-w-0 p-2.5 sm:p-3">
-                            <span className="block truncate text-sm font-bold text-[var(--text-main)]">
-                              {option.album}
-                            </span>
-                            <span className="block truncate text-xs text-[var(--text-muted)]">
-                              {option.source} · {option.artist}
-                            </span>
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="py-10 text-center text-sm text-[var(--text-muted)]">
-                      No se encontraron portadas automáticas. Prueba la opción de YouTube.
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+      {coverSearchTrack && (
+        <CoverSearchModal
+          track={coverSearchTrack}
+          onClose={() => setCoverSearchTrack(null)}
+          updateTrackMetadata={updateTrackMetadata}
+        />
       )}
       {/* 1. CABECERA CON GLASSMORPHISM SUTIL */}
       <header className="p-6 md:p-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-gradient-to-b from-[var(--glass-bg)] to-transparent">
@@ -573,15 +423,23 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
                 ? 'Playlist'
                 : activeTab === 'favorites'
                   ? 'Favorites'
-                  : 'Library'}
+                  : activeTab === 'library' && librarySection === 'albums'
+                    ? 'Albums'
+                    : activeTab === 'library' && librarySection === 'lyrics'
+                      ? 'Lyrics guardadas'
+                      : 'Library'}
             </h2>
             <p className="text-[var(--text-muted)] font-medium mt-2 text-sm md:text-base uppercase tracking-widest">
-              {activeCount} Tracks en{' '}
-              {activeTab === 'playlist'
-                ? 'playlist'
-                : activeTab === 'favorites'
-                  ? 'favoritos'
-                  : 'biblioteca'}
+              {activeCount}{' '}
+              {activeTab === 'library' && librarySection === 'albums'
+                ? 'colecciones'
+                : activeTab === 'library' && librarySection === 'lyrics'
+                  ? 'canciones con lyrics'
+                  : activeTab === 'playlist'
+                    ? 'tracks en playlist'
+                    : activeTab === 'favorites'
+                      ? 'tracks favoritos'
+                      : 'biblioteca'}
             </p>
           </div>
 
@@ -593,10 +451,7 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
               return (
                 <button
                   key={tab.id}
-                  onClick={() => {
-                    clearPendingRemove();
-                    setActiveTab(tab.id);
-                  }}
+                  onClick={() => handleTabChange(tab.id)}
                   className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs md:text-sm font-black tracking-wide transition-all ${
                     isActive
                       ? useThemeAudioColors
@@ -611,6 +466,43 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
               );
             })}
           </div>
+
+          {activeTab === 'library' && (
+            <div
+              aria-label="Sección de biblioteca"
+              role="tablist"
+              className="inline-flex w-full rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-bg)] p-1 shadow-[var(--glass-shadow)] backdrop-blur-xl md:w-auto"
+            >
+              {[
+                { id: 'tracks' as const, label: 'Canciones', icon: LibraryIcon },
+                { id: 'albums' as const, label: 'Álbumes', icon: Disc3 },
+                { id: 'lyrics' as const, label: 'Lyrics', icon: FileText },
+              ].map((section) => {
+                const isActive = librarySection === section.id;
+                const Icon = section.icon;
+
+                return (
+                  <button
+                    key={section.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => updateLibrarySection(section.id)}
+                    className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-black tracking-wide transition-all md:flex-none md:text-sm ${
+                      isActive
+                        ? useThemeAudioColors
+                          ? 'bg-[var(--accent-primary)] text-[var(--bg-main)] shadow-lg'
+                          : 'bg-[var(--text-main)] text-[var(--bg-main)] shadow-lg'
+                        : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                    }`}
+                  >
+                    <Icon size={14} />
+                    <span>{section.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {activeTab === 'favorites' && favoriteTrackIds.length > 0 && (
             <div className="inline-flex items-center gap-2 rounded-full border border-[color-mix(in_srgb,var(--accent-primary)_24%,var(--glass-border))] bg-[color-mix(in_srgb,var(--accent-primary)_10%,transparent)] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.24em] text-[var(--accent-primary)]">
@@ -645,16 +537,18 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
             />
           </label>
 
-          {activeCount > 0 && (
-            <button
-              onClick={clearAction}
-              title={clearActionLabel}
-              aria-label={clearActionLabel}
-              className={`p-3 rounded-full transition-all ${clearListButtonClass}`}
-            >
-              <Trash2 size={18} />
-            </button>
-          )}
+          {activeCount > 0 &&
+            (activeTab !== 'library' || librarySection === 'tracks') &&
+            !(activeTab === 'library' && librarySection === 'lyrics') && (
+              <button
+                onClick={clearAction}
+                title={clearActionLabel}
+                aria-label={clearActionLabel}
+                className={`p-3 rounded-full transition-all ${clearListButtonClass}`}
+              >
+                <Trash2 size={18} />
+              </button>
+            )}
         </div>
       </header>
 
@@ -668,7 +562,7 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
         </p>
       )}
 
-      {activeTab === 'library' && (
+      {activeTab === 'library' && librarySection === 'tracks' && (
         <section className="mx-4 mb-5 grid gap-4 md:mx-10 md:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
           <div className="rounded-[28px] border border-[var(--accent-secondary)]/25 bg-[var(--accent-secondary)]/8 p-4 shadow-[var(--glass-shadow)]">
             <div className="flex items-start justify-between gap-3">
@@ -714,15 +608,89 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
               </p>
             )}
           </div>
+        </section>
+      )}
 
-          <div className="rounded-[28px] border border-[var(--glass-border)] bg-[var(--glass-bg)] p-4 shadow-[var(--glass-shadow)]">
+      {activeTab === 'library' && librarySection === 'lyrics' && (
+        <section className="mx-4 mb-5 md:mx-10">
+          <div className="rounded-[28px] border border-[var(--glass-border)] bg-[var(--glass-bg)] p-4 shadow-[var(--glass-shadow)] md:p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[var(--accent-primary)]">
+                  Colección de letras
+                </p>
+                <h3 className="mt-1 text-lg font-black text-[var(--text-main)]">
+                  {savedLyricsSongs.length} canciones con lyrics
+                </h3>
+              </div>
+              <FileText className="shrink-0 text-[var(--accent-primary)]" size={22} />
+            </div>
+
+            <label className="mt-4 flex items-center gap-3 rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] px-4 py-3">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">
+                Buscar
+              </span>
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Título o artista"
+                className="w-full bg-transparent text-sm font-semibold text-[var(--text-main)] outline-none placeholder:text-[var(--text-muted)]"
+              />
+            </label>
+
+            {savedLyricsSongs.length === 0 ? (
+              <div className="mt-4 flex flex-col items-center rounded-3xl border-2 border-dashed border-[var(--glass-border)] px-5 py-10 text-center">
+                <FileText size={30} className="text-[var(--accent-primary)]" />
+                <p className="mt-3 text-lg font-black text-[var(--text-main)]">
+                  No hay lyrics guardadas
+                </p>
+                <p className="mt-1 max-w-sm text-sm text-[var(--text-muted)]">
+                  Las canciones con letras guardadas aparecerán aquí para encontrarlas rápidamente.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-4 grid gap-2 md:grid-cols-2">
+                {savedLyricsSongs.map((track) => (
+                  <button
+                    key={track.id}
+                    type="button"
+                    onClick={onOpenLyrics}
+                    className="flex items-center gap-3 rounded-2xl border border-[var(--glass-border)] p-2 text-left transition hover:bg-[var(--glass-bg)]"
+                  >
+                    <img
+                      src={track.coverUrl}
+                      alt=""
+                      className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-bold text-[var(--text-main)]">
+                        {track.title}
+                      </span>
+                      <span className="mt-1 block truncate text-xs text-[var(--text-muted)]">
+                        {track.artist} ·{' '}
+                        {track.lyrics?.format === 'synced' ? 'Lyrics sincronizadas' : 'Texto plano'}
+                      </span>
+                    </span>
+                    <Play size={15} className="shrink-0 text-[var(--accent-primary)]" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {activeTab === 'library' && librarySection === 'albums' && (
+        <section className="mx-4 mb-5 md:mx-10">
+          <div className="rounded-[28px] border border-[var(--glass-border)] bg-[var(--glass-bg)] p-4 shadow-[var(--glass-shadow)] md:p-6">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[var(--text-muted)]">
-                  Mis álbumes
+                  Colección local
                 </p>
                 <h3 className="mt-1 text-lg font-black text-[var(--text-main)]">
-                  {albums.length} colecciones
+                  {albums.length} álbumes
                 </h3>
               </div>
               <button
@@ -734,11 +702,25 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
                 Crear álbum
               </button>
             </div>
-            <div className="mt-4 space-y-2">
+            <div className="mt-4 grid gap-2 md:grid-cols-2">
               {albums.length === 0 ? (
-                <p className="text-sm text-[var(--text-muted)]">
-                  Organiza canciones existentes sin duplicar sus archivos.
-                </p>
+                <div className="flex flex-col items-center rounded-3xl border-2 border-dashed border-[var(--glass-border)] px-5 py-10 text-center md:col-span-2">
+                  <Disc3 size={30} className="text-[var(--accent-primary)]" />
+                  <p className="mt-3 text-lg font-black text-[var(--text-main)]">
+                    Todavía no tienes álbumes
+                  </p>
+                  <p className="mt-1 max-w-sm text-sm text-[var(--text-muted)]">
+                    Crea una colección usando las canciones que ya importaste.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => updateLibrarySection('tracks')}
+                    disabled={libraryTracks.length === 0}
+                    className="mt-4 rounded-full border border-[var(--glass-border)] px-4 py-2 text-xs font-black text-[var(--text-main)] disabled:opacity-40"
+                  >
+                    {libraryTracks.length === 0 ? 'Agrega música primero' : 'Ver canciones'}
+                  </button>
+                </div>
               ) : (
                 albums.map((album) => (
                   <div
@@ -748,7 +730,7 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
                     <img
                       src={album.coverUrl}
                       alt=""
-                      className="h-10 w-10 rounded-lg object-cover"
+                      className="h-12 w-12 rounded-lg object-cover"
                     />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-bold text-[var(--text-main)]">
@@ -789,11 +771,18 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
       )}
 
       {isAlbumModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setIsAlbumModalOpen(false);
+          }}
+        >
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="create-album-title"
+            ref={albumDialogRef}
+            tabIndex={-1}
             className="my-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-xl flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] bg-[var(--bg-main)] shadow-2xl"
           >
             <header className="flex items-center justify-between border-b border-[var(--glass-border)] p-5">
@@ -883,38 +872,66 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
       )}
 
       {/* 2. LISTA DE CANCIONES */}
-      <div className="px-4 md:px-10 flex-1">
-        {activeTab !== 'playlist' ? (
-          <>
-            <div className="flex flex-col gap-4 px-4 pt-4 md:px-0 md:pt-6 md:flex-row md:items-center md:justify-between">
-              <label className="flex items-center gap-3 rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-3 shadow-[var(--glass-shadow)] backdrop-blur-xl md:max-w-md md:flex-1">
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)]">
-                  Buscar
-                </span>
-                <input
-                  type="search"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Título o artista"
-                  className="w-full bg-transparent text-sm font-semibold text-[var(--text-main)] placeholder:text-[var(--text-muted)] outline-none"
-                />
-              </label>
+      <div className="flex-1 px-4 md:px-10">
+        {(activeTab !== 'library' || librarySection === 'tracks') &&
+          (activeTab !== 'playlist' ? (
+            <>
+              <div className="flex flex-col gap-4 px-4 pt-4 md:px-0 md:pt-6 md:flex-row md:items-center md:justify-between">
+                <label className="flex items-center gap-3 rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-3 shadow-[var(--glass-shadow)] backdrop-blur-xl md:max-w-md md:flex-1">
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)]">
+                    Buscar
+                  </span>
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Título o artista"
+                    className="w-full bg-transparent text-sm font-semibold text-[var(--text-main)] placeholder:text-[var(--text-muted)] outline-none"
+                  />
+                </label>
 
-              <div className="flex flex-wrap items-center gap-2">
-                {activeTab !== 'favorites' && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {activeTab !== 'favorites' && (
+                    <div className="inline-flex flex-wrap gap-2 rounded-full border border-[var(--glass-border)] bg-[var(--glass-bg)] p-1 shadow-[var(--glass-shadow)] backdrop-blur-xl">
+                      {[
+                        { id: 'all' as const, label: 'Todos' },
+                        { id: 'favorites' as const, label: 'Solo favoritos' },
+                      ].map((option) => {
+                        const isActive =
+                          option.id === 'favorites' ? showFavoritesOnly : !showFavoritesOnly;
+
+                        return (
+                          <button
+                            key={option.id}
+                            onClick={() => setShowFavoritesOnly(option.id === 'favorites')}
+                            className={`rounded-full px-3 py-2 text-[9px] md:text-[10px] font-black uppercase tracking-[0.28em] transition-all ${
+                              isActive
+                                ? useThemeAudioColors
+                                  ? 'bg-[var(--accent-primary)] text-[var(--bg-main)] shadow-lg'
+                                  : 'bg-[var(--text-main)] text-[var(--bg-main)] shadow-lg'
+                                : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   <div className="inline-flex flex-wrap gap-2 rounded-full border border-[var(--glass-border)] bg-[var(--glass-bg)] p-1 shadow-[var(--glass-shadow)] backdrop-blur-xl">
                     {[
-                      { id: 'all' as const, label: 'Todos' },
-                      { id: 'favorites' as const, label: 'Solo favoritos' },
+                      { id: 'recent' as const, label: 'Recientes' },
+                      { id: 'title' as const, label: 'Título' },
+                      { id: 'artist' as const, label: 'Artista' },
                     ].map((option) => {
-                      const isActive =
-                        option.id === 'favorites' ? showFavoritesOnly : !showFavoritesOnly;
+                      const isActive = sortMode === option.id;
 
                       return (
                         <button
                           key={option.id}
-                          onClick={() => setShowFavoritesOnly(option.id === 'favorites')}
-                          className={`rounded-full px-3 py-2 text-[9px] md:text-[10px] font-black uppercase tracking-[0.28em] transition-all ${
+                          onClick={() => setSortMode(option.id)}
+                          className={`rounded-full px-4 py-2 text-[10px] md:text-xs font-black uppercase tracking-[0.28em] transition-all ${
                             isActive
                               ? useThemeAudioColors
                                 ? 'bg-[var(--accent-primary)] text-[var(--bg-main)] shadow-lg'
@@ -927,549 +944,515 @@ export const Library = ({ useThemeAudioColors = true, activeTab, setActiveTab }:
                       );
                     })}
                   </div>
-                )}
-
-                <div className="inline-flex flex-wrap gap-2 rounded-full border border-[var(--glass-border)] bg-[var(--glass-bg)] p-1 shadow-[var(--glass-shadow)] backdrop-blur-xl">
-                  {[
-                    { id: 'recent' as const, label: 'Recientes' },
-                    { id: 'title' as const, label: 'Título' },
-                    { id: 'artist' as const, label: 'Artista' },
-                  ].map((option) => {
-                    const isActive = sortMode === option.id;
-
-                    return (
-                      <button
-                        key={option.id}
-                        onClick={() => setSortMode(option.id)}
-                        className={`rounded-full px-4 py-2 text-[10px] md:text-xs font-black uppercase tracking-[0.28em] transition-all ${
-                          isActive
-                            ? useThemeAudioColors
-                              ? 'bg-[var(--accent-primary)] text-[var(--bg-main)] shadow-lg'
-                              : 'bg-[var(--text-main)] text-[var(--bg-main)] shadow-lg'
-                            : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
                 </div>
               </div>
-            </div>
 
-            {/* Cabecera de la tabla */}
-            <div className="mt-4 grid grid-cols-[40px_1fr_auto] md:grid-cols-[50px_1fr_auto] gap-4 px-4 py-3 text-[var(--text-muted)] text-[10px] uppercase tracking-[0.3em] font-black border-b border-[var(--glass-border)]">
-              <span className="text-center">#</span>
-              <span>Título / Artista</span>
-              <span className="hidden md:flex justify-end pr-4 text-sm font-mono">
-                <Clock3 size={14} />
-              </span>
-              <span className="hidden md:block" />
-            </div>
+              {/* Cabecera de la tabla */}
+              <div className="mt-4 grid grid-cols-[40px_1fr_auto] md:grid-cols-[50px_1fr_auto] gap-4 px-4 py-3 text-[var(--text-muted)] text-[10px] uppercase tracking-[0.3em] font-black border-b border-[var(--glass-border)]">
+                <span className="text-center">#</span>
+                <span>Título / Artista</span>
+                <span className="hidden md:flex justify-end pr-4 text-sm font-mono">
+                  <Clock3 size={14} />
+                </span>
+                <span className="hidden md:block" />
+              </div>
 
-            {/* LISTADO: El padding inferior 'pb-72' asegura que el scroll no choque con la PlayerBar + MobileTabs */}
-            <div className="flex flex-col mt-4 gap-1 pb-72 md:pb-40">
-              {libraryTracks.length === 0 ? (
-                <div className="py-24 text-center border-2 border-dashed border-[var(--glass-border)] rounded-[40px] flex flex-col items-center gap-4">
-                  <p className="text-[var(--text-muted)] font-medium">
-                    Sube archivos MP3 para empezar.
-                  </p>
-                </div>
-              ) : (activeTab === 'favorites' || showFavoritesOnly) &&
-                sourceLibraryTracks.length === 0 ? (
-                <div className="py-20 text-center border-2 border-dashed border-[var(--glass-border)] rounded-[40px] flex flex-col items-center gap-5 bg-[var(--glass-bg)]/70">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--accent-primary)_15%,transparent)] text-[var(--accent-primary)] shadow-[0_18px_38px_rgba(0,0,0,0.12)]">
-                    <Heart size={28} fill="currentColor" />
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-2xl font-black tracking-tight text-[var(--text-main)]">
-                      {activeTab === 'favorites'
-                        ? 'Tu lista de favoritos está vacía'
-                        : 'No tienes favoritos en esta vista'}
-                    </p>
-                    <p className="text-sm text-[var(--text-muted)]">
-                      {activeTab === 'favorites'
-                        ? 'Marca tus pistas con el corazón para guardarlas aquí.'
-                        : 'Activa la vista de favoritos para concentrarte en tus pistas guardadas.'}
+              {/* LISTADO: El padding inferior 'pb-72' asegura que el scroll no choque con la PlayerBar + MobileTabs */}
+              <div className="flex flex-col mt-4 gap-1 pb-72 md:pb-40">
+                {libraryTracks.length === 0 ? (
+                  <div className="py-24 text-center border-2 border-dashed border-[var(--glass-border)] rounded-[40px] flex flex-col items-center gap-4">
+                    <p className="text-[var(--text-muted)] font-medium">
+                      Sube archivos MP3 para empezar.
                     </p>
                   </div>
-                  <button
-                    onClick={() => setActiveTab('library')}
-                    className="rounded-full bg-[var(--accent-primary)] px-5 py-3 text-[10px] font-black uppercase tracking-[0.28em] text-[var(--bg-main)] shadow-lg transition-all hover:scale-[1.02]"
-                  >
-                    {activeTab === 'favorites' ? 'Ir a la biblioteca' : 'Volver a la biblioteca'}
-                  </button>
-                </div>
-              ) : visibleLibraryTracks.length === 0 ? (
-                <div className="py-24 text-center border-2 border-dashed border-[var(--glass-border)] rounded-[40px] flex flex-col items-center gap-4">
-                  <p className="text-[var(--text-muted)] font-medium">
-                    No hay resultados para esa búsqueda.
-                  </p>
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="rounded-full border border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2 text-xs font-black uppercase tracking-[0.28em] text-[var(--text-main)] transition-all hover:scale-105"
-                  >
-                    Limpiar filtro
-                  </button>
-                </div>
-              ) : (
-                librarySongs.map((track, index) => {
-                  const isSelected = currentTrack?.id === track.id;
-                  const isInPlaylist = playlistTrackIdSet.has(track.id);
-                  const isFavorite = favoriteTrackIds.includes(track.id);
-
-                  return (
-                    <div
-                      key={track.id}
-                      role="group"
-                      aria-label={`${track.title} by ${track.artist}`}
-                      onClick={() => {
-                        handleLibraryTrackPlay(track, isSelected);
-                      }}
-                      className={`library-track-row group grid grid-cols-[32px_minmax(0,1fr)_auto] md:grid-cols-[50px_minmax(0,1fr)_auto] items-center gap-3 md:gap-4 px-3 md:px-4 py-3 rounded-2xl transition-all border border-transparent cursor-pointer ${
-                        isSelected
-                          ? `${selectedRowClass} border-l-[3px] shadow-[0_8px_24px_color-mix(in_srgb,var(--accent-primary)_10%,transparent)]`
-                          : 'hover:bg-[var(--glass-bg)] hover:-translate-y-px'
-                      }`}
+                ) : (activeTab === 'favorites' || showFavoritesOnly) &&
+                  sourceLibraryTracks.length === 0 ? (
+                  <div className="py-20 text-center border-2 border-dashed border-[var(--glass-border)] rounded-[40px] flex flex-col items-center gap-5 bg-[var(--glass-bg)]/70">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--accent-primary)_15%,transparent)] text-[var(--accent-primary)] shadow-[0_18px_38px_rgba(0,0,0,0.12)]">
+                      <Heart size={28} fill="currentColor" />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-2xl font-black tracking-tight text-[var(--text-main)]">
+                        {activeTab === 'favorites'
+                          ? 'Tu lista de favoritos está vacía'
+                          : 'No tienes favoritos en esta vista'}
+                      </p>
+                      <p className="text-sm text-[var(--text-muted)]">
+                        {activeTab === 'favorites'
+                          ? 'Marca tus pistas con el corazón para guardarlas aquí.'
+                          : 'Activa la vista de favoritos para concentrarte en tus pistas guardadas.'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleTabChange('library')}
+                      className="rounded-full bg-[var(--accent-primary)] px-5 py-3 text-[10px] font-black uppercase tracking-[0.28em] text-[var(--bg-main)] shadow-lg transition-all hover:scale-[1.02]"
                     >
-                      {/* Número / Indicador */}
-                      <button
-                        type="button"
-                        aria-label={
-                          isSelected && isPlaying ? `Pause ${track.title}` : `Play ${track.title}`
-                        }
-                        onClick={(event) => {
-                          event.stopPropagation();
+                      {activeTab === 'favorites' ? 'Ir a la biblioteca' : 'Volver a la biblioteca'}
+                    </button>
+                  </div>
+                ) : visibleLibraryTracks.length === 0 ? (
+                  <div className="py-24 text-center border-2 border-dashed border-[var(--glass-border)] rounded-[40px] flex flex-col items-center gap-4">
+                    <p className="text-[var(--text-muted)] font-medium">
+                      No hay resultados para esa búsqueda.
+                    </p>
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="rounded-full border border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2 text-xs font-black uppercase tracking-[0.28em] text-[var(--text-main)] transition-all hover:scale-105"
+                    >
+                      Limpiar filtro
+                    </button>
+                  </div>
+                ) : (
+                  librarySongs.map((track, index) => {
+                    const isSelected = currentTrack?.id === track.id;
+                    const isInPlaylist = playlistTrackIdSet.has(track.id);
+                    const isFavorite = favoriteTrackIds.includes(track.id);
+
+                    return (
+                      <div
+                        key={track.id}
+                        role="group"
+                        aria-label={`${track.title} by ${track.artist}`}
+                        onClick={() => {
                           handleLibraryTrackPlay(track, isSelected);
                         }}
-                        className="flex justify-center items-center relative w-6 h-6 mx-auto rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-primary)]"
+                        className={`library-track-row group grid grid-cols-[32px_minmax(0,1fr)_auto] md:grid-cols-[50px_minmax(0,1fr)_auto] items-center gap-3 md:gap-4 px-3 md:px-4 py-3 rounded-2xl transition-all border border-transparent cursor-pointer ${
+                          isSelected
+                            ? `${selectedRowClass} border-l-[3px] shadow-[0_8px_24px_color-mix(in_srgb,var(--accent-primary)_10%,transparent)]`
+                            : 'hover:bg-[var(--glass-bg)] hover:-translate-y-px'
+                        }`}
                       >
-                        {isSelected && isPlaying ? (
-                          <div className="flex gap-0.5 items-end h-3 group-hover:opacity-0 transition-opacity">
-                            <div
-                              className={`w-1 animate-bounce [animation-duration:0.6s] ${
-                                useThemeAudioColors ? 'bg-[var(--accent-primary)]' : 'bg-blue-500'
-                              }`}
-                            />
-                            <div
-                              className={`w-1 animate-bounce [animation-duration:0.9s] ${
-                                useThemeAudioColors ? 'bg-[var(--accent-primary)]' : 'bg-blue-500'
-                              }`}
-                            />
-                            <div
-                              className={`w-1 animate-bounce [animation-duration:0.7s] ${
-                                useThemeAudioColors ? 'bg-[var(--accent-primary)]' : 'bg-blue-500'
-                              }`}
-                            />
-                          </div>
-                        ) : (
-                          <span
-                            className={`text-xs font-mono transition-opacity ${
-                              isSelected
-                                ? selectedAccentClass
-                                : 'text-[var(--text-muted)] group-hover:opacity-0'
-                            }`}
-                          >
-                            {index + 1}
-                          </span>
-                        )}
-                        <div
-                          className={`absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 ${isSelected ? 'opacity-100' : ''}`}
+                        {/* Número / Indicador */}
+                        <button
+                          type="button"
+                          aria-label={
+                            isSelected && isPlaying ? `Pause ${track.title}` : `Play ${track.title}`
+                          }
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleLibraryTrackPlay(track, isSelected);
+                          }}
+                          className="flex justify-center items-center relative w-6 h-6 mx-auto rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-primary)]"
                         >
                           {isSelected && isPlaying ? (
-                            <Pause size={16} fill="currentColor" />
+                            <div className="flex gap-0.5 items-end h-3 group-hover:opacity-0 transition-opacity">
+                              <div
+                                className={`w-1 animate-bounce [animation-duration:0.6s] ${
+                                  useThemeAudioColors ? 'bg-[var(--accent-primary)]' : 'bg-blue-500'
+                                }`}
+                              />
+                              <div
+                                className={`w-1 animate-bounce [animation-duration:0.9s] ${
+                                  useThemeAudioColors ? 'bg-[var(--accent-primary)]' : 'bg-blue-500'
+                                }`}
+                              />
+                              <div
+                                className={`w-1 animate-bounce [animation-duration:0.7s] ${
+                                  useThemeAudioColors ? 'bg-[var(--accent-primary)]' : 'bg-blue-500'
+                                }`}
+                              />
+                            </div>
                           ) : (
-                            <Play size={16} fill="currentColor" />
+                            <span
+                              className={`text-xs font-mono transition-opacity ${
+                                isSelected
+                                  ? selectedAccentClass
+                                  : 'text-[var(--text-muted)] group-hover:opacity-0'
+                              }`}
+                            >
+                              {index + 1}
+                            </span>
                           )}
-                        </div>
-                      </button>
+                          <div
+                            className={`absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 ${isSelected ? 'opacity-100' : ''}`}
+                          >
+                            {isSelected && isPlaying ? (
+                              <Pause size={16} fill="currentColor" />
+                            ) : (
+                              <Play size={16} fill="currentColor" />
+                            )}
+                          </div>
+                        </button>
 
-                      {/* Info Canción */}
-                      <div className="flex items-center gap-4 overflow-hidden">
-                        <img
-                          src={track.coverUrl}
-                          loading="lazy"
-                          decoding="async"
-                          className={`h-12 w-12 rounded-xl object-cover bg-white/5 border transition-all ${
-                            isSelected
-                              ? 'border-[var(--accent-primary)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent-primary)_14%,transparent)]'
-                              : 'border-[var(--glass-border)] group-hover:border-[var(--accent-secondary)]/40'
-                          }`}
-                          alt=""
-                        />
-                        <div className="truncate">
+                        {/* Info Canción */}
+                        <div className="flex items-center gap-4 overflow-hidden">
+                          <img
+                            src={track.coverUrl}
+                            loading="lazy"
+                            decoding="async"
+                            className={`h-12 w-12 rounded-xl object-cover bg-white/5 border transition-all ${
+                              isSelected
+                                ? 'border-[var(--accent-primary)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent-primary)_14%,transparent)]'
+                                : 'border-[var(--glass-border)] group-hover:border-[var(--accent-secondary)]/40'
+                            }`}
+                            alt=""
+                          />
+                          <div className="truncate">
+                            <p
+                              className={`text-sm md:text-base font-bold truncate ${
+                                isSelected ? selectedAccentClass : 'text-[var(--text-main)]'
+                              }`}
+                            >
+                              {track.title}
+                            </p>
+                            <p className="text-[10px] md:text-[11px] text-[var(--text-muted)] font-semibold uppercase tracking-widest truncate group-hover:text-[var(--text-main)] transition-colors">
+                              {track.artist}
+                              {track.album ? ` · ${track.album}` : ''}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 md:gap-3">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setCoverSearchTrack(track);
+                            }}
+                            aria-label={`Find cover for ${track.title}`}
+                            title="Find cover automatically"
+                            className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--text-muted)] transition-all hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-primary)] md:opacity-0 md:group-hover:opacity-100"
+                          >
+                            <ImagePlus size={17} />
+                          </button>
+                          <button
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              if (!isInPlaylist) {
+                                clearPendingRemove();
+                                handleLibraryTrackAdd(track);
+                                return;
+                              }
+
+                              if (pendingRemoveTrackId === track.id) {
+                                removeFromPlaylist(track.id);
+                                clearPendingRemove();
+                                return;
+                              }
+
+                              setPendingRemoveTrackId(track.id);
+                            }}
+                            onKeyDown={(event) => event.stopPropagation()}
+                            type="button"
+                            title={
+                              !isInPlaylist
+                                ? `Add ${track.title} to playlist`
+                                : pendingRemoveTrackId === track.id
+                                  ? `Remove ${track.title} from playlist`
+                                  : `Tap again to remove ${track.title}`
+                            }
+                            aria-label={
+                              !isInPlaylist
+                                ? `Add ${track.title} to playlist`
+                                : pendingRemoveTrackId === track.id
+                                  ? `Remove ${track.title} from playlist`
+                                  : `Tap again to remove ${track.title}`
+                            }
+                            className={`${queueActionButtonBaseClass} ${
+                              isInPlaylist
+                                ? useThemeAudioColors
+                                  ? pendingRemoveTrackId === track.id
+                                    ? 'border-[color-mix(in_srgb,var(--accent-secondary)_42%,transparent)] bg-[color-mix(in_srgb,var(--accent-secondary)_20%,var(--bg-main))] text-[var(--accent-light)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--accent-secondary)_24%,transparent)]'
+                                    : 'border-[color-mix(in_srgb,var(--accent-secondary)_28%,transparent)] bg-[color-mix(in_srgb,var(--accent-secondary)_12%,var(--bg-main))] text-[var(--accent-secondary)] hover:bg-[color-mix(in_srgb,var(--accent-secondary)_16%,var(--bg-main))]'
+                                  : 'cursor-default border-[var(--glass-border)] bg-[color-mix(in_srgb,var(--text-main)_10%,var(--bg-main))] text-[var(--text-main)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--text-main)_10%,transparent)]'
+                                : useThemeAudioColors
+                                  ? 'border-[color-mix(in_srgb,var(--accent-primary)_20%,transparent)] bg-[color-mix(in_srgb,var(--accent-primary)_18%,var(--bg-main))] text-[var(--accent-secondary)] hover:bg-[color-mix(in_srgb,var(--accent-primary)_22%,var(--bg-main))]'
+                                  : 'border-blue-500/20 bg-[color-mix(in_srgb,theme(colors.blue.500)_14%,var(--bg-main))] text-blue-300 hover:bg-[color-mix(in_srgb,theme(colors.blue.500)_20%,var(--bg-main))]'
+                            }`}
+                          >
+                            {isInPlaylist && pendingRemoveTrackId === track.id ? (
+                              <X size={12} strokeWidth={3} className={queueActionIconClass} />
+                            ) : isInPlaylist ? (
+                              <Check size={12} strokeWidth={3} className={queueActionIconClass} />
+                            ) : (
+                              <Plus size={12} strokeWidth={3} className={queueActionIconClass} />
+                            )}
+                            <span className="hidden md:inline">
+                              {!isInPlaylist
+                                ? 'Add'
+                                : pendingRemoveTrackId === track.id
+                                  ? 'Remove'
+                                  : 'In queue'}
+                            </span>
+                          </button>
+
+                          <span className="min-w-16 whitespace-nowrap text-right text-[10px] font-mono tabular-nums tracking-tighter text-[var(--text-muted)] md:min-w-20 md:text-sm">
+                            {formatDuration(track.durationSeconds)}
+                          </span>
+
+                          <button
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              toggleTrackFavorite(track.id);
+                            }}
+                            onKeyDown={(event) => event.stopPropagation()}
+                            type="button"
+                            aria-label={
+                              isFavorite
+                                ? `Remove ${track.title} from favorites`
+                                : `Add ${track.title} to favorites`
+                            }
+                            aria-pressed={isFavorite}
+                            className={`flex h-9 w-9 items-center justify-center rounded-full transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-primary)] ${
+                              isFavorite
+                                ? selectedHeartClass
+                                : 'text-[var(--text-muted)] md:opacity-0 md:group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-500'
+                            }`}
+                          >
+                            <Heart size={18} fill={isFavorite ? 'currentColor' : 'none'} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="pb-72 md:pb-40">
+              <div className="flex flex-col gap-4 px-4 py-3 border-b border-[var(--glass-border)] md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.3em] font-black text-[var(--text-muted)]">
+                    Playlist
+                  </p>
+                  <p className="text-sm text-[var(--text-main)] font-semibold mt-1">
+                    Cola optimizada sin miniaturas para reducir carga visual.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={playFirstTrack}
+                    disabled={playlistTracks.length === 0}
+                    className={`rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-[0.28em] transition-all ${
+                      playlistTracks.length === 0
+                        ? 'cursor-not-allowed border border-[var(--glass-border)] text-[var(--text-muted)] opacity-50'
+                        : useThemeAudioColors
+                          ? 'bg-[var(--accent-primary)] text-[var(--bg-main)] shadow-lg hover:scale-105'
+                          : 'bg-[var(--text-main)] text-[var(--bg-main)] shadow-lg hover:scale-105'
+                    }`}
+                  >
+                    Play queue
+                  </button>
+                  <button
+                    onClick={playRandomTrack}
+                    disabled={playlistTracks.length === 0}
+                    className={`rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-[0.28em] transition-all ${
+                      playlistTracks.length === 0
+                        ? 'cursor-not-allowed border-[var(--glass-border)] text-[var(--text-muted)] opacity-50'
+                        : 'border-[var(--glass-border)] bg-[var(--glass-bg)] text-[var(--text-main)] hover:scale-105'
+                    }`}
+                  >
+                    Shuffle
+                  </button>
+                  <button
+                    onClick={clearPlaylist}
+                    disabled={playlistTracks.length === 0}
+                    className={`rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-[0.28em] transition-all ${
+                      playlistTracks.length === 0
+                        ? 'cursor-not-allowed border-[var(--glass-border)] text-[var(--text-muted)] opacity-50'
+                        : useThemeAudioColors
+                          ? 'border-[color-mix(in_srgb,var(--accent-secondary)_24%,transparent)] bg-[color-mix(in_srgb,var(--accent-secondary)_12%,var(--bg-main))] text-[var(--accent-light)] hover:scale-105 hover:bg-[color-mix(in_srgb,var(--accent-secondary)_16%,var(--bg-main))]'
+                          : 'border-[var(--glass-border)] bg-[color-mix(in_srgb,var(--text-main)_10%,var(--bg-main))] text-[var(--text-main)] hover:scale-105 hover:bg-[color-mix(in_srgb,var(--text-main)_14%,var(--bg-main))]'
+                    }`}
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid gap-3 px-4 pt-4 md:grid-cols-[1fr_0.8fr]">
+                <div className="rounded-[28px] border border-[var(--glass-border)] bg-[var(--glass-bg)] p-4 shadow-[var(--glass-shadow)] backdrop-blur-xl">
+                  <p className="text-[10px] uppercase tracking-[0.3em] font-black text-[var(--text-muted)]">
+                    Queue stats
+                  </p>
+                  <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+                    <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] px-3 py-4">
+                      <p className="text-[11px] uppercase tracking-[0.25em] text-[var(--text-muted)]">
+                        Tracks
+                      </p>
+                      <p className="mt-2 text-2xl font-black text-[var(--text-main)]">
+                        {playlistTracks.length}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] px-3 py-4">
+                      <p className="text-[11px] uppercase tracking-[0.25em] text-[var(--text-muted)]">
+                        Current
+                      </p>
+                      <p className="mt-2 text-2xl font-black text-[var(--text-main)]">
+                        {currentPlaylistIndex >= 0 ? currentPlaylistIndex + 1 : 0}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] px-3 py-4">
+                      <p className="text-[11px] uppercase tracking-[0.25em] text-[var(--text-muted)]">
+                        Up next
+                      </p>
+                      <p className="mt-2 text-2xl font-black text-[var(--text-main)]">
+                        {Math.max(0, playlistTracks.length - currentPlaylistIndex - 1)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-dashed border-[var(--glass-border)] px-4 py-3 text-sm text-[var(--text-muted)]">
+                    {currentTrack
+                      ? `Ahora suena ${currentTrack.title} y la cola avanza con las siguientes pistas.`
+                      : 'La playlist está lista para reproducirse de principio a fin o en modo shuffle.'}
+                  </div>
+                </div>
+
+                <div className="rounded-[28px] border border-[var(--glass-border)] bg-[var(--glass-bg)] p-4 shadow-[var(--glass-shadow)] backdrop-blur-xl">
+                  <p className="text-[10px] uppercase tracking-[0.3em] font-black text-[var(--text-muted)]">
+                    Up next
+                  </p>
+                  <div className="mt-4 space-y-2">
+                    {upcomingPlaylistTracks.length === 0 ? (
+                      <p className="rounded-2xl border border-dashed border-[var(--glass-border)] px-4 py-6 text-center text-sm text-[var(--text-muted)]">
+                        No hay más pistas en la cola.
+                      </p>
+                    ) : (
+                      upcomingPlaylistTracks.map((track, index) => (
+                        <div
+                          key={track.id}
+                          className="flex w-full items-center gap-3 rounded-2xl border border-transparent px-3 py-2 text-left transition-all hover:bg-[var(--bg-elevated)]"
+                        >
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--bg-elevated)] text-[11px] font-black text-[var(--text-muted)]">
+                            {index + 1}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-bold text-[var(--text-main)]">
+                              {track.title}
+                            </p>
+                            <p className="truncate text-[11px] font-semibold uppercase tracking-[0.25em] text-[var(--text-muted)]">
+                              {track.artist}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-2 px-4">
+                {playlistTracks.length === 0 ? (
+                  <div className="py-24 text-center border-2 border-dashed border-[var(--glass-border)] rounded-[40px] flex flex-col items-center gap-4">
+                    <p className="text-[var(--text-muted)] font-medium">
+                      La playlist todavía no tiene pistas.
+                    </p>
+                  </div>
+                ) : (
+                  playlistTracks.map((track) => {
+                    const isSelected = currentTrack?.id === track.id;
+                    const isDropTarget = dropTargetTrackId === track.id;
+
+                    return (
+                      <div
+                        key={track.id}
+                        draggable
+                        onClick={() => (isSelected ? togglePlay() : setTrack(track))}
+                        onDragStart={(event) => handlePlaylistDragStart(event, track.id)}
+                        onDragOver={(event) => handlePlaylistDragOver(event, track.id)}
+                        onDrop={(event) => handlePlaylistDrop(event, track.id)}
+                        onDragEnd={() => {
+                          setDraggedPlaylistTrackId(null);
+                          setDropTargetTrackId(null);
+                        }}
+                        className={`library-track-row group grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all cursor-grab active:cursor-grabbing ${
+                          isSelected
+                            ? selectedRowClass
+                            : isDropTarget
+                              ? 'border-[var(--glass-border)] bg-[var(--glass-bg)]'
+                              : 'border-transparent hover:bg-[var(--glass-bg)]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--bg-elevated)] text-[11px] font-black text-[var(--text-muted)]">
+                            <GripVertical size={14} />
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            <button
+                              type="button"
+                              disabled={
+                                playlistTracks.findIndex((item) => item.id === track.id) === 0
+                              }
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handlePlaylistKeyboardMove(track.id, 'up');
+                              }}
+                              aria-label={`Move ${track.title} up`}
+                              className="rounded p-0.5 text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)] disabled:invisible"
+                            >
+                              <ChevronUp size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={
+                                playlistTracks.findIndex((item) => item.id === track.id) ===
+                                playlistTracks.length - 1
+                              }
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handlePlaylistKeyboardMove(track.id, 'down');
+                              }}
+                              aria-label={`Move ${track.title} down`}
+                              className="rounded p-0.5 text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)] disabled:invisible"
+                            >
+                              <ChevronDown size={12} />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="min-w-0">
                           <p
-                            className={`text-sm md:text-base font-bold truncate ${
+                            className={`truncate text-sm font-bold ${
                               isSelected ? selectedAccentClass : 'text-[var(--text-main)]'
                             }`}
                           >
-                            {track.title}
-                          </p>
-                          <p className="text-[10px] md:text-[11px] text-[var(--text-muted)] font-semibold uppercase tracking-widest truncate group-hover:text-[var(--text-main)] transition-colors">
-                            {track.artist}
-                            {track.album ? ` · ${track.album}` : ''}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-end gap-2 md:gap-3">
-                        <button
-                          type="button"
-                          onClick={(event) => handleFindAutomaticCover(event, track)}
-                          aria-label={`Find cover for ${track.title}`}
-                          title={
-                            coverSearchErrorTrackId === track.id
-                              ? 'No cover found'
-                              : 'Find cover automatically'
-                          }
-                          className={`flex h-9 w-9 items-center justify-center rounded-full text-[var(--text-muted)] transition-all hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-primary)] md:opacity-0 md:group-hover:opacity-100 ${
-                            coverSearchErrorTrackId === track.id ? 'text-red-400' : ''
-                          }`}
-                        >
-                          {coverSearchTrackId === track.id ? (
-                            <LoaderCircle size={16} className="animate-spin" />
-                          ) : (
-                            <ImagePlus size={17} />
-                          )}
-                        </button>
-                        <button
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            if (!isInPlaylist) {
-                              clearPendingRemove();
-                              handleLibraryTrackAdd(track);
-                              return;
-                            }
-
-                            if (pendingRemoveTrackId === track.id) {
-                              removeFromPlaylist(track.id);
-                              clearPendingRemove();
-                              return;
-                            }
-
-                            setPendingRemoveTrackId(track.id);
-                          }}
-                          onKeyDown={(event) => event.stopPropagation()}
-                          type="button"
-                          title={
-                            !isInPlaylist
-                              ? `Add ${track.title} to playlist`
-                              : pendingRemoveTrackId === track.id
-                                ? `Remove ${track.title} from playlist`
-                                : `Tap again to remove ${track.title}`
-                          }
-                          aria-label={
-                            !isInPlaylist
-                              ? `Add ${track.title} to playlist`
-                              : pendingRemoveTrackId === track.id
-                                ? `Remove ${track.title} from playlist`
-                                : `Tap again to remove ${track.title}`
-                          }
-                          className={`${queueActionButtonBaseClass} ${
-                            isInPlaylist
-                              ? useThemeAudioColors
-                                ? pendingRemoveTrackId === track.id
-                                  ? 'border-[color-mix(in_srgb,var(--accent-secondary)_42%,transparent)] bg-[color-mix(in_srgb,var(--accent-secondary)_20%,var(--bg-main))] text-[var(--accent-light)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--accent-secondary)_24%,transparent)]'
-                                  : 'border-[color-mix(in_srgb,var(--accent-secondary)_28%,transparent)] bg-[color-mix(in_srgb,var(--accent-secondary)_12%,var(--bg-main))] text-[var(--accent-secondary)] hover:bg-[color-mix(in_srgb,var(--accent-secondary)_16%,var(--bg-main))]'
-                                : 'cursor-default border-[var(--glass-border)] bg-[color-mix(in_srgb,var(--text-main)_10%,var(--bg-main))] text-[var(--text-main)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--text-main)_10%,transparent)]'
-                              : useThemeAudioColors
-                                ? 'border-[color-mix(in_srgb,var(--accent-primary)_20%,transparent)] bg-[color-mix(in_srgb,var(--accent-primary)_18%,var(--bg-main))] text-[var(--accent-secondary)] hover:bg-[color-mix(in_srgb,var(--accent-primary)_22%,var(--bg-main))]'
-                                : 'border-blue-500/20 bg-[color-mix(in_srgb,theme(colors.blue.500)_14%,var(--bg-main))] text-blue-300 hover:bg-[color-mix(in_srgb,theme(colors.blue.500)_20%,var(--bg-main))]'
-                          }`}
-                        >
-                          {isInPlaylist && pendingRemoveTrackId === track.id ? (
-                            <X size={12} strokeWidth={3} className={queueActionIconClass} />
-                          ) : isInPlaylist ? (
-                            <Check size={12} strokeWidth={3} className={queueActionIconClass} />
-                          ) : (
-                            <Plus size={12} strokeWidth={3} className={queueActionIconClass} />
-                          )}
-                          <span className="hidden md:inline">
-                            {!isInPlaylist
-                              ? 'Add'
-                              : pendingRemoveTrackId === track.id
-                                ? 'Remove'
-                                : 'In queue'}
-                          </span>
-                        </button>
-
-                        <span className="min-w-16 whitespace-nowrap text-right text-[10px] font-mono tabular-nums tracking-tighter text-[var(--text-muted)] md:min-w-20 md:text-sm">
-                          {formatDuration(track.durationSeconds)}
-                        </span>
-
-                        <button
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            toggleTrackFavorite(track.id);
-                          }}
-                          onKeyDown={(event) => event.stopPropagation()}
-                          type="button"
-                          aria-label={
-                            isFavorite
-                              ? `Remove ${track.title} from favorites`
-                              : `Add ${track.title} to favorites`
-                          }
-                          aria-pressed={isFavorite}
-                          className={`flex h-9 w-9 items-center justify-center rounded-full transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-primary)] ${
-                            isFavorite
-                              ? selectedHeartClass
-                              : 'text-[var(--text-muted)] md:opacity-0 md:group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-500'
-                          }`}
-                        >
-                          <Heart size={18} fill={isFavorite ? 'currentColor' : 'none'} />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="pb-72 md:pb-40">
-            <div className="flex flex-col gap-4 px-4 py-3 border-b border-[var(--glass-border)] md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.3em] font-black text-[var(--text-muted)]">
-                  Playlist
-                </p>
-                <p className="text-sm text-[var(--text-main)] font-semibold mt-1">
-                  Cola optimizada sin miniaturas para reducir carga visual.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={playFirstTrack}
-                  disabled={playlistTracks.length === 0}
-                  className={`rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-[0.28em] transition-all ${
-                    playlistTracks.length === 0
-                      ? 'cursor-not-allowed border border-[var(--glass-border)] text-[var(--text-muted)] opacity-50'
-                      : useThemeAudioColors
-                        ? 'bg-[var(--accent-primary)] text-[var(--bg-main)] shadow-lg hover:scale-105'
-                        : 'bg-[var(--text-main)] text-[var(--bg-main)] shadow-lg hover:scale-105'
-                  }`}
-                >
-                  Play queue
-                </button>
-                <button
-                  onClick={playRandomTrack}
-                  disabled={playlistTracks.length === 0}
-                  className={`rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-[0.28em] transition-all ${
-                    playlistTracks.length === 0
-                      ? 'cursor-not-allowed border-[var(--glass-border)] text-[var(--text-muted)] opacity-50'
-                      : 'border-[var(--glass-border)] bg-[var(--glass-bg)] text-[var(--text-main)] hover:scale-105'
-                  }`}
-                >
-                  Shuffle
-                </button>
-                <button
-                  onClick={clearPlaylist}
-                  disabled={playlistTracks.length === 0}
-                  className={`rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-[0.28em] transition-all ${
-                    playlistTracks.length === 0
-                      ? 'cursor-not-allowed border-[var(--glass-border)] text-[var(--text-muted)] opacity-50'
-                      : useThemeAudioColors
-                        ? 'border-[color-mix(in_srgb,var(--accent-secondary)_24%,transparent)] bg-[color-mix(in_srgb,var(--accent-secondary)_12%,var(--bg-main))] text-[var(--accent-light)] hover:scale-105 hover:bg-[color-mix(in_srgb,var(--accent-secondary)_16%,var(--bg-main))]'
-                        : 'border-[var(--glass-border)] bg-[color-mix(in_srgb,var(--text-main)_10%,var(--bg-main))] text-[var(--text-main)] hover:scale-105 hover:bg-[color-mix(in_srgb,var(--text-main)_14%,var(--bg-main))]'
-                  }`}
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-
-            <div className="grid gap-3 px-4 pt-4 md:grid-cols-[1fr_0.8fr]">
-              <div className="rounded-[28px] border border-[var(--glass-border)] bg-[var(--glass-bg)] p-4 shadow-[var(--glass-shadow)] backdrop-blur-xl">
-                <p className="text-[10px] uppercase tracking-[0.3em] font-black text-[var(--text-muted)]">
-                  Queue stats
-                </p>
-                <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-                  <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] px-3 py-4">
-                    <p className="text-[11px] uppercase tracking-[0.25em] text-[var(--text-muted)]">
-                      Tracks
-                    </p>
-                    <p className="mt-2 text-2xl font-black text-[var(--text-main)]">
-                      {playlistTracks.length}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] px-3 py-4">
-                    <p className="text-[11px] uppercase tracking-[0.25em] text-[var(--text-muted)]">
-                      Current
-                    </p>
-                    <p className="mt-2 text-2xl font-black text-[var(--text-main)]">
-                      {currentPlaylistIndex >= 0 ? currentPlaylistIndex + 1 : 0}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] px-3 py-4">
-                    <p className="text-[11px] uppercase tracking-[0.25em] text-[var(--text-muted)]">
-                      Up next
-                    </p>
-                    <p className="mt-2 text-2xl font-black text-[var(--text-main)]">
-                      {Math.max(0, playlistTracks.length - currentPlaylistIndex - 1)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-4 rounded-2xl border border-dashed border-[var(--glass-border)] px-4 py-3 text-sm text-[var(--text-muted)]">
-                  {currentTrack
-                    ? `Ahora suena ${currentTrack.title} y la cola avanza con las siguientes pistas.`
-                    : 'La playlist está lista para reproducirse de principio a fin o en modo shuffle.'}
-                </div>
-              </div>
-
-              <div className="rounded-[28px] border border-[var(--glass-border)] bg-[var(--glass-bg)] p-4 shadow-[var(--glass-shadow)] backdrop-blur-xl">
-                <p className="text-[10px] uppercase tracking-[0.3em] font-black text-[var(--text-muted)]">
-                  Up next
-                </p>
-                <div className="mt-4 space-y-2">
-                  {upcomingPlaylistTracks.length === 0 ? (
-                    <p className="rounded-2xl border border-dashed border-[var(--glass-border)] px-4 py-6 text-center text-sm text-[var(--text-muted)]">
-                      No hay más pistas en la cola.
-                    </p>
-                  ) : (
-                    upcomingPlaylistTracks.map((track, index) => (
-                      <div
-                        key={track.id}
-                        className="flex w-full items-center gap-3 rounded-2xl border border-transparent px-3 py-2 text-left transition-all hover:bg-[var(--bg-elevated)]"
-                      >
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--bg-elevated)] text-[11px] font-black text-[var(--text-muted)]">
-                          {index + 1}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-bold text-[var(--text-main)]">
                             {track.title}
                           </p>
                           <p className="truncate text-[11px] font-semibold uppercase tracking-[0.25em] text-[var(--text-muted)]">
                             {track.artist}
                           </p>
                         </div>
+
+                        <div className="flex items-center gap-2 text-[var(--text-muted)]">
+                          {isSelected ? (
+                            <span className="rounded-full border border-[var(--glass-border)] px-3 py-1 text-[10px] font-black uppercase tracking-[0.25em]">
+                              Playing
+                            </span>
+                          ) : (
+                            <span className="text-[11px] font-mono">--:--</span>
+                          )}
+                        </div>
+                        <button
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            removeFromPlaylist(track.id);
+                          }}
+                          title={`Remove ${track.title} from playlist`}
+                          aria-label={`Remove ${track.title} from playlist`}
+                          className={`${queueActionButtonBaseClass} border-transparent text-[var(--text-muted)] opacity-0 group-hover:opacity-100 hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-500`}
+                        >
+                          <X size={12} strokeWidth={3} className={queueActionIconClass} />
+                          Remove
+                        </button>
                       </div>
-                    ))
-                  )}
-                </div>
+                    );
+                  })
+                )}
+
+                {playlistTracks.length > 0 && (
+                  <div
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={handlePlaylistDropToEnd}
+                    className="mt-2 rounded-2xl border border-dashed border-[var(--glass-border)] px-4 py-4 text-center text-xs font-black uppercase tracking-[0.28em] text-[var(--text-muted)] transition-all hover:bg-[var(--glass-bg)]"
+                  >
+                    Drop here to move track to the end
+                  </div>
+                )}
               </div>
             </div>
-
-            <div className="mt-4 grid gap-2 px-4">
-              {playlistTracks.length === 0 ? (
-                <div className="py-24 text-center border-2 border-dashed border-[var(--glass-border)] rounded-[40px] flex flex-col items-center gap-4">
-                  <p className="text-[var(--text-muted)] font-medium">
-                    La playlist todavía no tiene pistas.
-                  </p>
-                </div>
-              ) : (
-                playlistTracks.map((track) => {
-                  const isSelected = currentTrack?.id === track.id;
-                  const isDropTarget = dropTargetTrackId === track.id;
-
-                  return (
-                    <div
-                      key={track.id}
-                      draggable
-                      onClick={() => (isSelected ? togglePlay() : setTrack(track))}
-                      onDragStart={(event) => handlePlaylistDragStart(event, track.id)}
-                      onDragOver={(event) => handlePlaylistDragOver(event, track.id)}
-                      onDrop={(event) => handlePlaylistDrop(event, track.id)}
-                      onDragEnd={() => {
-                        setDraggedPlaylistTrackId(null);
-                        setDropTargetTrackId(null);
-                      }}
-                      className={`library-track-row group grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all cursor-grab active:cursor-grabbing ${
-                        isSelected
-                          ? selectedRowClass
-                          : isDropTarget
-                            ? 'border-[var(--glass-border)] bg-[var(--glass-bg)]'
-                            : 'border-transparent hover:bg-[var(--glass-bg)]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-1">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--bg-elevated)] text-[11px] font-black text-[var(--text-muted)]">
-                          <GripVertical size={14} />
-                        </div>
-                        <div className="flex flex-col gap-0.5">
-                          <button
-                            type="button"
-                            disabled={
-                              playlistTracks.findIndex((item) => item.id === track.id) === 0
-                            }
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handlePlaylistKeyboardMove(track.id, 'up');
-                            }}
-                            aria-label={`Move ${track.title} up`}
-                            className="rounded p-0.5 text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)] disabled:invisible"
-                          >
-                            <ChevronUp size={12} />
-                          </button>
-                          <button
-                            type="button"
-                            disabled={
-                              playlistTracks.findIndex((item) => item.id === track.id) ===
-                              playlistTracks.length - 1
-                            }
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handlePlaylistKeyboardMove(track.id, 'down');
-                            }}
-                            aria-label={`Move ${track.title} down`}
-                            className="rounded p-0.5 text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)] disabled:invisible"
-                          >
-                            <ChevronDown size={12} />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="min-w-0">
-                        <p
-                          className={`truncate text-sm font-bold ${
-                            isSelected ? selectedAccentClass : 'text-[var(--text-main)]'
-                          }`}
-                        >
-                          {track.title}
-                        </p>
-                        <p className="truncate text-[11px] font-semibold uppercase tracking-[0.25em] text-[var(--text-muted)]">
-                          {track.artist}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2 text-[var(--text-muted)]">
-                        {isSelected ? (
-                          <span className="rounded-full border border-[var(--glass-border)] px-3 py-1 text-[10px] font-black uppercase tracking-[0.25em]">
-                            Playing
-                          </span>
-                        ) : (
-                          <span className="text-[11px] font-mono">--:--</span>
-                        )}
-                      </div>
-                      <button
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          removeFromPlaylist(track.id);
-                        }}
-                        title={`Remove ${track.title} from playlist`}
-                        aria-label={`Remove ${track.title} from playlist`}
-                        className={`${queueActionButtonBaseClass} border-transparent text-[var(--text-muted)] opacity-0 group-hover:opacity-100 hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-500`}
-                      >
-                        <X size={12} strokeWidth={3} className={queueActionIconClass} />
-                        Remove
-                      </button>
-                    </div>
-                  );
-                })
-              )}
-
-              {playlistTracks.length > 0 && (
-                <div
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={handlePlaylistDropToEnd}
-                  className="mt-2 rounded-2xl border border-dashed border-[var(--glass-border)] px-4 py-4 text-center text-xs font-black uppercase tracking-[0.28em] text-[var(--text-muted)] transition-all hover:bg-[var(--glass-bg)]"
-                >
-                  Drop here to move track to the end
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+          ))}
       </div>
     </div>
   );

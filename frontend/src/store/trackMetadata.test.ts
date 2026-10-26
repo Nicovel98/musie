@@ -2,6 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  downloadAutomaticCover,
   findAutomaticCover,
   findAutomaticCoverOptions,
   getYouTubeThumbnail,
@@ -58,6 +59,9 @@ describe('automatic cover lookup', () => {
     expect(options.map((option) => option.album)).toEqual(['Album One', 'Album Two']);
     expect(options.every((option) => option.source === 'iTunes')).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(new URL(fetchMock.mock.calls[0][0]).searchParams.get('term')).toBe(
+      'Song One Artist One'
+    );
   });
 
   it('tries a readable title when a local filename uses separators', async () => {
@@ -94,6 +98,37 @@ describe('automatic cover lookup', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0][0]).toContain('itunes.apple.com/search');
     expect(fetchMock.mock.calls[1][0]).toContain('api.deezer.com/search');
+    expect(new URL(fetchMock.mock.calls[1][0]).searchParams.get('q')).toBe('track:"We-All-Become"');
+  });
+
+  it('propagates cancellation to the provider request', async () => {
+    const controller = new AbortController();
+    const fetchMock = vi.fn((_url: string, init?: RequestInit) => {
+      expect(init?.signal).toBeInstanceOf(AbortSignal);
+      controller.abort();
+      return Promise.reject(new DOMException('Aborted', 'AbortError'));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      findAutomaticCoverOptions({ title: 'Song One', artist: 'Artist One' }, controller.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('propagates cancellation while downloading a selected cover', async () => {
+    const controller = new AbortController();
+    const fetchMock = vi.fn((_url: string, init?: RequestInit) => {
+      expect(init?.signal).toBeInstanceOf(AbortSignal);
+      controller.abort();
+      return Promise.reject(new DOMException('Aborted', 'AbortError'));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      downloadAutomaticCover('https://cdn.example.com/cover.jpg', controller.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('finds a cover using track metadata and returns a data URL', async () => {

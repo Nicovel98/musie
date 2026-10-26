@@ -179,13 +179,17 @@ export interface AutomaticCoverOption {
 }
 
 export const findAutomaticCoverOptions = async (
-  track: Pick<Track, 'title' | 'artist'>
+  track: Pick<Track, 'title' | 'artist'>,
+  signal?: AbortSignal
 ): Promise<AutomaticCoverOption[]> => {
   const title = track.title.trim();
   const artist = track.artist.trim();
   if (!title) return [];
 
   const controller = new AbortController();
+  const abort = () => controller.abort();
+  signal?.addEventListener('abort', abort, { once: true });
+  if (signal?.aborted) controller.abort();
   const timeoutId = window.setTimeout(() => controller.abort(), 8000);
   const genericArtists = new Set(['archivo local', 'audio externo', 'unknown artist', 'unknown']);
 
@@ -194,11 +198,10 @@ export const findAutomaticCoverOptions = async (
     const titleVariants = Array.from(
       new Set([title, title.replace(/[-_]+/g, ' '), title.replace(/\s+/g, ' ')])
     );
+    const readableTitle = titleVariants[1] ?? title;
     const itunesResponse = await fetch(
       `https://itunes.apple.com/search?${new URLSearchParams({
-        term: genericArtists.has(normalizedArtist)
-          ? titleVariants[1]
-          : `${artist} ${titleVariants[1]}`,
+        term: genericArtists.has(normalizedArtist) ? readableTitle : `${readableTitle} ${artist}`,
         entity: 'song',
         limit: '8',
       })}`,
@@ -229,9 +232,9 @@ export const findAutomaticCoverOptions = async (
     const queries = genericArtists.has(normalizedArtist)
       ? titleVariants.map((variant) => `track:"${variant}"`)
       : [
-          `artist:"${artist}" track:"${title}"`,
-          `artist:"${artist}" track:"${titleVariants[1]}"`,
-          `track:"${titleVariants[1]}"`,
+          `track:"${title}" artist:"${artist}"`,
+          `track:"${readableTitle}" artist:"${artist}"`,
+          `track:"${readableTitle}"`,
         ];
     let results: DeezerSearchResponse['data'] = [];
 
@@ -277,16 +280,21 @@ export const findAutomaticCoverOptions = async (
     return Array.from(new Map(options.map((option) => [option.imageUrl, option])).values());
   } finally {
     window.clearTimeout(timeoutId);
+    signal?.removeEventListener('abort', abort);
   }
 };
 
-export const downloadAutomaticCover = async (imageUrl: string) => {
+export const downloadAutomaticCover = async (imageUrl: string, signal?: AbortSignal) => {
   const controller = new AbortController();
+  const abort = () => controller.abort();
+  signal?.addEventListener('abort', abort, { once: true });
+  if (signal?.aborted) controller.abort();
   const timeoutId = window.setTimeout(() => controller.abort(), 8000);
   try {
     return await fetchImageAsDataUrl(imageUrl, controller.signal);
   } finally {
     window.clearTimeout(timeoutId);
+    signal?.removeEventListener('abort', abort);
   }
 };
 

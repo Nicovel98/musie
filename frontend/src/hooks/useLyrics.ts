@@ -25,23 +25,31 @@ export const useLyrics = (
     Promise.resolve().then(() => {
       if (active) setIsLoading(false);
     });
-    Promise.resolve().then(async () => {
-      if (!track) {
+    void Promise.resolve()
+      .then(async () => {
+        if (!track) {
+          if (active) {
+            setLyrics(null);
+            setError(null);
+          }
+          return;
+        }
         if (active) {
-          setLyrics(null);
+          setLyrics(track.lyrics ?? null);
           setError(null);
         }
-        return;
-      }
-      if (active) {
-        setLyrics(track.lyrics ?? null);
-        setError(null);
-      }
-      const cachedLyrics = await readCachedLyrics(track.id);
-      if (!active || !cachedLyrics) return;
-      setLyrics(cachedLyrics);
-      updateTrackLyricsRef.current(track.id, cachedLyrics);
-    });
+        const cachedLyrics = await readCachedLyrics(track.id);
+        if (!active || !cachedLyrics) return;
+        setLyrics(cachedLyrics);
+        if (!track.lyrics) {
+          updateTrackLyricsRef.current(track.id, cachedLyrics);
+        }
+      })
+      .catch((reason) => {
+        if (active && (reason as Error)?.name !== 'AbortError') {
+          setError('No se pudieron leer las lyrics guardadas localmente.');
+        }
+      });
 
     return () => {
       active = false;
@@ -86,6 +94,7 @@ export const useLyrics = (
     setError(null);
     try {
       const result = await fetchAutomaticLyrics(track, controller.signal);
+      if (controller.signal.aborted) return null;
       if (!result) {
         setError('No se encontraron lyrics para esta canción.');
         return null;

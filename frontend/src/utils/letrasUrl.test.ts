@@ -32,7 +32,7 @@ describe('buildLetrasSearchUrl', () => {
 
   it('uses the artist from the compound title in YouTube cover searches', () => {
     expect(buildYouTubeSearchUrl('Unknown Artist', 'Metallica - Whiskey In The Jar')).toBe(
-      'https://www.youtube.com/results?search_query=Metallica%20Whiskey%20In%20The%20Jar'
+      'https://www.youtube.com/results?search_query=Whiskey%20In%20The%20Jar%20Metallica'
     );
   });
 });

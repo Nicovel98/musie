@@ -29,6 +29,7 @@ export const fetchAutomaticLyrics = async (
   const timeoutId = globalThis.setTimeout(() => controller.abort(), 8000);
   const abort = () => controller.abort();
   signal?.addEventListener('abort', abort, { once: true });
+  if (signal?.aborted) controller.abort();
 
   try {
     const query = new URLSearchParams({

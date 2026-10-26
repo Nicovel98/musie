@@ -8,10 +8,37 @@ export const useProgress = () => {
   useEffect(() => {
     if (!isPlaying) return;
 
-    const interval = setInterval(() => {
-      updateProgress();
-    }, 1000); // Se actualiza cada segundo
+    let interval: number | undefined;
 
-    return () => clearInterval(interval);
+    const stopInterval = () => {
+      if (interval !== undefined) {
+        window.clearInterval(interval);
+        interval = undefined;
+      }
+    };
+
+    const startInterval = () => {
+      stopInterval();
+      if (document.visibilityState !== 'visible') return;
+
+      updateProgress();
+      interval = window.setInterval(updateProgress, 1000);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        startInterval();
+      } else {
+        stopInterval();
+      }
+    };
+
+    startInterval();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      stopInterval();
+    };
   }, [isPlaying, updateProgress]);
 };

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Heart, MoreHorizontal, ChevronDown, Moon, Sun, Play } from 'lucide-react';
+import { Heart, MoreHorizontal, ChevronDown, Moon, Sun, Play, ImagePlus } from 'lucide-react';
 import heroThumbnail from '../assets/hero.png';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { useVisualizer } from '../hooks/useVisualizer';
@@ -13,12 +13,14 @@ import { useScrubSeeking } from '../hooks/useScrubSeeking';
 import { getProgressPercent } from '../utils/time';
 import { useShallow } from 'zustand/react/shallow';
 import { LyricsPanel } from './LyricsPanel';
+import type { Track } from '../types/track';
 
 interface NowPlayingProps {
   setView: (view: 'home' | 'library' | 'equalizer' | 'preferences') => void;
   themeMode: 'dark' | 'light';
   cycleThemeMode: () => void;
   useThemeAudioColors: boolean;
+  onOpenCoverSearch: (track: Track) => void;
 }
 
 const getAdaptiveBarCount = (width: number, height: number) => {
@@ -36,6 +38,7 @@ export const NowPlaying = ({
   themeMode,
   cycleThemeMode,
   useThemeAudioColors,
+  onOpenCoverSearch,
 }: NowPlayingProps) => {
   const isLightMode = themeMode === 'light';
   const isCompactLandscape = useMediaQuery(
@@ -182,7 +185,9 @@ export const NowPlaying = ({
 
   if (isVeryShort) {
     // For extremely short screens, replace NowPlaying with the compact PlayerBar
-    return <PlayerBar useThemeAudioColors={useThemeAudioColors} />;
+    return (
+      <PlayerBar useThemeAudioColors={useThemeAudioColors} onOpenCoverSearch={onOpenCoverSearch} />
+    );
   }
 
   if (currentTrack && isCompactLandscape) {
@@ -263,6 +268,15 @@ export const NowPlaying = ({
                       ) : (
                         <Moon className="h-4 w-4 transition-colors" />
                       )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onOpenCoverSearch(currentTrack)}
+                      aria-label="Buscar o cambiar portada"
+                      title="Buscar o cambiar portada"
+                      className="flex h-[clamp(2.15rem,6vw,2.5rem)] w-[clamp(2.15rem,6vw,2.5rem)] shrink-0 items-center justify-center rounded-full bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-muted)] shadow-[var(--glass-shadow)] backdrop-blur-xl hover:text-[var(--text-main)] active:scale-95 transition-all"
+                    >
+                      <ImagePlus className="h-[clamp(0.9rem,2.6vw,1.15rem)] w-[clamp(0.9rem,2.6vw,1.15rem)]" />
                     </button>
                   </div>
                   <p className="max-w-full text-[11px] uppercase tracking-[0.28em] text-blue-400 font-bold break-words">
@@ -598,6 +612,15 @@ export const NowPlaying = ({
             ) : (
               <Moon className="h-[clamp(0.9rem,2.6vw,1.15rem)] w-[clamp(0.9rem,2.6vw,1.15rem)] transition-colors" />
             )}
+          </button>
+          <button
+            type="button"
+            onClick={() => onOpenCoverSearch(currentTrack)}
+            aria-label="Buscar o cambiar portada"
+            title="Buscar o cambiar portada"
+            className="flex h-[clamp(2.15rem,6vw,2.5rem)] w-[clamp(2.15rem,6vw,2.5rem)] shrink-0 items-center justify-center rounded-full bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-muted)] shadow-[var(--glass-shadow)] backdrop-blur-xl hover:text-[var(--text-main)] active:scale-95 transition-all"
+          >
+            <ImagePlus className="h-[clamp(0.9rem,2.6vw,1.15rem)] w-[clamp(0.9rem,2.6vw,1.15rem)]" />
           </button>
           <div className="flex flex-col items-center text-center flex-1 min-w-0">
             <h2 className="text-[clamp(1rem,4.25vw,1.6rem)] font-black text-[var(--text-main)] tracking-tighter leading-tight truncate w-full">

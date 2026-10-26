@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 interface MockHowlInstance {
-  options: { src: string[]; onplay?: () => void; onend?: () => void };
+  options: {
+    src: string[];
+    onplay?: () => void;
+    onend?: () => void;
+    onloaderror?: (id: number, error: unknown) => void;
+    onplayerror?: (id: number, error: unknown) => void;
+  };
   unload: ReturnType<typeof vi.fn>;
   play: ReturnType<typeof vi.fn>;
   duration: ReturnType<typeof vi.fn>;
@@ -14,7 +20,13 @@ const playbackProbe = vi.hoisted(() => ({
 
 vi.mock('howler', () => ({
   Howl: class MockHowl {
-    options: { src: string[]; onplay?: () => void; onend?: () => void };
+    options: {
+      src: string[];
+      onplay?: () => void;
+      onend?: () => void;
+      onloaderror?: (id: number, error: unknown) => void;
+      onplayerror?: (id: number, error: unknown) => void;
+    };
     unload = vi.fn();
     play = vi.fn(() => {
       playbackProbe.beforePlay?.(this);
@@ -23,7 +35,13 @@ vi.mock('howler', () => ({
     });
     duration = vi.fn(() => 180);
 
-    constructor(options: { src: string[]; onplay?: () => void; onend?: () => void }) {
+    constructor(options: {
+      src: string[];
+      onplay?: () => void;
+      onend?: () => void;
+      onloaderror?: (id: number, error: unknown) => void;
+      onplayerror?: (id: number, error: unknown) => void;
+    }) {
       this.options = options;
       playbackProbe.instances.push(this);
     }
@@ -116,6 +134,19 @@ describe('track switching playback', () => {
     usePlayerStore.getState().setTrack(secondTrack);
 
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-audio');
+  });
+
+  it('cleans up a local object URL when loading fails', () => {
+    const track = createTrack('failed');
+
+    usePlayerStore.getState().setTrack(track);
+    const howl = playbackProbe.instances[0];
+    howl.options.onloaderror?.(1, 'load failed');
+
+    expect(howl.unload).toHaveBeenCalledTimes(1);
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-audio');
+    expect(usePlayerStore.getState().howl).toBeNull();
+    expect(usePlayerStore.getState().objectUrl).toBeNull();
   });
 
   it('navigates previous and next tracks from library and playlist contexts', () => {
