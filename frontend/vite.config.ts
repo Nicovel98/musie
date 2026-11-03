@@ -22,9 +22,9 @@ export default defineConfig({
         start_url: '/musie/',
         icons: [
           {
-            src: 'favicon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
+            src: 'musie-logo.png',
+            sizes: '2048x2048',
+            type: 'image/png',
             purpose: 'any maskable',
           },
         ],
