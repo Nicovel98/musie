@@ -9,6 +9,7 @@ const playerBarProbe = vi.hoisted(() => ({
   togglePlay: vi.fn(),
   setVolume: vi.fn(),
   toggleTrackFavorite: vi.fn(),
+  playbackError: null as string | null,
 }));
 
 vi.mock('../store/usePlayerStore', () => ({
@@ -20,6 +21,7 @@ vi.mock('../store/usePlayerStore', () => ({
         artist: 'Artist',
         coverUrl: '/cover.jpg',
       },
+      playbackError: playerBarProbe.playbackError,
       favoriteTrackIds: [],
       isPlaying: true,
       togglePlay: playerBarProbe.togglePlay,
@@ -56,5 +58,22 @@ describe('PlayerBar track navigation', () => {
 
     expect(playerBarProbe.playPreviousTrack).toHaveBeenCalledTimes(1);
     expect(playerBarProbe.playNextTrack).toHaveBeenCalledTimes(1);
+  });
+
+  it('exposes retry and skip actions when playback fails', () => {
+    vi.mocked(playerBarProbe.togglePlay).mockClear();
+    vi.mocked(playerBarProbe.playNextTrack).mockClear();
+    playerBarProbe.playbackError = 'No se pudo reproducir esta canción.';
+    render(<PlayerBar />);
+
+    const retryButtons = screen.getAllByRole('button', { name: 'Reintentar reproducción' });
+    const skipButtons = screen.getAllByRole('button', { name: 'Saltar pista dañada' });
+
+    fireEvent.click(retryButtons[0]);
+    fireEvent.click(skipButtons[0]);
+
+    expect(playerBarProbe.togglePlay).toHaveBeenCalledTimes(1);
+    expect(playerBarProbe.playNextTrack).toHaveBeenCalledTimes(1);
+    playerBarProbe.playbackError = null;
   });
 });

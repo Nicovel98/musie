@@ -46,7 +46,7 @@ const getCoverUrl = (picture: MediaTags['picture']) => {
   return `data:${picture.format};base64,${bytesToBase64(picture.data)}`;
 };
 
-export const optimizeCoverUrl = async (coverUrl: string) => {
+export const optimizeCoverUrl = async (coverUrl: string, signal?: AbortSignal) => {
   if (
     !coverUrl.startsWith('data:image/') ||
     coverUrl.length <= COVER_OPTIMIZATION_THRESHOLD ||
@@ -56,10 +56,30 @@ export const optimizeCoverUrl = async (coverUrl: string) => {
     return coverUrl;
   }
 
-  return new Promise<string>((resolve) => {
+  return new Promise<string>((resolve, reject) => {
     const image = new Image();
+    let activeReader: FileReader | null = null;
+    const cleanup = () => signal?.removeEventListener('abort', handleAbort);
+    const handleAbort = () => {
+      image.onload = null;
+      image.onerror = null;
+      activeReader?.abort();
+      activeReader = null;
+      image.src = '';
+      cleanup();
+      reject(new DOMException('Aborted', 'AbortError'));
+    };
+    if (signal?.aborted) {
+      handleAbort();
+      return;
+    }
+    signal?.addEventListener('abort', handleAbort, { once: true });
     image.onload = () => {
       try {
+        if (signal?.aborted) {
+          handleAbort();
+          return;
+        }
         const scale = Math.min(
           1,
           MAX_OPTIMIZED_COVER_DIMENSION / image.naturalWidth,
@@ -70,6 +90,7 @@ export const optimizeCoverUrl = async (coverUrl: string) => {
         canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
         const context = canvas.getContext('2d');
         if (!context) {
+          cleanup();
           resolve(coverUrl);
           return;
         }
@@ -77,25 +98,40 @@ export const optimizeCoverUrl = async (coverUrl: string) => {
         context.drawImage(image, 0, 0, canvas.width, canvas.height);
         canvas.toBlob(
           (blob) => {
+            if (signal?.aborted) {
+              handleAbort();
+              return;
+            }
             if (!blob || blob.size >= coverUrl.length) {
+              cleanup();
               resolve(coverUrl);
               return;
             }
 
             const reader = new FileReader();
+            activeReader = reader;
+            const finish = (result: string) => {
+              activeReader = null;
+              cleanup();
+              resolve(result);
+            };
             reader.onload = () =>
-              resolve(typeof reader.result === 'string' ? reader.result : coverUrl);
-            reader.onerror = () => resolve(coverUrl);
+              finish(typeof reader.result === 'string' ? reader.result : coverUrl);
+            reader.onerror = () => finish(coverUrl);
             reader.readAsDataURL(blob);
           },
           'image/webp',
           0.82
         );
       } catch {
+        cleanup();
         resolve(coverUrl);
       }
     };
-    image.onerror = () => resolve(coverUrl);
+    image.onerror = () => {
+      cleanup();
+      resolve(coverUrl);
+    };
     image.src = coverUrl;
   });
 };
@@ -128,14 +164,32 @@ const normalizeSearchText = (value: string | undefined) =>
     .toLocaleLowerCase()
     .replace(/[^a-z0-9]+/g, ' ') ?? '';
 
-const readBlobAsDataUrl = (blob: Blob) =>
+const readBlobAsDataUrl = (blob: Blob, signal?: AbortSignal) =>
   new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () =>
-      typeof reader.result === 'string'
-        ? resolve(reader.result)
-        : reject(new Error('Invalid cover response'));
-    reader.onerror = () => reject(reader.error ?? new Error('Unable to read cover'));
+    const cleanup = () => signal?.removeEventListener('abort', abort);
+    const abort = () => {
+      reader.abort();
+      reject(new DOMException('Aborted', 'AbortError'));
+    };
+    if (signal?.aborted) {
+      abort();
+      return;
+    }
+    reader.onload = () => {
+      cleanup();
+      if (typeof reader.result === 'string') resolve(reader.result);
+      else reject(new Error('Invalid cover response'));
+    };
+    reader.onerror = () => {
+      cleanup();
+      reject(reader.error ?? new Error('Unable to read cover'));
+    };
+    reader.onabort = () => {
+      cleanup();
+      reject(new DOMException('Aborted', 'AbortError'));
+    };
+    signal?.addEventListener('abort', abort, { once: true });
     reader.readAsDataURL(blob);
   });
 
@@ -149,7 +203,9 @@ const fetchImageAsDataUrl = async (url: string, signal: AbortSignal) => {
   const blob = await response.blob();
   if (blob.size > MAX_DOWNLOADED_COVER_BYTES) return null;
   if (!blob.type.startsWith('image/')) return null;
-  return optimizeCoverUrl(await readBlobAsDataUrl(blob));
+  const dataUrl = await readBlobAsDataUrl(blob, signal);
+  if (signal.aborted) return null;
+  return optimizeCoverUrl(dataUrl, signal);
 };
 
 export const getYouTubeThumbnail = (value: string) => {

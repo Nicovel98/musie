@@ -13,6 +13,12 @@ export const useLyrics = (
   const [error, setError] = useState<string | null>(null);
   const requestControllerRef = useRef<AbortController | null>(null);
   const updateTrackLyricsRef = useRef(updateTrackLyrics);
+  const trackId = track?.id;
+  const trackLyricsRef = useRef(track?.lyrics);
+
+  useEffect(() => {
+    trackLyricsRef.current = track?.lyrics;
+  }, [track?.lyrics]);
 
   useEffect(() => {
     updateTrackLyricsRef.current = updateTrackLyrics;
@@ -27,7 +33,7 @@ export const useLyrics = (
     });
     void Promise.resolve()
       .then(async () => {
-        if (!track) {
+        if (!trackId) {
           if (active) {
             setLyrics(null);
             setError(null);
@@ -35,14 +41,14 @@ export const useLyrics = (
           return;
         }
         if (active) {
-          setLyrics(track.lyrics ?? null);
+          setLyrics(trackLyricsRef.current ?? null);
           setError(null);
         }
-        const cachedLyrics = await readCachedLyrics(track.id);
+        const cachedLyrics = await readCachedLyrics(trackId);
         if (!active || !cachedLyrics) return;
         setLyrics(cachedLyrics);
-        if (!track.lyrics) {
-          updateTrackLyricsRef.current(track.id, cachedLyrics);
+        if (!trackLyricsRef.current) {
+          updateTrackLyricsRef.current(trackId, cachedLyrics);
         }
       })
       .catch((reason) => {
@@ -56,7 +62,7 @@ export const useLyrics = (
       requestControllerRef.current?.abort();
       requestControllerRef.current = null;
     };
-  }, [track]);
+  }, [trackId]);
 
   const saveLyrics = useCallback(
     async (nextLyrics: LyricsDocument | undefined) => {

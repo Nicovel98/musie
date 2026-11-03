@@ -1,4 +1,4 @@
-import { Heart } from 'lucide-react';
+import { Heart, RotateCcw, SkipForward } from 'lucide-react';
 import type { Track } from '../types/track';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { VolumeControl } from './VolumeControl';
@@ -15,6 +15,7 @@ interface PlayerBarProps {
 export const PlayerBar = ({ useThemeAudioColors = true, onOpenCoverSearch }: PlayerBarProps) => {
   const {
     currentTrack,
+    playbackError,
     favoriteTrackIds,
     isPlaying,
     togglePlay,
@@ -33,6 +34,7 @@ export const PlayerBar = ({ useThemeAudioColors = true, onOpenCoverSearch }: Pla
   } = usePlayerStore(
     useShallow((state) => ({
       currentTrack: state.currentTrack,
+      playbackError: state.playbackError,
       favoriteTrackIds: state.favoriteTrackIds,
       isPlaying: state.isPlaying,
       togglePlay: state.togglePlay,
@@ -89,10 +91,37 @@ export const PlayerBar = ({ useThemeAudioColors = true, onOpenCoverSearch }: Pla
     <div className="glass-effect w-full h-[5.5rem] md:h-20 px-3 md:px-5 pb-3 md:pb-0 flex flex-col md:flex-row md:items-center md:justify-between transition-all duration-500 bg-[var(--playerbar-bg)] border-t border-[var(--playerbar-border)] shadow-[var(--playerbar-shadow)] md:bg-transparent md:border-0 md:shadow-none backdrop-blur-xl md:backdrop-blur-0">
       {/* MÓVIL: INFORMACIÓN + CONTROLES */}
       <div className="md:hidden w-full flex flex-col gap-1 pt-0">
+        {playbackError && (
+          <div
+            role="alert"
+            className="flex min-w-0 items-center gap-2 text-[10px] font-semibold text-red-400"
+          >
+            <p className="min-w-0 flex-1 truncate">{playbackError}</p>
+            <button
+              type="button"
+              onClick={togglePlay}
+              aria-label="Reintentar reproducción"
+              title="Reintentar reproducción"
+              className="shrink-0 rounded-full p-1.5 text-red-300 transition hover:bg-red-400/10 hover:text-red-200"
+            >
+              <RotateCcw size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={goNext}
+              aria-label="Saltar pista dañada"
+              title="Saltar pista dañada"
+              className="shrink-0 rounded-full p-1.5 text-red-300 transition hover:bg-red-400/10 hover:text-red-200"
+            >
+              <SkipForward size={13} />
+            </button>
+          </div>
+        )}
         <div className="flex items-center gap-3 min-w-0">
           <img
             src={currentTrack.coverUrl}
             alt={currentTrack.title}
+            decoding="async"
             className="w-9 h-9 rounded-lg object-cover shrink-0 border border-[var(--glass-border)]"
           />
           <div className="min-w-0 flex-1 truncate">
@@ -111,7 +140,13 @@ export const PlayerBar = ({ useThemeAudioColors = true, onOpenCoverSearch }: Pla
               title="Buscar o cambiar portada"
               className="shrink-0 text-[var(--text-muted)] transition-colors hover:text-[var(--text-main)]"
             >
-              <img src={currentTrack.coverUrl} alt="" className="h-5 w-5 rounded object-cover" />
+              <img
+                src={currentTrack.coverUrl}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                className="h-5 w-5 rounded object-cover"
+              />
             </button>
           )}
           <button
@@ -153,6 +188,7 @@ export const PlayerBar = ({ useThemeAudioColors = true, onOpenCoverSearch }: Pla
           <img
             src={currentTrack.coverUrl}
             alt={currentTrack.title}
+            decoding="async"
             className="w-9 h-9 md:w-14 md:h-14 rounded-lg object-cover shadow-lg border border-[var(--glass-border)]"
           />
           {onOpenCoverSearch && (
@@ -189,6 +225,32 @@ export const PlayerBar = ({ useThemeAudioColors = true, onOpenCoverSearch }: Pla
 
       {/* 2. CONTROLES (Móvil: Solo Play/Pause | Desktop: Full) */}
       <div className="hidden md:flex flex-col items-center flex-1 max-w-[44%] gap-0.5">
+        {playbackError && (
+          <div
+            role="alert"
+            className="mb-1 flex items-center gap-2 text-[10px] font-semibold text-red-400"
+          >
+            <p className="min-w-0 truncate">{playbackError}</p>
+            <button
+              type="button"
+              onClick={togglePlay}
+              aria-label="Reintentar reproducción"
+              title="Reintentar reproducción"
+              className="shrink-0 rounded-full p-1 text-red-300 transition hover:bg-red-400/10 hover:text-red-200"
+            >
+              <RotateCcw size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={goNext}
+              aria-label="Saltar pista dañada"
+              title="Saltar pista dañada"
+              className="shrink-0 rounded-full p-1 text-red-300 transition hover:bg-red-400/10 hover:text-red-200"
+            >
+              <SkipForward size={13} />
+            </button>
+          </div>
+        )}
         <PlaybackControls
           isPlaying={isPlaying}
           onTogglePlay={togglePlay}

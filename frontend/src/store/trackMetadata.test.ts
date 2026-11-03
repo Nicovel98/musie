@@ -131,6 +131,30 @@ describe('automatic cover lookup', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('cancels cover conversion when aborted after receiving the image', async () => {
+    const controller = new AbortController();
+    const blob = new Blob(['cover'], { type: 'image/png' });
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(blob, {
+        status: 200,
+        headers: { 'Content-Type': 'image/png' },
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const originalFileReader = globalThis.FileReader;
+    class DelayedFileReader extends originalFileReader {
+      readAsDataURL() {
+        controller.abort();
+        super.readAsDataURL(blob);
+      }
+    }
+    vi.stubGlobal('FileReader', DelayedFileReader);
+
+    await expect(
+      downloadAutomaticCover('https://cdn.example.com/cover.jpg', controller.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
   it('finds a cover using track metadata and returns a data URL', async () => {
     const fetchMock = vi
       .fn()

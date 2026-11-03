@@ -8,17 +8,20 @@ import {
 } from '../store/trackMetadata';
 import { buildYouTubeSearchUrl } from '../utils/letrasUrl';
 import type { Track } from '../types/track';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface CoverSearchModalProps {
   track: Track;
   onClose: () => void;
   updateTrackMetadata: (trackId: string, metadata: Pick<Track, 'coverUrl'>) => void;
+  onCoverSelected?: (coverUrl: string) => void;
 }
 
 export const CoverSearchModal = ({
   track,
   onClose,
   updateTrackMetadata,
+  onCoverSelected,
 }: CoverSearchModalProps) => {
   const [coverOptions, setCoverOptions] = useState<AutomaticCoverOption[]>([]);
   const [isSearching, setIsSearching] = useState(true);
@@ -29,6 +32,7 @@ export const CoverSearchModal = ({
   const [youtubeCoverError, setYoutubeCoverError] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const coverDownloadControllerRef = useRef<AbortController | null>(null);
+  useFocusTrap(dialogRef, true);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,6 +81,7 @@ export const CoverSearchModal = ({
       const coverUrl = await downloadAutomaticCover(option.imageUrl, controller.signal);
       if (!coverUrl) throw new Error('Cover download failed');
       updateTrackMetadata(track.id, { coverUrl });
+      onCoverSelected?.(coverUrl);
       onClose();
     } catch (reason) {
       if ((reason as Error)?.name !== 'AbortError') {
@@ -97,6 +102,7 @@ export const CoverSearchModal = ({
       return;
     }
     updateTrackMetadata(track.id, { coverUrl });
+    onCoverSelected?.(coverUrl);
     onClose();
   };
 

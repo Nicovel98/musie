@@ -4,6 +4,7 @@ import { useLyrics } from '../hooks/useLyrics';
 import { lyricsToText, parseLyricsText } from '../types/lyrics';
 import type { Track } from '../types/track';
 import { buildLetrasSearchUrl } from '../utils/letrasUrl';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface LyricsPanelProps {
   track: Track;
@@ -38,6 +39,7 @@ export const LyricsPanel = ({
     track,
     updateTrackLyrics
   );
+  useFocusTrap(dialogRef, isOpen);
   const activeLine = useMemo(() => {
     if (!lyrics || lyrics.format !== 'synced') return -1;
     return lyrics.lines.reduce(

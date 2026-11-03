@@ -4,6 +4,7 @@ import { get, set, del } from 'idb-keyval';
 import { Howl, Howler } from 'howler';
 import type { Track } from '../types/track';
 import type { AlbumCollection } from '../types/album';
+import type { PlaylistCollection } from '../types/playlist';
 import heroThumbnail from '../assets/hero.png';
 import {
   DEFAULT_EQ_BANDS,
@@ -28,13 +29,19 @@ interface PersistedPlayerState {
   audioFiles: Record<string, Blob>;
   favoriteTrackIds: string[];
   volume: number;
-  lastTrack: Track | null;
+  currentTrack: PersistedTrack | null;
+  playbackIndex: number | null;
+  seek: number;
+  lastTrack: PersistedTrack | null;
   eqBands: EqBand[];
   eqPreset: EqPresetName;
   eqEnabled: boolean;
   shuffleEnabled: boolean;
+  shuffleHistoryIds: string[];
   repeatMode: RepeatMode;
+  playbackContext: PlaybackContext;
   albums: AlbumCollection[];
+  playlists: PlaylistCollection[];
 }
 
 interface HowlInternal extends Howl {
@@ -158,8 +165,11 @@ interface PlayerState {
   playlistTracks: Track[];
   favoriteTrackIds: string[];
   currentTrack: Track | null;
+  playbackContext: PlaybackContext;
+  playbackIndex: number | null;
   lastTrack: Track | null;
   isPlaying: boolean;
+  playbackError: string | null;
   volume: number;
   seek: number;
   duration: number;
@@ -175,8 +185,10 @@ interface PlayerState {
   eqPreset: EqPresetName;
   eqEnabled: boolean;
   shuffleEnabled: boolean;
+  shuffleHistoryIds: string[];
   repeatMode: RepeatMode;
   albums: AlbumCollection[];
+  playlists: PlaylistCollection[];
   objectUrl: string | null;
   connectedMediaNode: HTMLAudioElement | null;
   audioCleanup?: (() => void) | null;
@@ -192,13 +204,14 @@ interface PlayerState {
   clearLibrary: () => void;
   clearPlaylist: () => void;
   addToPlaylist: (track: Track) => void;
+  addTrackNext: (track: Track) => void;
   removeFromPlaylist: (trackId: string) => void;
   movePlaylistTrack: (draggedTrackId: string, targetTrackId: string) => void;
   movePlaylistTrackToEnd: (draggedTrackId: string) => void;
   isTrackFavorite: (trackId: string) => boolean;
   toggleTrackFavorite: (trackId: string) => void;
   clearFavorites: () => void;
-  setTrack: (track: Track) => void;
+  setTrack: (track: Track, context?: PlaybackContext) => void;
   playPreviousTrack: () => void;
   playNextTrack: () => void;
   toggleShuffle: () => void;
@@ -206,6 +219,24 @@ interface PlayerState {
   createAlbum: (album: Omit<AlbumCollection, 'id' | 'createdAt'>) => void;
   updateAlbum: (albumId: string, album: Partial<Omit<AlbumCollection, 'id'>>) => void;
   deleteAlbum: (albumId: string) => void;
+  createPlaylist: (playlist: Omit<PlaylistCollection, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updatePlaylist: (
+    playlistId: string,
+    playlist: Partial<Omit<PlaylistCollection, 'id' | 'createdAt'>>
+  ) => void;
+  deletePlaylist: (playlistId: string) => void;
+  restorePlaylist: (playlist: PlaylistCollection) => void;
+  duplicatePlaylist: (playlistId: string) => void;
+  loadPlaylist: (playlistId: string) => void;
+  appendPlaylistToQueue: (playlistId: string) => void;
+  addPlaylistNext: (playlistId: string) => void;
+  removeUnavailableFromPlaylist: (playlistId: string) => void;
+  movePlaylistCollectionTrack: (
+    playlistId: string,
+    trackId: string,
+    direction: 'up' | 'down'
+  ) => void;
+  clearUpcomingTracks: () => void;
   togglePlay: () => void;
   setVolume: (val: number) => void;
   setSeek: (val: number) => void;
@@ -218,6 +249,7 @@ interface PlayerState {
 }
 
 export type RepeatMode = 'off' | 'all' | 'one';
+export type PlaybackContext = 'library' | 'playlist';
 
 const normalizeRepeatMode = (value: unknown): RepeatMode =>
   value === 'all' || value === 'one' ? value : 'off';
@@ -235,10 +267,19 @@ const getNextTrackIndex = (
   tracks: Track[],
   currentIndex: number,
   shuffleEnabled: boolean,
-  repeatMode: RepeatMode
+  repeatMode: RepeatMode,
+  shuffleHistoryIds: string[]
 ) => {
   if (shuffleEnabled && tracks.length > 1) {
-    const candidates = tracks.map((_, index) => index).filter((index) => index !== currentIndex);
+    const unplayedCandidates = tracks
+      .map((track, index) => ({ track, index }))
+      .filter(
+        ({ index, track }) => index !== currentIndex && !shuffleHistoryIds.includes(track.id)
+      );
+    const candidates =
+      unplayedCandidates.length > 0
+        ? unplayedCandidates.map(({ index }) => index)
+        : tracks.map((_, index) => index).filter((index) => index !== currentIndex);
     return candidates[Math.floor(Math.random() * candidates.length)];
   }
 
@@ -253,22 +294,29 @@ const normalizeTrack = (track: Track): Track => ({
   source: track.source ?? (track.audioUrl ? 'remote' : 'local'),
 });
 
+const normalizeTrackIds = (trackIds: unknown): string[] => {
+  if (!Array.isArray(trackIds)) return [];
+
+  return [...new Set(trackIds.filter((trackId): trackId is string => typeof trackId === 'string'))];
+};
+
+const normalizePlaylist = (playlist: PlaylistCollection): PlaylistCollection => ({
+  ...playlist,
+  description: playlist.description ?? '',
+  coverUrl: playlist.coverUrl ?? '',
+  trackIds: normalizeTrackIds(playlist.trackIds),
+  createdAt: playlist.createdAt ?? Date.now(),
+  updatedAt: playlist.updatedAt ?? playlist.createdAt ?? Date.now(),
+});
+
 const getTrackListByPlaybackContext = (
-  state: Pick<PlayerState, 'libraryTracks' | 'playlistTracks' | 'currentTrack'>
+  state: Pick<PlayerState, 'libraryTracks' | 'playlistTracks' | 'playbackContext'>
 ) => {
-  if (state.playlistTracks.length === 0) return state.libraryTracks;
-
-  const currentTrack = state.currentTrack;
-
-  if (currentTrack) {
-    const isInPlaylist = state.playlistTracks.some((track) => track.id === currentTrack.id);
-    if (isInPlaylist) return state.playlistTracks;
-
-    const isInLibrary = state.libraryTracks.some((track) => track.id === currentTrack.id);
-    if (isInLibrary) return state.libraryTracks;
+  if (state.playbackContext === 'playlist' && state.playlistTracks.length > 0) {
+    return state.playlistTracks;
   }
 
-  return state.playlistTracks;
+  return state.libraryTracks;
 };
 
 const moveArrayItem = <T>(items: T[], fromIndex: number, toIndex: number) => {
@@ -306,13 +354,19 @@ let cachedPersistedInputs: {
   playlistTracks: Track[];
   favoriteTrackIds: string[];
   volume: number;
+  currentTrack: Track | null;
+  playbackIndex: number | null;
+  seekCheckpoint: number;
   lastTrack: Track | null;
   eqBands: EqBand[];
   eqPreset: EqPresetName;
   eqEnabled: boolean;
   shuffleEnabled: boolean;
+  shuffleHistoryIds: string[];
   repeatMode: RepeatMode;
+  playbackContext: PlaybackContext;
   albums: AlbumCollection[];
+  playlists: PlaylistCollection[];
 } | null = null;
 
 const createPersistedState = (state: PlayerState): PersistedPlayerState => {
@@ -323,12 +377,17 @@ const createPersistedState = (state: PlayerState): PersistedPlayerState => {
     previous.playlistTracks === state.playlistTracks &&
     previous.favoriteTrackIds === state.favoriteTrackIds &&
     previous.volume === state.volume &&
+    previous.currentTrack === state.currentTrack &&
+    previous.playbackIndex === state.playbackIndex &&
+    previous.seekCheckpoint === (state.isPlaying ? Math.floor(state.seek / 5) : state.seek) &&
     previous.lastTrack === state.lastTrack &&
     previous.eqBands === state.eqBands &&
     previous.eqPreset === state.eqPreset &&
     previous.eqEnabled === state.eqEnabled &&
     previous.shuffleEnabled === state.shuffleEnabled &&
+    previous.shuffleHistoryIds === state.shuffleHistoryIds &&
     previous.repeatMode === state.repeatMode &&
+    previous.playbackContext === state.playbackContext &&
     previous.albums === state.albums &&
     cachedPersistedState
   ) {
@@ -338,6 +397,7 @@ const createPersistedState = (state: PlayerState): PersistedPlayerState => {
   const audioFiles: Record<string, Blob> = {};
   collectAudioFiles(state.libraryTracks, audioFiles);
   collectAudioFiles(state.playlistTracks, audioFiles);
+  if (state.currentTrack) collectAudioFiles([state.currentTrack], audioFiles);
   if (state.lastTrack) collectAudioFiles([state.lastTrack], audioFiles);
 
   cachedPersistedInputs = {
@@ -345,13 +405,19 @@ const createPersistedState = (state: PlayerState): PersistedPlayerState => {
     playlistTracks: state.playlistTracks,
     favoriteTrackIds: state.favoriteTrackIds,
     volume: state.volume,
+    currentTrack: state.currentTrack,
+    playbackIndex: state.playbackIndex,
+    seekCheckpoint: state.isPlaying ? Math.floor(state.seek / 5) : state.seek,
     lastTrack: state.lastTrack,
     eqBands: state.eqBands,
     eqPreset: state.eqPreset,
     eqEnabled: state.eqEnabled,
     shuffleEnabled: state.shuffleEnabled,
+    shuffleHistoryIds: state.shuffleHistoryIds,
     repeatMode: state.repeatMode,
+    playbackContext: state.playbackContext,
     albums: state.albums,
+    playlists: state.playlists,
   };
   cachedPersistedState = {
     libraryTracks: state.libraryTracks.map(stripTrackFile),
@@ -359,13 +425,19 @@ const createPersistedState = (state: PlayerState): PersistedPlayerState => {
     audioFiles,
     favoriteTrackIds: state.favoriteTrackIds,
     volume: state.volume,
+    currentTrack: state.currentTrack ? stripTrackFile(state.currentTrack) : null,
+    playbackIndex: state.playbackIndex,
+    seek: state.seek,
     lastTrack: state.lastTrack ? stripTrackFile(state.lastTrack) : null,
     eqBands: state.eqBands,
     eqPreset: state.eqPreset,
     eqEnabled: state.eqEnabled,
     shuffleEnabled: state.shuffleEnabled,
+    shuffleHistoryIds: state.shuffleHistoryIds,
     repeatMode: state.repeatMode,
+    playbackContext: state.playbackContext,
     albums: state.albums,
+    playlists: state.playlists,
   };
 
   return cachedPersistedState;
@@ -394,6 +466,7 @@ interface AudioResources {
 }
 
 const cleanupAudioResources = (resources: AudioResources) => {
+  resources.howl?.stop();
   resources.howl?.unload();
   resources.audioCleanup?.();
   disconnectAudioNode(resources.mediaSource);
@@ -450,8 +523,11 @@ export const usePlayerStore = create<PlayerState>()(
       playlistTracks: [],
       favoriteTrackIds: [],
       currentTrack: null,
+      playbackContext: 'library' as PlaybackContext,
+      playbackIndex: null,
       lastTrack: null,
       isPlaying: false,
+      playbackError: null,
       volume: 0.5,
       seek: 0,
       duration: 0,
@@ -467,8 +543,10 @@ export const usePlayerStore = create<PlayerState>()(
       eqPreset: DEFAULT_EQ_PRESET,
       eqEnabled: true,
       shuffleEnabled: false,
+      shuffleHistoryIds: [],
       repeatMode: 'off' as RepeatMode,
       albums: [],
+      playlists: [],
       objectUrl: null,
       connectedMediaNode: null,
       audioCleanup: null,
@@ -614,6 +692,10 @@ export const usePlayerStore = create<PlayerState>()(
 
         set((state) => ({
           playlistTracks: [],
+          shuffleHistoryIds:
+            state.playbackContext === 'playlist' && state.currentTrack
+              ? [state.currentTrack.id]
+              : [],
           currentTrack: shouldStopPlayback ? null : state.currentTrack,
           lastTrack:
             shouldStopPlayback ||
@@ -644,14 +726,61 @@ export const usePlayerStore = create<PlayerState>()(
             return state;
           }
 
-          return { playlistTracks: [...state.playlistTracks, track] };
+          const playlistTracks = [...state.playlistTracks, track];
+          return {
+            playlistTracks,
+            playbackIndex:
+              state.playbackContext === 'playlist' && state.currentTrack
+                ? playlistTracks.findIndex((item) => item.id === state.currentTrack?.id)
+                : state.playbackIndex,
+          };
+        });
+      },
+
+      addTrackNext: (track) => {
+        set((state) => {
+          if (state.playlistTracks.some((playlistTrack) => playlistTrack.id === track.id)) {
+            return state;
+          }
+
+          const insertionIndex =
+            state.playbackContext === 'playlist' && state.playbackIndex !== null
+              ? state.playbackIndex + 1
+              : state.playlistTracks.length;
+
+          const nextTracks = [...state.playlistTracks];
+          nextTracks.splice(Math.min(insertionIndex, nextTracks.length), 0, track);
+          return {
+            playlistTracks: nextTracks,
+            playbackIndex:
+              state.playbackContext === 'playlist' && state.currentTrack
+                ? nextTracks.findIndex((item) => item.id === state.currentTrack?.id)
+                : state.playbackIndex,
+          };
         });
       },
 
       removeFromPlaylist: (trackId) => {
-        set((state) => ({
-          playlistTracks: state.playlistTracks.filter((track) => track.id !== trackId),
-        }));
+        set((state) => {
+          const removedIndex = state.playlistTracks.findIndex((track) => track.id === trackId);
+          if (removedIndex < 0) return state;
+
+          const playbackIndex =
+            state.playbackContext === 'playlist' &&
+            state.playbackIndex !== null &&
+            removedIndex < state.playbackIndex
+              ? state.playbackIndex - 1
+              : state.playbackIndex;
+          const playlistTracks = state.playlistTracks.filter((track) => track.id !== trackId);
+
+          return {
+            playlistTracks,
+            playbackIndex,
+            shuffleHistoryIds: state.shuffleHistoryIds.filter(
+              (historyId) => historyId !== trackId || historyId === state.currentTrack?.id
+            ),
+          };
+        });
       },
 
       movePlaylistTrack: (draggedTrackId, targetTrackId) => {
@@ -663,8 +792,13 @@ export const usePlayerStore = create<PlayerState>()(
             return state;
           }
 
+          const playlistTracks = moveArrayItem(state.playlistTracks, fromIndex, toIndex);
           return {
-            playlistTracks: moveArrayItem(state.playlistTracks, fromIndex, toIndex),
+            playlistTracks,
+            playbackIndex:
+              state.playbackContext === 'playlist' && state.currentTrack
+                ? playlistTracks.findIndex((item) => item.id === state.currentTrack?.id)
+                : state.playbackIndex,
           };
         });
       },
@@ -682,6 +816,12 @@ export const usePlayerStore = create<PlayerState>()(
 
           return {
             playlistTracks: [...nextTracks, movedTrack],
+            playbackIndex:
+              state.playbackContext === 'playlist' && state.currentTrack
+                ? [...nextTracks, movedTrack].findIndex(
+                    (item) => item.id === state.currentTrack?.id
+                  )
+                : state.playbackIndex,
           };
         });
       },
@@ -704,7 +844,7 @@ export const usePlayerStore = create<PlayerState>()(
         set({ favoriteTrackIds: [] });
       },
 
-      setTrack: (track) => {
+      setTrack: (track, context = get().playbackContext) => {
         // Cleanup existing Howl and audio graph before creating a new one
         const {
           howl: oldHowl,
@@ -719,7 +859,11 @@ export const usePlayerStore = create<PlayerState>()(
           audioCleanup,
           audioWatchdogId,
         } = get();
-        if (oldHowl) oldHowl.unload();
+        // Invalidate the old instance before stopping it: Howler can emit a
+        // late pause/end callback while a track is being replaced.
+        set({ howl: null, isPlaying: false });
+        oldHowl?.stop();
+        oldHowl?.unload();
 
         try {
           audioCleanup?.();
@@ -744,6 +888,7 @@ export const usePlayerStore = create<PlayerState>()(
         set({
           howl: null,
           isPlaying: false,
+          playbackError: null,
           analyzer: null,
           mediaSource: null,
           gainNode: null,
@@ -794,6 +939,7 @@ export const usePlayerStore = create<PlayerState>()(
           set({
             howl: null,
             isPlaying: false,
+            playbackError: 'No se pudo reproducir esta canción. Pulsa Play para reintentar.',
             duration: 0,
             analyzer: null,
             mediaSource: null,
@@ -818,7 +964,7 @@ export const usePlayerStore = create<PlayerState>()(
           volume: 1,
           onplay: () => {
             if (get().howl !== newHowl) return;
-            set({ isPlaying: true, duration: newHowl.duration() });
+            set({ isPlaying: true, playbackError: null, duration: newHowl.duration() });
 
             // Ensure we never accumulate watchdog intervals across resumes/tracks.
             try {
@@ -1038,7 +1184,12 @@ export const usePlayerStore = create<PlayerState>()(
             } catch (e) {
               void e;
             }
-            set({ isPlaying: false, audioWatchdogId: null });
+            const pausedSeek = newHowl.seek();
+            set({
+              isPlaying: false,
+              seek: typeof pausedSeek === 'number' ? pausedSeek : get().seek,
+              audioWatchdogId: null,
+            });
           },
           onend: () => {
             if (get().howl !== newHowl) return;
@@ -1077,9 +1228,22 @@ export const usePlayerStore = create<PlayerState>()(
         });
         activeHowl = newHowl;
 
+        const contextTracks = context === 'playlist' ? get().playlistTracks : get().libraryTracks;
+        const playbackIndex = contextTracks.findIndex((item) => item.id === track.id);
+        const previousState = get();
+        const shuffleHistoryIds =
+          previousState.shuffleEnabled && previousState.playbackContext === context
+            ? [...new Set([...previousState.shuffleHistoryIds, track.id])]
+            : previousState.shuffleEnabled
+              ? [track.id]
+              : [];
+
         set({
           currentTrack: track,
+          playbackContext: context,
+          playbackIndex: playbackIndex >= 0 ? playbackIndex : null,
           lastTrack: track,
+          shuffleHistoryIds,
           howl: newHowl,
           isPlaying: true,
           objectUrl: trackSource.isObjectUrl ? activeUrl : null,
@@ -1093,39 +1257,109 @@ export const usePlayerStore = create<PlayerState>()(
         const activeTracks = getTrackListByPlaybackContext({
           libraryTracks,
           playlistTracks,
-          currentTrack,
+          playbackContext: get().playbackContext,
         });
         if (activeTracks.length === 0) return;
 
-        const currentIndex = getTrackIndex(activeTracks, currentTrack);
-        if (currentIndex === -1) return;
+        if (get().shuffleEnabled && get().shuffleHistoryIds.length > 1) {
+          const currentHistoryIndex = get().shuffleHistoryIds.lastIndexOf(currentTrack?.id ?? '');
+          const previousHistoryId =
+            get().shuffleHistoryIds[currentHistoryIndex > 0 ? currentHistoryIndex - 1 : -1];
+          const previousTrack = activeTracks.find((track) => track.id === previousHistoryId);
 
-        const previousIndex = (currentIndex - 1 + activeTracks.length) % activeTracks.length;
+          if (previousTrack) {
+            set((state) => ({
+              shuffleHistoryIds: state.shuffleHistoryIds.slice(0, currentHistoryIndex),
+            }));
+            get().setTrack(previousTrack);
+            return;
+          }
+        }
+
+        const currentIndex = getTrackIndex(activeTracks, currentTrack);
+        const navigationIndex = currentIndex >= 0 ? currentIndex : (get().playbackIndex ?? -1) - 1;
+        if (navigationIndex === -1) return;
+
+        const previousIndex = (navigationIndex - 1 + activeTracks.length) % activeTracks.length;
         get().setTrack(activeTracks[previousIndex]);
       },
 
       playNextTrack: () => {
-        const { libraryTracks, playlistTracks, currentTrack, shuffleEnabled, repeatMode } = get();
-        const activeTracks = getTrackListByPlaybackContext({
+        const {
           libraryTracks,
           playlistTracks,
           currentTrack,
+          shuffleEnabled,
+          shuffleHistoryIds,
+          repeatMode,
+        } = get();
+        const activeTracks = getTrackListByPlaybackContext({
+          libraryTracks,
+          playlistTracks,
+          playbackContext: get().playbackContext,
         });
         if (activeTracks.length === 0) return;
 
         const currentIndex = getTrackIndex(activeTracks, currentTrack);
-        if (currentIndex === -1) return;
-
-        const nextIndex = getNextTrackIndex(activeTracks, currentIndex, shuffleEnabled, repeatMode);
-        if (nextIndex < 0) {
-          set({ isPlaying: false, seek: 0 });
+        if (
+          currentIndex < 0 &&
+          !shuffleEnabled &&
+          get().playbackIndex !== null &&
+          get().playbackIndex !== undefined
+        ) {
+          const playbackIndex = get().playbackIndex;
+          if (playbackIndex === null) return;
+          const nextIndex = Math.min(playbackIndex, activeTracks.length - 1);
+          get().setTrack(activeTracks[nextIndex]);
           return;
+        }
+        const navigationIndex = currentIndex >= 0 ? currentIndex : (get().playbackIndex ?? -1) - 1;
+        if (navigationIndex === -1) return;
+
+        const activeTrackIds = new Set(activeTracks.map((track) => track.id));
+        const hasCompletedShuffleCycle =
+          shuffleEnabled &&
+          activeTracks.length > 1 &&
+          activeTracks.every((track) => shuffleHistoryIds.includes(track.id));
+        const effectiveShuffleHistory = hasCompletedShuffleCycle
+          ? currentTrack
+            ? [currentTrack.id]
+            : []
+          : shuffleHistoryIds;
+
+        const nextIndex = getNextTrackIndex(
+          activeTracks,
+          navigationIndex,
+          shuffleEnabled,
+          repeatMode,
+          effectiveShuffleHistory
+        );
+        if (nextIndex < 0) {
+          get().howl?.stop();
+          set({
+            isPlaying: false,
+            playbackError: null,
+            seek: 0,
+            audioWatchdogId: null,
+          });
+          return;
+        }
+        if (hasCompletedShuffleCycle) {
+          set({
+            shuffleHistoryIds: effectiveShuffleHistory.filter((trackId) =>
+              activeTrackIds.has(trackId)
+            ),
+          });
         }
         get().setTrack(activeTracks[nextIndex]);
       },
 
       toggleShuffle: () => {
-        set((state) => ({ shuffleEnabled: !state.shuffleEnabled }));
+        set((state) => ({
+          shuffleEnabled: !state.shuffleEnabled,
+          shuffleHistoryIds:
+            !state.shuffleEnabled && state.currentTrack ? [state.currentTrack.id] : [],
+        }));
       },
 
       cycleRepeatMode: () => {
@@ -1151,13 +1385,252 @@ export const usePlayerStore = create<PlayerState>()(
         set((state) => ({ albums: state.albums.filter((album) => album.id !== albumId) }));
       },
 
+      createPlaylist: (playlist) => {
+        const now = Date.now();
+        set((state) => ({
+          playlists: [
+            ...state.playlists,
+            {
+              ...playlist,
+              trackIds: normalizeTrackIds(playlist.trackIds),
+              id: crypto.randomUUID(),
+              createdAt: now,
+              updatedAt: now,
+            },
+          ],
+        }));
+      },
+
+      updatePlaylist: (playlistId, playlist) => {
+        set((state) => ({
+          playlists: state.playlists.map((item) =>
+            item.id === playlistId
+              ? {
+                  ...item,
+                  ...playlist,
+                  ...(playlist.trackIds ? { trackIds: normalizeTrackIds(playlist.trackIds) } : {}),
+                  updatedAt: Date.now(),
+                }
+              : item
+          ),
+        }));
+      },
+
+      deletePlaylist: (playlistId) => {
+        set((state) => ({
+          playlists: state.playlists.filter((playlist) => playlist.id !== playlistId),
+        }));
+      },
+
+      restorePlaylist: (playlist) => {
+        set((state) => {
+          if (state.playlists.some((item) => item.id === playlist.id)) return state;
+          return { playlists: [...state.playlists, normalizePlaylist(playlist)] };
+        });
+      },
+
+      duplicatePlaylist: (playlistId) => {
+        set((state) => {
+          const playlist = state.playlists.find((item) => item.id === playlistId);
+          if (!playlist) return state;
+
+          const now = Date.now();
+          const baseName = `${playlist.name} (copia)`;
+          const existingNames = new Set(state.playlists.map((item) => item.name));
+          let name = baseName;
+          let copyNumber = 2;
+          while (existingNames.has(name)) {
+            name = `${baseName} ${copyNumber}`;
+            copyNumber += 1;
+          }
+
+          return {
+            playlists: [
+              ...state.playlists,
+              {
+                ...playlist,
+                id: crypto.randomUUID(),
+                name,
+                createdAt: now,
+                updatedAt: now,
+                trackIds: [...playlist.trackIds],
+              },
+            ],
+          };
+        });
+      },
+
+      loadPlaylist: (playlistId) => {
+        const { playlists, libraryTracks, playlistTracks } = get();
+        const playlist = playlists.find((item) => item.id === playlistId);
+        if (!playlist) return;
+
+        const availableTracks = new Map(
+          [...libraryTracks, ...playlistTracks].map((track) => [track.id, track])
+        );
+        const tracks = playlist.trackIds
+          .map((trackId) => availableTracks.get(trackId))
+          .filter((track): track is Track => Boolean(track));
+
+        set({
+          playlistTracks: tracks,
+          playbackContext: 'playlist',
+          playbackIndex: get().currentTrack
+            ? tracks.findIndex((track) => track.id === get().currentTrack?.id)
+            : null,
+          shuffleHistoryIds: [],
+        });
+      },
+
+      appendPlaylistToQueue: (playlistId) => {
+        const { playlists, libraryTracks, playlistTracks, currentTrack, playbackContext } = get();
+        const playlist = playlists.find((item) => item.id === playlistId);
+        if (!playlist) return;
+
+        const availableTracks = new Map(
+          [...libraryTracks, ...playlistTracks].map((track) => [track.id, track])
+        );
+        const existingIds = new Set(playlistTracks.map((track) => track.id));
+        const currentTrackNeedsQueue =
+          playbackContext === 'library' &&
+          currentTrack !== null &&
+          !existingIds.has(currentTrack.id);
+        const queueTracks = currentTrackNeedsQueue
+          ? [currentTrack, ...playlistTracks]
+          : playlistTracks;
+        const queueIds = new Set(queueTracks.map((track) => track.id));
+        const tracksToAppend = playlist.trackIds
+          .map((trackId) => availableTracks.get(trackId))
+          .filter((track): track is Track => Boolean(track))
+          .filter((track) => !queueIds.has(track.id));
+
+        if (tracksToAppend.length === 0 && !currentTrackNeedsQueue) return;
+
+        set({
+          playlistTracks: [...queueTracks, ...tracksToAppend],
+          playbackContext: currentTrackNeedsQueue ? 'playlist' : playbackContext,
+          playbackIndex: currentTrackNeedsQueue ? 0 : get().playbackIndex,
+          shuffleHistoryIds: currentTrackNeedsQueue
+            ? currentTrack
+              ? [currentTrack.id]
+              : []
+            : get().shuffleHistoryIds,
+        });
+      },
+
+      addPlaylistNext: (playlistId) => {
+        const { playlists, libraryTracks, playlistTracks, currentTrack, playbackContext } = get();
+        const playlist = playlists.find((item) => item.id === playlistId);
+        if (!playlist || !currentTrack) return;
+
+        const availableTracks = new Map(
+          [...libraryTracks, ...playlistTracks].map((track) => [track.id, track])
+        );
+        const currentIndex = playlistTracks.findIndex((track) => track.id === currentTrack.id);
+        const needsAnchor = currentIndex < 0;
+        const queueTracks = needsAnchor ? [currentTrack, ...playlistTracks] : playlistTracks;
+        const anchorIndex = needsAnchor ? 0 : currentIndex;
+        const queueIds = new Set(queueTracks.map((track) => track.id));
+        const tracksToInsert = playlist.trackIds
+          .map((trackId) => availableTracks.get(trackId))
+          .filter((track): track is Track => Boolean(track))
+          .filter((track) => !queueIds.has(track.id));
+
+        if (tracksToInsert.length === 0 && !needsAnchor) return;
+
+        const nextTracks = [...queueTracks];
+        nextTracks.splice(anchorIndex + 1, 0, ...tracksToInsert);
+        const nextPlaybackContext =
+          playbackContext === 'library' || needsAnchor ? 'playlist' : playbackContext;
+        set({
+          playlistTracks: nextTracks,
+          playbackContext: nextPlaybackContext,
+          playbackIndex:
+            nextPlaybackContext === 'playlist'
+              ? nextTracks.findIndex((track) => track.id === currentTrack.id)
+              : get().playbackIndex,
+          shuffleHistoryIds: needsAnchor ? [currentTrack.id] : get().shuffleHistoryIds,
+        });
+      },
+
+      removeUnavailableFromPlaylist: (playlistId) => {
+        const { playlists, libraryTracks, playlistTracks } = get();
+        const playlist = playlists.find((item) => item.id === playlistId);
+        if (!playlist) return;
+
+        const availableIds = new Set(
+          [...libraryTracks, ...playlistTracks].map((track) => track.id)
+        );
+        const trackIds = playlist.trackIds.filter((trackId) => availableIds.has(trackId));
+        if (trackIds.length === playlist.trackIds.length) return;
+
+        set((state) => ({
+          playlists: state.playlists.map((item) =>
+            item.id === playlistId ? { ...item, trackIds, updatedAt: Date.now() } : item
+          ),
+        }));
+      },
+
+      movePlaylistCollectionTrack: (playlistId, trackId, direction) => {
+        set((state) => {
+          const playlist = state.playlists.find((item) => item.id === playlistId);
+          if (!playlist) return state;
+
+          const index = playlist.trackIds.indexOf(trackId);
+          const targetIndex = direction === 'up' ? index - 1 : index + 1;
+          if (index < 0 || targetIndex < 0 || targetIndex >= playlist.trackIds.length) {
+            return state;
+          }
+
+          const trackIds = [...playlist.trackIds];
+          [trackIds[index], trackIds[targetIndex]] = [trackIds[targetIndex], trackIds[index]];
+
+          return {
+            playlists: state.playlists.map((item) =>
+              item.id === playlistId ? { ...item, trackIds, updatedAt: Date.now() } : item
+            ),
+          };
+        });
+      },
+
+      clearUpcomingTracks: () => {
+        set((state) => {
+          if (state.playbackContext !== 'playlist' || state.playbackIndex === null) {
+            return state;
+          }
+
+          const currentIndex = state.playlistTracks.findIndex(
+            (track) => track.id === state.currentTrack?.id
+          );
+          if (currentIndex < 0 || currentIndex >= state.playlistTracks.length - 1) {
+            return state;
+          }
+
+          return {
+            playlistTracks: state.playlistTracks.slice(0, currentIndex + 1),
+            playbackIndex: currentIndex,
+          };
+        });
+      },
+
       togglePlay: () => {
-        const { howl, isPlaying } = get();
-        if (!howl) return;
+        const { howl, isPlaying, currentTrack, playbackContext, seek } = get();
+        if (!howl) {
+          if (currentTrack) {
+            get().setTrack(currentTrack, playbackContext);
+            const restoredHowl = get().howl;
+            if (restoredHowl && seek > 0) {
+              restoredHowl.seek(seek);
+              set({ seek });
+            }
+          }
+          return;
+        }
 
         if (isPlaying) {
           howl.pause();
         } else {
+          if (howl.playing()) return;
           if (Howler.ctx.state === 'suspended') Howler.ctx.resume();
           howl.play();
         }
@@ -1274,11 +1747,13 @@ export const usePlayerStore = create<PlayerState>()(
     {
       name: 'musie-pwa-storage',
       storage: customBinaryStorage,
-      version: 6,
+      version: 8,
       migrate: (persistedState) => {
         const state = persistedState as Partial<PersistedPlayerState> & {
           libraryTracks?: Track[];
           playlistTracks?: Track[];
+          currentTrack?: Track | null;
+          playbackIndex?: number | null;
           songs?: Track[];
           lastTrack?: Track | null;
         };
@@ -1287,6 +1762,7 @@ export const usePlayerStore = create<PlayerState>()(
         const audioFiles = { ...(state.audioFiles ?? {}) };
         collectAudioFiles(libraryTracks, audioFiles);
         collectAudioFiles(playlistTracks, audioFiles);
+        if (state.currentTrack) collectAudioFiles([state.currentTrack], audioFiles);
         if (state.lastTrack) collectAudioFiles([state.lastTrack], audioFiles);
 
         const nextEqBands = (state.eqBands?.length ? state.eqBands : DEFAULT_EQ_BANDS).map(
@@ -1302,13 +1778,25 @@ export const usePlayerStore = create<PlayerState>()(
           audioFiles,
           favoriteTrackIds: state.favoriteTrackIds ?? [],
           volume: state.volume ?? 0.5,
+          currentTrack: state.currentTrack
+            ? stripTrackFile(normalizeTrack(state.currentTrack))
+            : null,
+          playbackIndex: state.playbackIndex ?? null,
+          seek:
+            typeof state.seek === 'number' && Number.isFinite(state.seek)
+              ? Math.max(0, state.seek)
+              : 0,
           lastTrack: state.lastTrack ? stripTrackFile(normalizeTrack(state.lastTrack)) : null,
           eqBands: nextEqBands,
           eqPreset: state.eqPreset ?? DEFAULT_EQ_PRESET,
           eqEnabled: state.eqEnabled ?? true,
           shuffleEnabled: state.shuffleEnabled ?? false,
+          shuffleHistoryIds: state.shuffleHistoryIds ?? [],
           repeatMode: normalizeRepeatMode(state.repeatMode),
+          playbackContext:
+            state.playbackContext === 'playlist' ? 'playlist' : ('library' as PlaybackContext),
           albums: state.albums ?? [],
+          playlists: (state.playlists ?? []).map(normalizePlaylist),
         };
       },
       merge: (persistedState, currentState) => {
@@ -1323,6 +1811,7 @@ export const usePlayerStore = create<PlayerState>()(
         collectAudioFiles(libraryTracks, audioFiles);
         collectAudioFiles(playlistTracks, audioFiles);
         if (persisted.lastTrack) collectAudioFiles([persisted.lastTrack], audioFiles);
+        if (persisted.currentTrack) collectAudioFiles([persisted.currentTrack], audioFiles);
         const { audioFiles: ignoredAudioFiles, ...persistedWithoutAudioFiles } = persisted;
         void ignoredAudioFiles;
 
@@ -1331,12 +1820,23 @@ export const usePlayerStore = create<PlayerState>()(
           ...persistedWithoutAudioFiles,
           libraryTracks: restoreTrackFiles(libraryTracks, audioFiles),
           playlistTracks: restoreTrackFiles(playlistTracks, audioFiles),
+          currentTrack: persisted.currentTrack
+            ? restoreTrackFiles([persisted.currentTrack], audioFiles)[0]
+            : null,
+          seek:
+            typeof persisted.seek === 'number' && Number.isFinite(persisted.seek)
+              ? Math.max(0, persisted.seek)
+              : 0,
           lastTrack: persisted.lastTrack
             ? restoreTrackFiles([persisted.lastTrack], audioFiles)[0]
             : null,
           shuffleEnabled: persisted.shuffleEnabled ?? false,
+          shuffleHistoryIds: persisted.shuffleHistoryIds ?? [],
           repeatMode: normalizeRepeatMode(persisted.repeatMode),
+          playbackContext:
+            persisted.playbackContext === 'playlist' ? 'playlist' : ('library' as PlaybackContext),
           albums: persisted.albums ?? [],
+          playlists: (persisted.playlists ?? []).map(normalizePlaylist),
         };
       },
       partialize: createPersistedState,

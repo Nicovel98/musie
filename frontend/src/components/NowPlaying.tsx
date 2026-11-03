@@ -68,6 +68,7 @@ export const NowPlaying = ({
     currentTrack,
     lastTrack,
     isPlaying,
+    playbackError,
     togglePlay,
     seek,
     duration,
@@ -91,6 +92,7 @@ export const NowPlaying = ({
       currentTrack: state.currentTrack,
       lastTrack: state.lastTrack,
       isPlaying: state.isPlaying,
+      playbackError: state.playbackError,
       togglePlay: state.togglePlay,
       seek: state.seek,
       duration: state.duration,
@@ -194,7 +196,12 @@ export const NowPlaying = ({
     return (
       <div className="flex-1 h-full relative overflow-hidden transition-colors duration-500 bg-[var(--bg-main)] px-3 pt-1 pb-[calc(var(--mobile-tabs-height)+env(safe-area-inset-bottom)+0.5rem)] md:px-4">
         <div className="absolute inset-0 -z-10 opacity-18 blur-[120px] scale-150 transition-all duration-1000">
-          <img src={currentTrack.coverUrl} alt="" className="w-full h-full object-cover" />
+          <img
+            src={currentTrack.coverUrl}
+            alt=""
+            decoding="async"
+            className="w-full h-full object-cover"
+          />
         </div>
 
         <div className="flex relative h-full w-full min-h-0 flex-col rounded-[30px] border border-[var(--glass-border)] bg-[var(--glass-bg)] p-2 shadow-[var(--glass-shadow)] backdrop-blur-xl">
@@ -570,7 +577,12 @@ export const NowPlaying = ({
     <div className="flex-1 h-full flex flex-col items-center justify-between px-4 pt-2 pb-8 md:px-10 md:pt-4 md:pb-6 relative overflow-hidden transition-colors duration-500 bg-[var(--bg-main)]">
       {/* 1. FONDO DINÁMICO (Blur Profundo) */}
       <div className="absolute inset-0 -z-10 opacity-20 blur-[140px] scale-150 transition-all duration-1000">
-        <img src={currentTrack.coverUrl} alt="" className="w-full h-full object-cover" />
+        <img
+          src={currentTrack.coverUrl}
+          alt=""
+          decoding="async"
+          className="w-full h-full object-cover"
+        />
       </div>
 
       <div className="max-w-4xl xl:max-w-6xl w-full h-full flex flex-col justify-between items-center gap-2 md:gap-3 pb-8 md:pb-8">
@@ -596,6 +608,7 @@ export const NowPlaying = ({
           <img
             src={currentTrack.coverUrl}
             alt={currentTrack.title}
+            decoding="async"
             className="h-full max-h-[82vh] md:max-h-[90vh] aspect-square object-cover rounded-[clamp(24px,8vw,48px)] shadow-[0_40px_80px_rgba(0,0,0,0.4)] border border-[var(--glass-border)] transition-transform duration-700 hover:scale-[1.02]"
           />
         </div>
@@ -629,6 +642,14 @@ export const NowPlaying = ({
             <p className="text-[clamp(0.6rem,1.45vw,0.8rem)] text-blue-500 font-bold tracking-[0.18em] uppercase mt-[clamp(0.08rem,0.16vw,0.2rem)] opacity-80 line-clamp-1">
               {currentTrack.artist}
             </p>
+            {playbackError && (
+              <p
+                role="alert"
+                className="mt-1 max-w-full truncate text-[10px] font-semibold text-red-400"
+              >
+                {playbackError}
+              </p>
+            )}
           </div>
           <LyricsPanel
             track={currentTrack}
