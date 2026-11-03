@@ -1,19 +1,20 @@
 <div align="center">
-  <!-- Espacio reservado para el logo de Musie -->
+  <img src="img/musie_logo.png" alt="Logo de Musie" width="180" />
   <br />
   <br />
 
-  # 🎵 Musie
+# 🎵 Musie
 
-  ### Tu música local, bajo tu control
+### Tu música local, bajo tu control
 
-  Reproductor de audio **local-first**, privado y ligero para recuperar,
-  organizar y disfrutar tu colección musical sin depender de la nube.
+Reproductor de audio **local-first**, privado y ligero para recuperar,
+organizar y disfrutar tu colección musical sin depender de la nube.
 
   <br />
 
-  [![Abrir demo](https://img.shields.io/badge/▶%20Abrir%20demo-live-8b5cf6?style=for-the-badge)](https://nicovel98.github.io/musie/)
-  [![Privacidad](https://img.shields.io/badge/privacidad-local--first-111827?style=for-the-badge)](#-por-qué-musie)
+[![Abrir demo](https://img.shields.io/badge/▶%20Abrir%20demo-live-8b5cf6?style=for-the-badge)](https://nicovel98.github.io/musie/)
+[![Privacidad](https://img.shields.io/badge/privacidad-local--first-111827?style=for-the-badge)](#-por-qué-musie)
+
 </div>
 
 <br />
@@ -26,19 +27,19 @@
 
 <div align="center">
 
-  **[▶ Explorar la demo web](https://nicovel98.github.io/musie/)**
+**[▶ Explorar la demo web](https://nicovel98.github.io/musie/)**
 
-  Importa tus canciones, crea tu biblioteca y prueba el reproductor directamente
-  desde el navegador, sin crear una cuenta.
+Importa tus canciones, crea tu biblioteca y prueba el reproductor directamente
+desde el navegador, sin crear una cuenta.
 
-  [![Vista previa de Musie](img/Musie_Mejorado.png)](https://nicovel98.github.io/musie/)
+[![Vista previa de Musie](img/Musie_Mejorado.png)](https://nicovel98.github.io/musie/)
 
 </div>
 
 ## 💜 Por qué Musie
 
-| Privacidad | Control | Experiencia |
-| --- | --- | --- |
+| Privacidad                                                        | Control                                                              | Experiencia                                                      |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | Tus archivos se procesan localmente y no salen de tu dispositivo. | Ecualizador paramétrico, visualizador y controles de audio precisos. | Interfaz clara, responsive y optimizada para escritorio y móvil. |
 
 ## 🎶 Playlists que se adaptan a ti
@@ -62,8 +63,8 @@ secundarias se agrupan en menús contextuales para evitar desbordamientos.
 Musie evolucionó desde una primera idea hacia una experiencia más clara,
 centrada en la reproducción y la biblioteca musical.
 
-| Idea inicial | Musie mejorado |
-| --- | --- |
+| Idea inicial                            | Musie mejorado                            |
+| --------------------------------------- | ----------------------------------------- |
 | ![Idea inicial de Musie](img/Musie.png) | ![Musie mejorado](img/Musie_Mejorado.png) |
 
 El diseño utiliza una estética moderna inspirada en **Glassmorphism**, con

@@ -96,6 +96,7 @@ export const AppShell = ({
               libraryTab={libraryTab}
               setLibraryTab={setLibraryTab}
               librarySection={librarySection}
+              setLibrarySection={setLibrarySection}
               themeMode={themeMode}
               cycleThemeMode={cycleThemeMode}
               isPinned={sidebarPinned}

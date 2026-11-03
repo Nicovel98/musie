@@ -16,6 +16,7 @@ import type { View } from '../types/navigation';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { SidebarSection as SidebarSectionView } from './SidebarSection';
 import { SidebarFooter } from './SidebarFooter';
+import { MusieLogo } from './MusieLogo';
 
 type LibraryTab = 'library' | 'favorites' | 'playlist';
 type LibrarySection = 'tracks' | 'albums' | 'lyrics';
@@ -40,6 +41,7 @@ export const Sidebar = ({
   libraryTab,
   setLibraryTab,
   librarySection = 'tracks',
+  setLibrarySection,
   themeMode,
   cycleThemeMode,
   isPinned,
@@ -50,6 +52,7 @@ export const Sidebar = ({
   libraryTab: LibraryTab;
   setLibraryTab: (tab: LibraryTab) => void;
   librarySection?: LibrarySection;
+  setLibrarySection: (section: LibrarySection) => void;
   themeMode: ThemeMode;
   cycleThemeMode: () => void;
   isPinned: boolean;
@@ -72,8 +75,9 @@ export const Sidebar = ({
   const isDarkMode = themeMode === 'dark';
   const themeLabel = isDarkMode ? 'Dark' : 'Light';
 
-  const openLibraryTab = (tab: LibraryTab) => {
+  const openLibraryTab = (tab: LibraryTab, section: LibrarySection = 'tracks') => {
     setLibraryTab(tab);
+    setLibrarySection(section);
     setView('library');
   };
 
@@ -113,8 +117,9 @@ export const Sidebar = ({
         {
           icon: Disc,
           label: 'Albums',
-          onClick: () => openLibraryTab('library'),
-          isActive: currentView === 'library' && libraryTab === 'library',
+          onClick: () => openLibraryTab('library', 'albums'),
+          isActive:
+            currentView === 'library' && libraryTab === 'library' && librarySection === 'albums',
         },
         {
           icon: ListMusic,
@@ -168,20 +173,7 @@ export const Sidebar = ({
       <div className="h-16 flex items-center px-3 shrink-0 overflow-hidden">
         <div className="flex items-center justify-between min-w-[208px] w-full">
           <div className="flex items-center gap-3">
-            <div
-              className={`w-7 h-7 rounded-lg shrink-0 transition-all duration-500 shadow-lg
-              ${
-                isDarkMode
-                  ? 'bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-secondary)] shadow-[0_10px_24px_rgba(0,194,168,0.22)]'
-                  : 'bg-gradient-to-br from-blue-500 to-cyan-400 shadow-blue-500/40'
-              }`}
-            />
-            <h1
-              className={`text-lg font-black tracking-tighter transition-all duration-500 text-[var(--text-main)]
-              ${isExpanded ? 'opacity-100' : 'opacity-0'}`}
-            >
-              MUSIE
-            </h1>
+            <MusieLogo showWordmark={isExpanded} className="transition-all duration-500" />
           </div>
           <button
             onClick={() => setIsPinned(!isPinned)}
